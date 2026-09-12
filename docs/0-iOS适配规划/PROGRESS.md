@@ -1,6 +1,6 @@
 # 进度（阶段 0 · 立项与规格化）
 
-> 新会话先读本文件。最后更新：本机时钟 00:10（次日）
+> 新会话先读本文件。最后更新：本机时钟 00:15（次日）
 
 ## 1. 当前位置
 
@@ -23,20 +23,20 @@
 | 规格 §3 补精确（5 处：编码、游标后置条件、splitRule 终点、引号范围、innerRule 失败） | 完成（603a5d508，371 行 105 引用） | Codex | `docs/spec/rule-engine.md` | — |
 | **阶段 1 单元 2**：AnalyzeUrl 选项解析 + 一致性运行器（url-options 25 条） | 完成（1 轮复审 3 条全修；23 passed / 2 skipped） | Codex | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeUrl/`、`Conformance/ConformanceRunner.swift` | 需 swift test 原始输出与用例明细 |
 | **阶段 1 单元 3**：AnalyzeRule 词法 / ## 替换 / @get @put / 正则模式 / 合并，选择器引擎 protocol 化 | 完成（1 轮复审 6 条全修） | Codex |
-| **阶段 1 单元 4**：SwiftSoup 实现 AnalyzeByJSoup（Default 私有语法 + CSS） | 完成（1 轮复审 3 条 P1 全修；80 测试；HTML pretty-print 与 jsoup 逐字符对比因无 jsoup 制品未验证） | Codex | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeByJSoup/` | 需 swift test 输出、用例明细、库差异清单 | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeRule/` | 需 swift test 原始输出与 replace / template / prefix / regex / empty 用例明细 |
+| **阶段 1 单元 4**：SwiftSoup 实现 AnalyzeByJSoup（Default 私有语法 + CSS） | 完成（4d4ac0851；1 轮复审 3 条 P1 全修；HTML pretty-print 与 jsoup 逐字符对比未验证） | Codex |
+| **阶段 1 单元 5**：JavaScriptCore JS 引擎（<js> / @js: / {{}}、注入变量、java 宿主一级离线子集） | 在途 | Codex | `Packages/LegadoCore/Sources/LegadoCore/JsEngine/` | 需 swift test 输出、JS 相关用例明细、三项兼容决策实验 | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeByJSoup/` | 需 swift test 输出、用例明细、库差异清单 | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeRule/` | 需 swift test 原始输出与 replace / template / prefix / regex / empty 用例明细 |
 | **阶段 1 单元 1**：LegadoCore Package 骨架 + RuleAnalyzer（TDD） | 完成（2 轮复审 10 条全修，25 测试；第 3 轮修复留痕放行） | Codex | `Packages/LegadoCore/`（RuleAnalyzer 220 行、15 测试） | 报告附 swift test 全绿原始输出；沙箱需 `CLANG_MODULE_CACHE_PATH` 指向包内目录才能编译 |
 
 ## 3. 在途子 agent
 
 | 任务 | 通道 | 任务书 / 输出 | session id | 派出时间 |
 | --- | --- | --- | --- | --- |
+| 阶段 1 单元 5：JS 引擎 | Codex workspace-write（nohup） | `/tmp/codex-sub/core-unit5-js.prompt.md` → `/tmp/codex-sub/core-unit5-js.md` | `01a09648-cf95-7ec1-b3c0-a690f2e43fc8` | 本机时钟 00:15 |
 
-单元 4 实现会话 `01a09632-de41-7a71-a0b3-3e19f9d23597`（返修时 resume）。
-
-两任务并行编辑 `ConformanceRunner.swift`，已要求单元 3 局部改、不重写整文件；回收时核对该文件是否被互相覆盖。
+已完成单元的实现会话（返修时 resume）：单元 1 `01a095c4-1477-7210-97da-da028d2b31a2`、单元 2 `01a095d3-a3b2-70f0-b4d1-3b7cf579abb5`、单元 3 `01a09623-b332-7eb2-9119-f97b21766dc8`、单元 4 `01a09632-de41-7a71-a0b3-3e19f9d23597`。
 
 ## 4. 下一步与未决
 
-- **下一步**：单元 4 复审回来后一起提交单元 3、4（合并态已验证：76 测试 0 失败，一致性 108 passed / 7 skipped / 0 failed / 33 unsupported）；随后派单元 5（JavaScriptCore JS 引擎，任务书 `/tmp/codex-sub/core-unit5-js.prompt.md` 已备好），之后是 JSONPath、XPath（Kanna）、format。
+- **下一步**：单元 5 回收后独立复审、返修、提交；之后按序：JSONPath（5 条 unsupported）、XPath（Kanna，4 条）、format（HtmlFormatter，8 条）、java 宿主网络类方法（需 URLSession 层，归阶段 2）。
 - **未决**：labels 同步远端需人类同意。`ios` 分支已推送（origin/ios）。
 - **经验**：长跑 Codex 任务用 `nohup … &` + `disown` 脱离 Bash 工具的后台任务生命周期，再用 until 循环等 `-o` 文件；直接 `run_in_background` 的长任务两次被 stopped。
