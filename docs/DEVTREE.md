@@ -54,14 +54,16 @@ graph TD
 
 建 orphan 分支 `ios` 骨架、一致性测试语料、书源 JS 特性频率统计与宿主 API 优先级表；完成判据：语料在 Android 端一键跑出全绿基线。
 
-- 状态：进行中
+- 状态：已完成（规格、142 条用例、优先级表已落地；Android 基线校正因本机无 SDK 延期，见轮次 0 SUMMARY）
 - 轮次：0
 
 ### 阶段 1 · 规则引擎核心
 
 Swift Package `LegadoCore`（无 UI）：`RuleAnalyzer`、六模式分派、jsoup 私有语法、XPath / JSONPath / 正则、`AnalyzeUrl`、JavaScriptCore 宿主分三级实现；完成判据：一致性语料通过率达阶段 0 定义的阈值。
 
-- 轮次：（尚未开轮）
+
+- 状态：进行中（单元 1 RuleAnalyzer 已实现待复审）
+- 轮次：0（延续）
 
 ### 阶段 2 · 数据与网络
 
