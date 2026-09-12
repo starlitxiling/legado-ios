@@ -1,6 +1,6 @@
 # 进度（阶段 0 · 立项与规格化）
 
-> 新会话先读本文件。最后更新：本机时钟 22:30
+> 新会话先读本文件。最后更新：本机时钟 00:10（次日）
 
 ## 1. 当前位置
 
@@ -22,21 +22,21 @@
 | 阶段 0 收口：SUMMARY.md、DEVTREE 更新 | 完成（9b8874a56） | 主会话 | `docs/0-iOS适配规划/SUMMARY.md` | — |
 | 规格 §3 补精确（5 处：编码、游标后置条件、splitRule 终点、引号范围、innerRule 失败） | 完成（603a5d508，371 行 105 引用） | Codex | `docs/spec/rule-engine.md` | — |
 | **阶段 1 单元 2**：AnalyzeUrl 选项解析 + 一致性运行器（url-options 25 条） | 完成（1 轮复审 3 条全修；23 passed / 2 skipped） | Codex | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeUrl/`、`Conformance/ConformanceRunner.swift` | 需 swift test 原始输出与用例明细 |
-| **阶段 1 单元 3**：AnalyzeRule 词法 / ## 替换 / @get @put / 正则模式 / 合并，选择器引擎 protocol 化 | 在途（半成品已清，nohup 脱离父进程重派） | Codex | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeRule/` | 需 swift test 原始输出与 replace / template / prefix / regex / empty 用例明细 |
+| **阶段 1 单元 3**：AnalyzeRule 词法 / ## 替换 / @get @put / 正则模式 / 合并，选择器引擎 protocol 化 | 完成（1 轮复审 6 条全修） | Codex |
+| **阶段 1 单元 4**：SwiftSoup 实现 AnalyzeByJSoup（Default 私有语法 + CSS） | 完成（1 轮复审 3 条 P1 全修；80 测试；HTML pretty-print 与 jsoup 逐字符对比因无 jsoup 制品未验证） | Codex | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeByJSoup/` | 需 swift test 输出、用例明细、库差异清单 | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeRule/` | 需 swift test 原始输出与 replace / template / prefix / regex / empty 用例明细 |
 | **阶段 1 单元 1**：LegadoCore Package 骨架 + RuleAnalyzer（TDD） | 完成（2 轮复审 10 条全修，25 测试；第 3 轮修复留痕放行） | Codex | `Packages/LegadoCore/`（RuleAnalyzer 220 行、15 测试） | 报告附 swift test 全绿原始输出；沙箱需 `CLANG_MODULE_CACHE_PATH` 指向包内目录才能编译 |
 
 ## 3. 在途子 agent
 
 | 任务 | 通道 | 任务书 / 输出 | session id | 派出时间 |
 | --- | --- | --- | --- | --- |
-| 语料统计 | Codex workspace-write | `/tmp/codex-sub/corpus-stats.prompt.md` → `/tmp/codex-sub/corpus-stats.md`；合集在 scratchpad `corpus/`（8 文件 + manifest.tsv，共 9776 条，按 bookSourceUrl 去重 4063 源） | `01a095b1-1e88-7150-b392-8fd36effa1df` | 2026-09-12 21:20 |
-| 阶段 1 单元 1：Package 骨架 + RuleAnalyzer | Codex workspace-write | `/tmp/codex-sub/core-unit1-ruleanalyzer.prompt.md` → `/tmp/codex-sub/core-unit1-ruleanalyzer.md`，写 `Packages/LegadoCore/` | `01a095c4-1477-7210-97da-da028d2b31a2` | 2026-09-12 23:05 |
-| 阶段 1 单元 3：AnalyzeRule 骨架 | Codex workspace-write | `/tmp/codex-sub/core-unit3-analyzerule.prompt.md` → `/tmp/codex-sub/core-unit3-analyzerule.md` | `01a095e0-455c-7fb1-838c-b829badeb1a2` | 本机时钟 21:55 |
 
-已收回：Codex review master 规则（3 条，已改 CLAUDE.md）；Codex review ios 首批（8 条：6 条规格→spec-fix-r1，1 条 CLAUDE.md 已改，1 条 `.gitignore` 待 Package 建立时按目录加）。
+单元 4 实现会话 `01a09632-de41-7a71-a0b3-3e19f9d23597`（返修时 resume）。
+
+两任务并行编辑 `ConformanceRunner.swift`，已要求单元 3 局部改、不重写整文件；回收时核对该文件是否被互相覆盖。
 
 ## 4. 下一步与未决
 
-- **下一步**：三个 Codex 任务回收并抽查后，派一次收窄的 Codex 复审（两份 CLAUDE.md 修正 + 规格修正 + 黄金用例 + 统计），通过即在 master 提交规则改动、在 `ios` 分支做首个 commit；随后派「合成 fixture」任务。
+- **下一步**：单元 4 复审回来后一起提交单元 3、4（合并态已验证：76 测试 0 失败，一致性 108 passed / 7 skipped / 0 failed / 33 unsupported）；随后派单元 5（JavaScriptCore JS 引擎，任务书 `/tmp/codex-sub/core-unit5-js.prompt.md` 已备好），之后是 JSONPath、XPath（Kanna）、format。
 - **未决**：labels 同步远端需人类同意。`ios` 分支已推送（origin/ios）。
 - **经验**：长跑 Codex 任务用 `nohup … &` + `disown` 脱离 Bash 工具的后台任务生命周期，再用 until 循环等 `-o` 文件；直接 `run_in_background` 的长任务两次被 stopped。

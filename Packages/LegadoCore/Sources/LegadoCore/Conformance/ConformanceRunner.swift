@@ -1,4 +1,5 @@
 import Foundation
+import SwiftSoup
 
 public enum ConformanceRunner {
     public enum Status: String { case passed, failed, skipped, unsupported }
@@ -38,10 +39,13 @@ public enum ConformanceRunner {
 
     public static func run(_ cases: [ConformanceCase]) -> Report {
         Report(results: cases.map { test in
-            let ruleKinds = ["replace", "template", "prefix", "regex", "empty"]
+            let ruleKinds = ["replace", "template", "prefix", "regex", "empty", "jsoup-default", "jsoup-css"]
             let ruleFixture = ruleKinds.contains(test.kind) || ["template", "prefix", "empty"].contains { test.id.hasPrefix("synthetic-\($0)-") }
             guard test.kind == "url-options" || ruleFixture else {
                 return result(test, status: .unsupported, detail: "本单元尚未实现 kind=\(test.kind)")
+            }
+            if test.input.variables?["operation"] == .string("ReplacePreview.apply") {
+                return result(test, status: .unsupported, detail: "ReplacePreview.apply 是 UI 替换预览，非 AnalyzeRule 的 ## 替换")
             }
             do {
                 let actual = try test.kind == "url-options" ? evaluateURL(test.input) : evaluateRule(test.input)
@@ -81,14 +85,19 @@ public enum ConformanceRunner {
             return result
         }
         let operation = string("operation") ?? ""
-        if operation == "ReplacePreview.apply" { throw Skip(reason: "ReplacePreview.apply 是 UI 替换预览，非 AnalyzeRule 的 ## 替换") }
-        let supportedKeys: Set<String> = ["operation", "projection", "locals", "ruleData"]
+        let supportedKeys: Set<String> = ["operation", "projection", "locals", "ruleData", "isUrl"]
+        if ["getString", "getStringList", "getElements"].contains(operation) || operation.hasPrefix("AnalyzeByJSoup.") {
+            return try evaluateJSoup(input)
+        }
         if let key = variables.keys.sorted().first(where: { !supportedKeys.contains($0) }) {
             throw Skip(reason: "尚未实现规则 fixture 配置 \(key)")
         }
-        let parser = AnalyzeRule(content: input.document, ruleData: try values("ruleData").map { RuleVariableStore($0) })
+        let parser = AnalyzeRule(content: input.document, engines: [.default: AnalyzeByJSoup()],
+                                 ruleData: try values("ruleData").map { RuleVariableStore($0) })
         for (key, value) in try values("locals") ?? [:] { parser.setLocal(key, value: value) }
-        if input.baseUrl != nil { throw Skip(reason: "本单元尚未接入 URL 后处理") }
+        if variables["isUrl"] == .bool(true), ["AnalyzeRule.getString", "AnalyzeRule.getStringList"].contains(operation) {
+            throw Skip(reason: "本单元尚未接入 URL 后处理")
+        }
         let projection = string("projection")
         if operation != "AnalyzeRule.getElements" && projection != nil { throw Skip(reason: "该入口尚未实现投影 \(projection!)") }
         switch operation {
@@ -104,6 +113,9 @@ public enum ConformanceRunner {
         case "AnalyzeRule.getElements":
             let result = try parser.getElements(input.rule)
             if let projection {
+                if let elements = result as? [Element], ["id", "text", "outerHtml"].contains(projection) {
+                    return .stringList(try projectJSoup(elements, projection))
+                }
                 guard projection.hasPrefix("["), projection.hasSuffix("]"),
                       let index = Int(projection.dropFirst().dropLast()), index >= 0 else { throw Skip(reason: "尚未实现投影 \(projection)") }
                 let values = try result.map { item -> String in
@@ -114,13 +126,64 @@ public enum ConformanceRunner {
             }
             guard let values = result as? [String] else { throw Skip(reason: "schema 尚无嵌套对象列表结果") }
             return .stringList(values)
-        case "AnalyzeByJSoup.getStringList":
-            let value = try UnsupportedSelectorEngine(mode: .default).evaluate(input.rule, content: input.document ?? NSNull(), operation: .stringList, context: parser)
-            guard let list = value as? [String] else { throw Skip(reason: "schema 尚无该结果类型") }
-            return .stringList(list)
         default: throw Skip(reason: "尚未实现规则 operation=\(operation)")
         }
     }
+
+    private static func projectJSoup(_ elements: [Element], _ projection: String) throws -> [String] {
+        switch projection {
+        case "id": return elements.map { $0.id() }
+        case "text": return try elements.map { try $0.text() }
+        case "outerHtml": return try elements.map { try $0.outerHtml() }
+        default: throw Skip(reason: "尚未实现 DOM 投影 \(projection)")
+        }
+    }
+
+    /// 规格 §5、§11：同一 DOM 执行 beforeEach 和 repeat，验证每轮输出一致。
+    private static func evaluateJSoup(_ input: ConformanceCase.Input) throws -> ConformanceCase.Expectation {
+        let variables = input.variables ?? [:]
+        let supported: Set<String> = ["operation", "projection", "beforeEach", "repeat"]
+        if let key = variables.keys.sorted().first(where: { !supported.contains($0) }) {
+            throw Skip(reason: "尚未实现 DOM fixture 配置 \(key)")
+        }
+        let parser = try AnalyzeByJSoup(input.document ?? NSNull())
+        func evaluate(_ operation: String, _ rule: String, projection: String?) throws -> ConformanceCase.Expectation {
+            switch operation {
+            case "getString", "AnalyzeByJSoup.getString": return .string(try parser.getString(rule) ?? "")
+            case "getStringList", "AnalyzeByJSoup.getStringList": return .stringList(try parser.getStringList(rule))
+            case "getElements", "AnalyzeByJSoup.getElements":
+                let elements = try parser.getElements(rule)
+                return .stringList(try projectJSoup(elements, projection ?? "outerHtml"))
+            default: throw Skip(reason: "尚未实现 DOM operation=\(operation)")
+            }
+        }
+        guard case .string(let operation) = variables["operation"] else { throw Skip(reason: "DOM fixture 缺少 operation") }
+        var projection: String?
+        if case .string(let value) = variables["projection"] { projection = value }
+        var count = 1
+        if case .number(let value) = variables["repeat"] {
+            guard value > 0, value <= 1000, Decimal(NSDecimalNumber(decimal: value).intValue) == value else {
+                throw Skip(reason: "DOM repeat 需要 1..1000 的整数")
+            }
+            count = NSDecimalNumber(decimal: value).intValue
+        }
+        var first: ConformanceCase.Expectation?
+        for _ in 0..<count {
+            if case .array(let steps) = variables["beforeEach"] {
+                for step in steps {
+                    guard case .object(let object) = step, case .string(let operation) = object["operation"],
+                          case .string(let rule) = object["rule"] else { throw Skip(reason: "DOM beforeEach 需要 operation 和 rule") }
+                    _ = try evaluate(operation, rule, projection: nil)
+                }
+            }
+            let value = try evaluate(operation, input.rule, projection: projection)
+            if let first, first != value { throw DOMRepeatError.inconsistent }
+            first = value
+        }
+        return first!
+    }
+
+    private enum DOMRepeatError: Error { case inconsistent }
 
     private static func result(_ test: ConformanceCase, status: Status,
                                actual: ConformanceCase.Expectation? = nil, detail: String) -> Result {
