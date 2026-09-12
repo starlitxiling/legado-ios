@@ -68,18 +68,18 @@ regexPattern = \$\d{1,2}
 
 ## 3. `RuleAnalyzer` 切分算法（RuleAnalyzer.kt）
 
-状态：`queue`（原串）、`pos`、`start`、`startX`、`rule`（结果列表）、`step`（分隔符长度）、`elementsType`（生效的分隔符）、`code` 标志（JSON/JS 时为真，选用代码平衡组）。
+状态：`queue`（原串）、`pos`、`start`、`startX`、`rule`（结果列表）、`step`（分隔符长度）、`elementsType`（生效的分隔符）、`code` 标志（JSON/JS 时为真，选用代码平衡组）。所有位置、步长、长度均按 UTF-16 code unit 计，补充平面字符占 2；例如 `😀||b` 中分隔符的位置为 2、长度为 2，`b` 的位置为 4，原串长度为 5（RuleAnalyzer.kt:37,57,63,79,81）。
 
 ### 3.1 基础操作
 
 | 操作 | 语义 | 来源 |
 | --- | --- | --- |
-| `trim()` | 若当前字符是 `@` 或 `< '!'`（空白/控制符），连续跳过并把 `start/startX` 推到首个有效字符。**全串都是此类字符时越界抛异常** | RuleAnalyzer.kt:15-22 |
-| `consumeTo(seq)` | `start=pos`；从 pos 起 `indexOf(seq)`（区分大小写），命中则 `pos=命中位置` | RuleAnalyzer.kt:35-43 |
-| `consumeToAny(seqs)` | 逐字符前进，每个位置按参数顺序试所有分隔符，**最早位置**命中者胜；置 `step` | RuleAnalyzer.kt:49-66 |
-| `findToAny(chars)` | 返回 pos 起首个 `[` 或 `(` 的位置，无则 -1 | RuleAnalyzer.kt:73-85 |
-| `chompRuleBalanced(o,c)` | 规则平衡组：`'`/`"` 内一切忽略（引号内**无**转义）；引号外 `\` 跳过下一字符；`o` 深度 +1、`c` 深度 −1，回到 0 结束；串尽未平衡返回假 | RuleAnalyzer.kt:131-153 |
-| `chompCodeBalanced(o,c)` | 代码平衡组：任何位置 `\` 都跳过下一字符；引号同上；`[`/`]` 作为主深度，只有主深度为 0 时才计 `o`/`c` 的次深度；两者皆归零才结束 | RuleAnalyzer.kt:91-123 |
+| `trim()` | 若当前字符是 `@` 或 `< '!'`（空白/控制符），连续跳过并把 `start/startX` 推到首个有效字符；仅实际跳过前导字符才更新起点，否则 `pos/start/startX` 不变。**全串都是此类字符时越界抛异常** | RuleAnalyzer.kt:15-22 |
+| `consumeTo(seq)` | `start=调用前 pos`；从 pos 起按 UTF-16 索引执行 `indexOf(seq)`（区分大小写）；成功返回真，`pos` 停在匹配首单元，未消费 seq；失败返回假，`pos` 保持调用前值（`start` 仍已更新） | RuleAnalyzer.kt:35-43 |
+| `consumeToAny(seqs)` | 每次前进 1 个 UTF-16 单元，每个位置按参数顺序试所有分隔符，**最早位置**命中者胜；成功返回真，`step=匹配串的 UTF-16 长度`，`pos` 停在匹配首单元；失败返回假，`pos/step` 保持调用前值；均不改 `start/startX` | RuleAnalyzer.kt:49-66 |
+| `findToAny(chars)` | 返回 pos 起首个匹配参数字符的 UTF-16 位置（切分时参数为 `[`、`(`），无则 -1；成功、失败均不改 `pos` | RuleAnalyzer.kt:73-85 |
+| `chompRuleBalanced(o,c)` | 从开括号处调用：单引号或双引号内一切忽略（引号内无转义）；引号外反斜杠跳过下一 UTF-16 单元；`o` 深度 +1、`c` 深度 −1；闭合成功返回真，`pos` 停在配对闭括号之后；串尽仍有正深度返回假，`pos` 保持调用前值；不改 `start/startX` | RuleAnalyzer.kt:131-158 |
+| `chompCodeBalanced(o,c)` | 从开括号处调用：任何位置反斜杠都跳过下一 UTF-16 单元；引号同上；`[`/`]` 为主深度，只有主深度为 0 时才计 `o`/`c` 的次深度；闭合成功返回真，`pos` 停在配对闭括号之后；串尽任一深度仍为正返回假，`pos` 保持调用前值；不改 `start/startX` | RuleAnalyzer.kt:91-125 |
 
 ### 3.2 `splitRule(分隔符…)` 伪代码（RuleAnalyzer.kt:165-317）
 
@@ -87,32 +87,35 @@ regexPattern = \$\d{1,2}
 splitRule(seps):
   if len(seps)==1:                       # 单分隔符（"@"）
      elementsType = seps[0]
-     if !consumeTo(sep): rule += queue[startX:]; return rule
+     if !consumeTo(sep): rule += queue[startX:]; return rule  # pos 不变，不检查括号（RuleAnalyzer.kt:169-171）
      step = len(sep); goto NEXT
-  if !consumeToAny(seps): rule += queue[startX:]; return rule   # 无分隔符：elementsType 保持 ""
+  if !consumeToAny(seps): rule += queue[startX:]; return rule  # pos、elementsType 不变，不检查括号（RuleAnalyzer.kt:176-178）
   NEXT:
   end = pos; pos = start
   loop:
     st = findToAny('[','(')
     if st == -1 or st > end:            # 分隔符不在括号内
        rule += queue[startX:end]; elementsType = queue[end:end+step]; pos = end+step
-       while consumeTo(elementsType) and (st==-1 or pos<st): rule += queue[start:pos]; pos += step
+       while consumeTo(elementsType) and (st==-1 or pos<st): rule += queue[start:pos]; pos += step  # 跳过已切出的分隔符（RuleAnalyzer.kt:194-196,211-213）
        if st != -1 and pos > st: startX = start; goto NEXT      # 后段落入括号区，重新按括号法扫
-       rule += queue[pos:]; return rule
+       rule += queue[pos:]; return rule  # 追加尾段不推进 pos；停在最后切出的分隔符之后，即尾段起点（RuleAnalyzer.kt:199,220）
     pos = st; 用 chompBalanced 吞掉整个括号组（不平衡 → 抛错 "…后未平衡"）
   while end > pos                        # 分隔符被括号包住则继续找下一个
   start = pos; 再次 consumeTo/consumeToAny 递归
 ```
 
 要点：
+- 「无分隔符」指**本次查找从当前 pos 起未命中候选串**，此时保持该次查找前的游标，不扫描剩余未闭合括号；例如 `a(` 按 `||` 切分返回 `["a("]`、`pos=0`，`a||b(` 返回 `["a","b("]`、`pos=3`。若先命中候选且括号位于候选之前，仍须平衡检查，失败抛错（RuleAnalyzer.kt:169-178,211-230）。
+- 若候选全部在平衡括号内，吞组后继续查找但无候选，则返回 `queue[startX:]`，`pos` 保持在最后吞掉的闭括号之后，**不恢复整次 splitRule 的入口位置**；例如 `(a||b)c` 返回 `["(a||b)c"]`、`pos=6`（RuleAnalyzer.kt:225-236,282-296）。
 - **只承认第一个被找到的分隔符类型**。`a&&b||c` → `["a", "b||c"]`，`elementsType="&&"`。
-- 括号（`[]`、`()`）与引号内的分隔符不切。`div:matches(a||b)@text||p@text` → `["div:matches(a||b)@text", "p@text"]`。
+- 平衡括号（`[]`、`()`）内的分隔符不切；引号保护仅在 `chompCodeBalanced` / `chompRuleBalanced` 内生效，**顶层切分不受引号影响**。`div:matches(a||b)@text||p@text` → `["div:matches(a||b)@text", "p@text"]`；`'a||b'||c` → `["'a","b'","c"]`（RuleAnalyzer.kt:105-108,141-144,185-199,228,368）。
 - `throw` 是唯一的错误出口，调用方不捕获。
 
 ### 3.3 `innerRule`
 
-- `innerRule("{$.", fr)`（RuleAnalyzer.kt:308-335）：找到 `{$.`，用代码平衡组吞到配对 `}`，把 `{ … }` 内文本（去首尾各 1 字符）交给 `fr`；`fr` 返回非空则替换，否则该 `{$.` 视为普通文本、跳过 3 字符继续。**一次替换都没发生时返回空串**（调用方据此判断「无内嵌规则」）。
-- `innerRule(startStr, endStr, fr)`（RuleAnalyzer.kt:339-364）：非嵌套地找 `startStr…endStr`，内文交 `fr`，替换结果拼接；无匹配返回原串。用于 URL 的 `{{ }}`。
+- `innerRule("{$.", fr)`：找到标记后用代码平衡组吞到配对 `}`，把 `{ … }` 内文本（默认去首尾各 1 个 UTF-16 单元）交给 `fr`；非空且非 null 的返回值才替换，并从闭括号后续搜。未闭合时不抛平衡错误、不调用回调，游标保留在标记起点后再加标记长度；闭合但回调返回空串或 null 时，**从闭括号后的游标再加标记长度**续搜，原文本保留。返回判据严格为 `startX==0` 时返回空串，否则返回累计替换及 `queue[startX:]`；新实例无替换时因此返回空串（RuleAnalyzer.kt:93,122-124,308-331）。
+  示例：新实例 `{$.a` 返回 `""`、不调用回调、`pos=3`；`{$.a}{$.b}` 的首个回调收到 `$.a` 并返回 `""`，闭合后 `pos=5` 再加 3 得 8，跳过紧邻的第二个标记，回调仅调用一次，最终返回 `""`；若两个回调依次返回 `A`、`B`，则返回 `AB`（RuleAnalyzer.kt:316-331）。
+- `innerRule(startStr, endStr, fr)`：非嵌套地查找成对标记；命中开标记即跳过它，找不到闭标记时不报错、不调用回调，游标保持在开标记之后，并从那里续搜开标记。闭合时拼接回调结果（空串也替换，null 拼成字面量 `null`），从闭标记之后续搜并更新 `startX`。`startX==0` 返回原串，否则返回累计替换及尚未替换的尾串，因此新实例无完整匹配（包括未闭合）时返回原串；例如 `{{a` 返回 `{{a`、`pos=2`。用于 URL 的 `{{ }}`（RuleAnalyzer.kt:35-41,339-364）。
 
 ## 4. 六种模式的求值语义
 
