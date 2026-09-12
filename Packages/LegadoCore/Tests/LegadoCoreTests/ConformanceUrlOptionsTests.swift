@@ -15,8 +15,8 @@ final class ConformanceUrlOptionsTests: XCTestCase {
         print(report.summary)
         let results = report.results.filter { $0.kind == "url-options" }
         XCTAssertEqual(results.count, 25)
-        XCTAssertEqual(results.filter { $0.status == .passed }.count, 23)
-        XCTAssertEqual(results.filter { $0.status == .skipped }.map(\.id).sorted(), ["synthetic-url-017", "synthetic-url-018"])
+        XCTAssertEqual(results.filter { $0.status == .passed }.count, 25)
+        XCTAssertEqual(results.filter { $0.status == .skipped }.map(\.id).sorted(), [])
         for result in results {
             print("\(result.id): \(result.status) \(result.detail)")
             switch result.status {

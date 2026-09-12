@@ -3,6 +3,8 @@ import SwiftSoup
 
 /// 规格 §2、§4、§8：有状态规则求值器；选择器与变量宿主通过协议注入。
 public final class AnalyzeRule {
+    var scriptSession: JsSession?
+    var scriptBaseUrl: String?
     /// 规格 §4：当前整份内容；内插子规则与 @put 均以此为输入。
     public private(set) var content: Any?
     /// 规格 §2.1：对象入口冒号规则设置的黏性状态。
@@ -41,6 +43,19 @@ public final class AnalyzeRule {
 
     /// 规格 §8.2：本地空值仍会遮蔽宿主变量；nil 移除绑定。
     public func setLocal(_ key: String, value: String?) { locals[key] = value }
+
+    /// 规格 §9.1：只向脚本暴露列出的局部绑定，实体暂提供名称骨架。
+    var scriptBindings: [String: Any] {
+        var values: [String: Any] = ["src": content ?? NSNull(),
+            "book": book.map { ["name": $0.name] as Any } ?? NSNull(),
+            "chapter": chapter.map { ["title": $0.name] as Any } ?? NSNull(),
+            "source": source.map { ["name": $0.name] as Any } ?? NSNull(),
+            "title": chapter.map { $0.name as Any } ?? NSNull()]
+        for key in ["paraIndex", "paraData", "page"] {
+            if let value = locals[key] { values[key] = key == "page" ? Int32(value).map { $0 as Any } ?? value : value }
+        }
+        return values
+    }
 
     /// 规格 §8.2：名称优先于变量；宿主空串继续向下查找。
     public func get(_ key: String) -> String {
@@ -89,8 +104,8 @@ public final class AnalyzeRule {
     }
 
     /// 规格 §4：默认执行 HTML4 反转义；URL 后处理留给宿主集成层。
-    public func getString(_ rule: String?, unescape: Bool = true) throws -> String {
-        let result = try evaluate(cached(rule), operation: .string)
+    public func getString(_ rule: String?, unescape: Bool = true, content replacementContent: Any? = nil) throws -> String {
+        let result = try evaluate(cached(rule), operation: .string, content: replacementContent)
         let text = result == nil || result is NSNull ? "" : ruleText(result)
         return unescape ? try HTML4Entities.unescape(text) : text
     }
@@ -114,7 +129,9 @@ public final class AnalyzeRule {
     }
 
     func evaluateScript(_ script: String, result: Any?) throws -> Any? {
-        try engine(.js).evaluate(script, content: result ?? NSNull(), operation: .string, context: self)
+        let previous = scriptSession
+        defer { scriptSession = previous }
+        return try engine(.js).evaluate(script, content: result ?? NSNull(), operation: .string, context: self)
     }
 
     func evaluateEmbeddedRule(_ rule: String) throws -> String {
@@ -151,8 +168,11 @@ public final class AnalyzeRule {
         engines[mode] ?? (mode == .regex ? AnalyzeByRegex() as any SelectorEngine : UnsupportedSelectorEngine(mode: mode))
     }
 
-    private func evaluate(_ segments: [SourceRule], operation: RuleOperation) throws -> Any? {
-        guard let content, !segments.isEmpty else { return nil }
+    private func evaluate(_ segments: [SourceRule], operation: RuleOperation, content replacementContent: Any? = nil) throws -> Any? {
+        guard let content = replacementContent is NSNull ? self.content : replacementContent ?? self.content, !segments.isEmpty else { return nil }
+        let previousSession = scriptSession
+        scriptSession = nil
+        defer { scriptSession = previousSession }
         var result: Any? = content
         for segment in segments {
             for key in segment.putMap.keys.sorted() { put(key, value: try getString(segment.putMap[key])) }
@@ -170,16 +190,17 @@ public final class AnalyzeRule {
                 result = value is NSNull ? nil : value
             }
             if let replacement, !replacement.pattern.isEmpty {
-                if operation == .stringList, let list = result as? [Any] { result = list.map { replacer.apply(ruleText($0), replacement: replacement) } }
+                if operation == .stringList, let list = JsEngine.nativeValue(result) as? [Any] { result = list.map { replacer.apply(ruleText($0), replacement: replacement) } }
                 else if result != nil || operation != .string { result = replacer.apply(ruleText(result), replacement: replacement) }
             }
         }
-        return result
+        return JsEngine.nativeValue(result)
     }
 
     private func dispatch(_ rule: String, mode: RuleMode, content: Any, operation: RuleOperation) throws -> Any? {
         let selector = engine(mode)
         if mode == .js { return try selector.evaluate(rule, content: content, operation: .string, context: self) }
+        let content = JsEngine.nativeValue(content) ?? NSNull()
         if mode == .webJS {
             let value = try selector.evaluate(rule, content: content, operation: .string, context: self)
             guard let text = value as? String else { return nil }

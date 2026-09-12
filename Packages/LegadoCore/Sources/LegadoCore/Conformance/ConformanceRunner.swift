@@ -40,7 +40,9 @@ public enum ConformanceRunner {
     public static func run(_ cases: [ConformanceCase]) -> Report {
         Report(results: cases.map { test in
             let ruleKinds = ["replace", "template", "prefix", "regex", "empty", "jsoup-default", "jsoup-css"]
-            let ruleFixture = ruleKinds.contains(test.kind) || ["template", "prefix", "empty"].contains { test.id.hasPrefix("synthetic-\($0)-") }
+            let jsOperations = ["RhinoScriptEngine.eval", "AnalyzeRule.evalJS", "AnalyzeRule.get", "AnalyzeRule.getString", "AnalyzeRule.getStringList", "AnalyzeRule.getElement", "AnalyzeRule.getElements"]
+            let jsFixture = test.kind == "js" && jsOperations.contains { test.input.variables?["operation"] == .string($0) }
+            let ruleFixture = jsFixture || ruleKinds.contains(test.kind) || ["template", "prefix", "empty"].contains { test.id.hasPrefix("synthetic-\($0)-") }
             guard test.kind == "url-options" || ruleFixture else {
                 return result(test, status: .unsupported, detail: "本单元尚未实现 kind=\(test.kind)")
             }
@@ -48,7 +50,12 @@ public enum ConformanceRunner {
                 return result(test, status: .unsupported, detail: "ReplacePreview.apply 是 UI 替换预览，非 AnalyzeRule 的 ## 替换")
             }
             do {
-                let actual = try test.kind == "url-options" ? evaluateURL(test.input) : evaluateRule(test.input)
+                let actual: ConformanceCase.Expectation
+                if test.input.variables?["operation"] == .string("RhinoScriptEngine.eval") {
+                    actual = try evaluateJS(test.input)
+                } else {
+                    actual = try test.kind == "url-options" ? evaluateURL(test.input) : evaluateRule(test.input)
+                }
                 return result(test, status: actual == test.expect ? .passed : .failed, actual: actual,
                               detail: actual == test.expect ? "" : "期望 \(test.expect)，实际 \(actual)")
             } catch let error as Skip {
@@ -66,6 +73,32 @@ public enum ConformanceRunner {
     }
 
     private struct Skip: Error { let reason: String }
+
+    private static func jsValue(_ value: ConformanceCase.JSONValue) -> Any {
+        switch value {
+        case .null: return NSNull()
+        case .bool(let value): return value
+        case .number(let value): return NSDecimalNumber(decimal: value)
+        case .string(let value): return value
+        case .array(let value): return value.map(jsValue)
+        case .object(let value): return value.mapValues(jsValue)
+        }
+    }
+
+    private static func evaluateJS(_ input: ConformanceCase.Input) throws -> ConformanceCase.Expectation {
+        var javaMaps: Set<String> = []
+        if case .object(let types) = input.variables?["bindingTypes"] {
+            for (key, type) in types {
+                guard type == .string("java.util.HashMap") else { throw Skip(reason: "尚未实现宿主绑定类型 \(type)") }
+                javaMaps.insert(key)
+            }
+        }
+        var bindings: [String: Any] = [:]
+        if case .object(let values) = input.variables?["bindings"] { bindings = values.mapValues(jsValue) }
+        let value = try JsEngine().evaluateScript(input.rule, bindings: bindings, javaMapBindings: javaMaps)
+        if let list = value as? [String] { return .stringList(list) }
+        return .string(ruleText(value))
+    }
 
     /// 规格 §2、§4、§7、§8：保留 fixture 原入口及投影，不用 expect 选择算法。
     private static func evaluateRule(_ input: ConformanceCase.Input) throws -> ConformanceCase.Expectation {
@@ -92,7 +125,7 @@ public enum ConformanceRunner {
         if let key = variables.keys.sorted().first(where: { !supportedKeys.contains($0) }) {
             throw Skip(reason: "尚未实现规则 fixture 配置 \(key)")
         }
-        let parser = AnalyzeRule(content: input.document, engines: [.default: AnalyzeByJSoup()],
+        let parser = AnalyzeRule(content: input.document, engines: [.default: AnalyzeByJSoup(), .js: JsEngine(baseUrl: input.baseUrl ?? "")],
                                  ruleData: try values("ruleData").map { RuleVariableStore($0) })
         for (key, value) in try values("locals") ?? [:] { parser.setLocal(key, value: value) }
         if variables["isUrl"] == .bool(true), ["AnalyzeRule.getString", "AnalyzeRule.getStringList"].contains(operation) {
@@ -101,6 +134,8 @@ public enum ConformanceRunner {
         let projection = string("projection")
         if operation != "AnalyzeRule.getElements" && projection != nil { throw Skip(reason: "该入口尚未实现投影 \(projection!)") }
         switch operation {
+        case "AnalyzeRule.evalJS": return .string(ruleText(try parser.evaluateScript(input.rule, result: nil)))
+        case "AnalyzeRule.get": return .string(parser.get(input.rule))
         case "AnalyzeRule.getString": return .string(try parser.getString(input.rule))
         case "AnalyzeRule.getStringList":
             guard let result = try parser.getStringList(input.rule) else { throw Skip(reason: "schema 尚无 null 字符串列表结果") }
@@ -229,9 +264,14 @@ public enum ConformanceRunner {
             default: throw Skip(reason: "尚未实现 getter \(input.rule)")
             }
         case "AnalyzeUrl":
-            let rule = input.rule
-            if rule.lowercased().contains("<js>") || rule.lowercased().contains("@js:") || (rule.contains("{{") && rule.contains("}}")) {
-                throw Skip(reason: "依赖 JavaScript 求值；本单元不执行 <js>/@js:/{{}}")
+            var rule = input.rule
+            if rule.lowercased().contains("<js>") || rule.lowercased().contains("@js:") {
+                throw Skip(reason: "URL JS 切段流水线尚未接入")
+            }
+            if rule.contains("{{") && rule.contains("}}") {
+                let urlKeys: Set<String> = ["page", "key", "speakText", "speakSpeed", "book", "source", "infoMap", "extraParams"]
+                let bindings = variables.filter { urlKeys.contains($0.key) }.mapValues(jsValue)
+                rule = try JsEngine(baseUrl: input.baseUrl ?? "").interpolateURL(rule, bindings: bindings)
             }
             let parsed = UrlOptions.parse(rule)
             let options = parsed.options

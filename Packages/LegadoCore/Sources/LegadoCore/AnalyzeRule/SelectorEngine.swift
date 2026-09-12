@@ -1,5 +1,6 @@
 import Foundation
 import CoreFoundation
+import JavaScriptCore
 
 /// 规格 §2.2、§4：规则段的六种模式。
 public enum RuleMode: String, Hashable {
@@ -76,6 +77,7 @@ public final class RuleVariableStore: RuleVariableStorage {
 }
 
 func ruleText(_ value: Any?) -> String {
+    if let value = value as? JSValue { return ruleText(JsEngine.nativeValue(value)) }
     guard let value, !(value is NSNull) else { return "null" }
     if let string = value as? String { return string }
     if let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() { return number.boolValue ? "true" : "false" }
@@ -84,6 +86,7 @@ func ruleText(_ value: Any?) -> String {
 }
 
 func integralScriptNumber(_ value: Any?) -> Double? {
+    if let value = value as? JSValue { return value.isNumber ? integralScriptNumber(value.toDouble()) : nil }
     if let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() { return nil }
     guard let number = value as? Double, number.isFinite, number.truncatingRemainder(dividingBy: 1) == 0 else { return nil }
     return number

@@ -138,7 +138,7 @@ final class AnalyzeByJSoupTests: XCTestCase {
         for result in report.results {
             print("unit4 \(result.id): \(result.status.rawValue) \(result.detail)")
             if ["synthetic-template-001", "synthetic-template-002", "synthetic-template-004"].contains(result.id) {
-                XCTAssertEqual(result.status, .skipped, result.id)
+                XCTAssertEqual(result.status, .passed, result.id)
             } else {
                 XCTAssertEqual(result.status, .passed, "\(result.id): \(result.detail)")
             }
