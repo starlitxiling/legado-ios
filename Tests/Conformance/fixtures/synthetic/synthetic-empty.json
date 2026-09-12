@@ -1,0 +1,106 @@
+[
+  {
+    "id": "synthetic-empty-001",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<p>A</p>",
+      "documentType": "html",
+      "rule": "",
+      "variables": {
+        "operation": "AnalyzeByJSoup.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "底层 JSoup 空规则直接返回空列表。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": false,
+    "derivedFrom": "rule-engine.md §5.2 L149",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-empty-002",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "getElements",
+      "line": 450,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<p>A</p>",
+      "documentType": "html",
+      "rule": "",
+      "variables": {
+        "operation": "AnalyzeRule.getElements"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "空规则无段，元素归一为空列表。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.1 L34; §4 L135",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-empty-003",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "",
+      "documentType": "html",
+      "rule": "tag.p@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "空 HTML 文档无匹配。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L155",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-empty-004",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "getString",
+      "line": 367,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "",
+      "documentType": "html",
+      "rule": "tag.p@text",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": ""
+    },
+    "notes": "空 HTML 文档单串结果归一为空串。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §4 L134",
+    "verification": "spec-derived, not run on Android"
+  }
+]

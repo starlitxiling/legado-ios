@@ -1,0 +1,143 @@
+[
+  {
+    "id": "synthetic-jsonpath-001",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSonPath.kt",
+      "method": "getStringList",
+      "line": 77,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsonpath",
+    "input": {
+      "document": "{\"items\":[\"A\",\"B\"],\"empty\":[],\"name\":\"N\"}",
+      "documentType": "json",
+      "rule": "$.items[*]",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A",
+        "B"
+      ]
+    },
+    "notes": "JSONPath 数组取值。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L46-L47; §4 L125; §6 L205-L209",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-jsonpath-002",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSonPath.kt",
+      "method": "getStringList",
+      "line": 77,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsonpath",
+    "input": {
+      "document": "{\"items\":[\"A\",\"B\"],\"empty\":[],\"name\":\"N\"}",
+      "documentType": "json",
+      "rule": "@Json:$.items[0]",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A"
+      ]
+    },
+    "notes": "JSON 前缀取数组首项。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L46-L47; §4 L125; §6 L205-L209",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-jsonpath-003",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSonPath.kt",
+      "method": "getStringList",
+      "line": 77,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsonpath",
+    "input": {
+      "document": "{\"items\":[\"A\",\"B\"],\"empty\":[],\"name\":\"N\"}",
+      "documentType": "json",
+      "rule": "$.empty[*]",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "JSONPath 空数组。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L46-L47; §4 L125; §6 L205-L209",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-jsonpath-004",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSonPath.kt",
+      "method": "getStringList",
+      "line": 77,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsonpath",
+    "input": {
+      "document": "{\"items\":[\"A\",\"B\"],\"empty\":[],\"name\":\"N\"}",
+      "documentType": "json",
+      "rule": "@Json:$.empty[*]||$.items[*]",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A",
+        "B"
+      ]
+    },
+    "notes": "JSONPath 空数组回退。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L46-L47; §4 L125; §6 L205-L209",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-jsonpath-005",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSonPath.kt",
+      "method": "getStringList",
+      "line": 77,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsonpath",
+    "input": {
+      "document": "{\"items\":[\"A\",\"B\"],\"empty\":[],\"name\":\"N\"}",
+      "documentType": "json",
+      "rule": "$.items[*]||$.empty[*]",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A",
+        "B"
+      ]
+    },
+    "notes": "JSONPath 首个非空数组短路。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L46-L47; §4 L125; §6 L205-L209",
+    "verification": "spec-derived, not run on Android"
+  }
+]

@@ -1,0 +1,110 @@
+[
+  {
+    "id": "synthetic-prefix-001",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-css",
+    "input": {
+      "document": "<span>A</span>",
+      "documentType": "html",
+      "rule": "@CSS:span@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A"
+      ]
+    },
+    "notes": "CSS 前缀正常选择。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L43-L44; §5.2 L148-L149",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-prefix-002",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-css",
+    "input": {
+      "document": "<span>A</span>",
+      "documentType": "html",
+      "rule": "@cSs:missing@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "CSS 前缀不区分大小写且无匹配为空。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L43-L44; §5.2 L148-L149",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-prefix-003",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span>A</span>",
+      "documentType": "html",
+      "rule": "@@tag.span@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A"
+      ]
+    },
+    "notes": "双 @ 前缀强制 Default。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L43-L44; §5.2 L148-L149",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-prefix-004",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span>A</span>",
+      "documentType": "html",
+      "rule": "@@tag.missing@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "双 @ 前缀无匹配为空。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L43-L44; §5.2 L148-L149",
+    "verification": "spec-derived, not run on Android"
+  }
+]

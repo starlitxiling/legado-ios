@@ -1,0 +1,112 @@
+[
+  {
+    "id": "synthetic-xpath-001",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByXPath.kt",
+      "method": "getStringList",
+      "line": 95,
+      "commit": "cb664b84d"
+    },
+    "kind": "xpath",
+    "input": {
+      "document": "<a href=\"one\">A</a><a href=\"two\">B</a>",
+      "documentType": "html",
+      "rule": "//a/@href",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "one",
+        "two"
+      ]
+    },
+    "notes": "斜线前缀的基础属性路径。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L45-L48; §4 L124; §6 L202-L205",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-xpath-002",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByXPath.kt",
+      "method": "getStringList",
+      "line": 95,
+      "commit": "cb664b84d"
+    },
+    "kind": "xpath",
+    "input": {
+      "document": "<a href=\"one\">A</a><a href=\"two\">B</a>",
+      "documentType": "html",
+      "rule": "//missing/@href",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "斜线前缀无匹配。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L45-L48; §4 L124; §6 L202-L205",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-xpath-003",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByXPath.kt",
+      "method": "getStringList",
+      "line": 95,
+      "commit": "cb664b84d"
+    },
+    "kind": "xpath",
+    "input": {
+      "document": "<a href=\"one\">A</a><a href=\"two\">B</a>",
+      "documentType": "html",
+      "rule": "@XPath://a/@href",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "one",
+        "two"
+      ]
+    },
+    "notes": "XPath 显式前缀取属性。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L45-L48; §4 L124; §6 L202-L205",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-xpath-004",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByXPath.kt",
+      "method": "getStringList",
+      "line": 95,
+      "commit": "cb664b84d"
+    },
+    "kind": "xpath",
+    "input": {
+      "document": "<a href=\"one\">A</a><a href=\"two\">B</a>",
+      "documentType": "html",
+      "rule": "@XPath://a/@missing",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "XPath 属性缺失。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.2 L45-L48; §4 L124; §6 L202-L205",
+    "verification": "spec-derived, not run on Android"
+  }
+]

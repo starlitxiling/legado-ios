@@ -1,0 +1,210 @@
+[
+  {
+    "id": "synthetic-replace-001",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "replaceRegex",
+      "line": 544,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "a12b34",
+      "documentType": "text",
+      "rule": "##[0-9]+##X",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "aXbX"
+    },
+    "notes": "纯替换段替换全部匹配。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §7.1–§7.3 L218-L239",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-replace-002",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "replaceRegex",
+      "line": 544,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "abc",
+      "documentType": "text",
+      "rule": "##[0-9]+##X",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "abc"
+    },
+    "notes": "全部替换无匹配保留原文。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §7.1–§7.3 L218-L239",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-replace-003",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "replaceRegex",
+      "line": 544,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "a12b34",
+      "documentType": "text",
+      "rule": "##[0-9]+##X###",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "X"
+    },
+    "notes": "首匹配模式返回改写的匹配子串。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §7.1–§7.3 L218-L239",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-replace-004",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "replaceRegex",
+      "line": 544,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "abc",
+      "documentType": "text",
+      "rule": "##[0-9]+##X###",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": ""
+    },
+    "notes": "首匹配模式无匹配返回空串。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §7.1–§7.3 L218-L239",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-replace-005",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "replaceRegex",
+      "line": 544,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "a12b34",
+      "documentType": "text",
+      "rule": "##([0-9]+)##<$1>",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "a<12>b<34>"
+    },
+    "notes": "替换串支持捕获组引用。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §7.1–§7.3 L218-L239",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-replace-006",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "replaceRegex",
+      "line": 544,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "a[b[",
+      "documentType": "text",
+      "rule": "##[##X",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "aXbX"
+    },
+    "notes": "无效正则退化为字面替换。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §7.1–§7.3 L218-L239",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-replace-007",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "makeUpRule",
+      "line": 776,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "ignored",
+      "documentType": "text",
+      "rule": "<js>['whole','A']</js>$1",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "A"
+    },
+    "notes": "列表结果的 $1 模板回填。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §7.1–§7.3 L218-L239",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-replace-008",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "makeUpRule",
+      "line": 776,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "ignored",
+      "documentType": "text",
+      "rule": "<js>['whole']</js>left$1right",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "leftright"
+    },
+    "notes": "列表过短时 $1 不插入文本。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §7.1–§7.3 L218-L239",
+    "verification": "spec-derived, not run on Android"
+  }
+]

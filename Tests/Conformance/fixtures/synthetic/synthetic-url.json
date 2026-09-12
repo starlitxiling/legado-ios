@@ -1,0 +1,490 @@
+[
+  {
+    "id": "synthetic-url-001",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"method\":\"post\"}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "method"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "POST"
+    },
+    "notes": "method 转大写。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L315）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-002",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"method\":\"patch\"}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "method"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "GET"
+    },
+    "notes": "未知 method 回退 GET。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L315）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-003",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"charset\":\"UTF-8\"}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "charset"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "UTF-8"
+    },
+    "notes": "显式字符集。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L316）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-004",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"charset\":\"escape\"}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "charset"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "escape"
+    },
+    "notes": "escape 特殊字符集标识被保留，不断言未确定的编码细节。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L316）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-005",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"headers\":{\"X-Test\":\"A\"}}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "headerMap[X-Test]"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "A"
+    },
+    "notes": "对象请求头。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L317）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-006",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"headers\":\"{\\\"X-Test\\\":\\\"B\\\"}\"}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "headerMap[X-Test]"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "B"
+    },
+    "notes": "JSON 字符串请求头。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L317）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-007",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"method\":\"POST\",\"body\":{\"k\":\"v\"}}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "body"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "{\n  \"k\": \"v\"\n}"
+    },
+    "notes": "对象 body 通过 GSON.toJson 序列化；GsonExtensions.kt:44 开启 pretty printing，保留换行及两空格缩进。期望值按规格及该配置推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L318）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-008",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"method\":\"POST\",\"body\":[]}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "body"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "[]"
+    },
+    "notes": "空数组 body 序列化。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L318）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-009",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"retry\":3}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "retry.toString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "3"
+    },
+    "notes": "重试次数正常值。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L320）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-010",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "retry.toString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "0"
+    },
+    "notes": "未设置重试次数默认零。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L320）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-011",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"webView\":\"0\"}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "useWebView.toString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "true"
+    },
+    "notes": "字符串零为真。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L322）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-012",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"webView\":\"false\"}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "useWebView.toString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "false"
+    },
+    "notes": "字符串 false 为假。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L322）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-013",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"timeout\":1}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "derivedCallTimeoutMillis(readTimeoutMs).toString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "60000"
+    },
+    "notes": "超时下界派生为六万毫秒。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L324）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-014",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"timeout\":\"40000\"}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "derivedCallTimeoutMillis(readTimeoutMs).toString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "80000"
+    },
+    "notes": "数字串超时派生为两倍。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L324）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-015",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{\"timeout\":2147483647}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "derivedCallTimeoutMillis(readTimeoutMs).toString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "2147483647"
+    },
+    "notes": "超时派生结果钳制整型上限。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L324）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-016",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "analyzeUrl",
+      "line": 248,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/path,{method:'head'}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "projection": "method"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "HEAD"
+    },
+    "notes": "宽松 JSON 解析非引号键与单引号值。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §10.4–§10.5 L308-L324（对应 L308）",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-017",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "replaceKeyPageJs",
+      "line": 216,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/p/{{page}}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "page": 2,
+        "projection": "url"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "https://example.invalid/p/2"
+    },
+    "notes": "page 正常内插。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §9.2 L277; §10.2 L300",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-url-018",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt",
+      "method": "replaceKeyPageJs",
+      "line": 216,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "https://example.invalid/p/{{page}}",
+      "variables": {
+        "operation": "AnalyzeUrl",
+        "page": 0,
+        "projection": "url"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "https://example.invalid/p/0"
+    },
+    "notes": "page 以构造参数注入；零也直接内插。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §9.2 L277; §10.2 L300",
+    "verification": "spec-derived, not run on Android"
+  }
+]

@@ -1,0 +1,351 @@
+[
+  {
+    "id": "synthetic-combine-001",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.a@text&&tag.b@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A",
+        "B",
+        "C"
+      ]
+    },
+    "notes": "顺序拼接。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-combine-002",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.missing@text&&tag.b@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "C"
+      ]
+    },
+    "notes": "拼接空首项。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-combine-003",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.a@text||tag.b@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A",
+        "B"
+      ]
+    },
+    "notes": "首个非空即停止。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-combine-004",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.missing@text||tag.b@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "C"
+      ]
+    },
+    "notes": "空首项回退。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-combine-005",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.b@text%%tag.a@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "C",
+        "A"
+      ]
+    },
+    "notes": "以短首项截断后续长列表。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-combine-006",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.missing@text%%tag.a@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A",
+        "B"
+      ]
+    },
+    "notes": "交错组合空首项的入口差异。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-combine-007",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.a&&tag.b",
+      "variables": {
+        "operation": "AnalyzeRule.getElements",
+        "projection": "id"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "a",
+        "b",
+        "c"
+      ]
+    },
+    "notes": "顺序拼接。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-combine-008",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.missing&&tag.b",
+      "variables": {
+        "operation": "AnalyzeRule.getElements",
+        "projection": "id"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "c"
+      ]
+    },
+    "notes": "拼接空首项。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-combine-009",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.a||tag.b",
+      "variables": {
+        "operation": "AnalyzeRule.getElements",
+        "projection": "id"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "a",
+        "b"
+      ]
+    },
+    "notes": "首个非空即停止。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-combine-010",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.missing||tag.b",
+      "variables": {
+        "operation": "AnalyzeRule.getElements",
+        "projection": "id"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "c"
+      ]
+    },
+    "notes": "空首项回退。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-combine-011",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.b%%tag.a",
+      "variables": {
+        "operation": "AnalyzeRule.getElements",
+        "projection": "id"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "c",
+        "a"
+      ]
+    },
+    "notes": "以短首项截断后续长列表。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-combine-012",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a id=\"a\">A</a><a id=\"b\">B</a><b id=\"c\">C</b>",
+      "documentType": "html",
+      "rule": "tag.missing%%tag.a",
+      "variables": {
+        "operation": "AnalyzeRule.getElements",
+        "projection": "id"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "交错组合空首项的入口差异。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §6 L204-L212",
+    "verification": "spec-derived, not run on Android"
+  }
+]

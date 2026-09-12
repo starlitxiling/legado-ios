@@ -1,0 +1,918 @@
+[
+  {
+    "id": "synthetic-default-001",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span class=\"hit\" id=\"only\">A</span>",
+      "documentType": "html",
+      "rule": "class.hit@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A"
+      ]
+    },
+    "notes": "class 首词正常匹配。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.4 L168-L174",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-002",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span class=\"hit\" id=\"only\">A</span>",
+      "documentType": "html",
+      "rule": "class.absent@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "class 首词无匹配边界。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.4 L168-L174",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-003",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "notes": "tag 首词正常匹配。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.4 L168-L174",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-004",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.missing@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "tag 首词无匹配边界。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.4 L168-L174",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-005",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span class=\"hit\" id=\"only\">A</span>",
+      "documentType": "html",
+      "rule": "id.only@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A"
+      ]
+    },
+    "notes": "id 首词正常匹配。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.4 L168-L174",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-006",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span class=\"hit\" id=\"only\">A</span>",
+      "documentType": "html",
+      "rule": "id.absent@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "id 首词无匹配边界。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.4 L168-L174",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-007",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span class=\"hit\" id=\"only\">A</span>",
+      "documentType": "html",
+      "rule": "text.A@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A"
+      ]
+    },
+    "notes": "text 首词匹配自身文本。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.4 L168-L174",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-008",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span class=\"hit\" id=\"only\">A</span>",
+      "documentType": "html",
+      "rule": "text.Z@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "text 首词无匹配边界。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.4 L168-L174",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-009",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.ul@children@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "notes": "children 首词选择直接子元素。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.4 L168-L174",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-010",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li.0@children@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "children 在叶子节点上为空。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.4 L168-L174",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-011",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getElementsSingle",
+      "line": 319,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li.0@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "0"
+      ]
+    },
+    "notes": "旧式首项索引。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.5 L178-L184",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-012",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getElementsSingle",
+      "line": 319,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li.-1@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "3"
+      ]
+    },
+    "notes": "旧式末项索引。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.5 L178-L184",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-013",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getElementsSingle",
+      "line": 319,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li.0:2@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "0",
+        "2"
+      ]
+    },
+    "notes": "旧式冒号表示独立索引。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.5 L178-L184",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-014",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getElementsSingle",
+      "line": 319,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li.9@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "旧式越界索引丢弃。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.5 L178-L184",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-015",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getElementsSingle",
+      "line": 319,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li[0:3]@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ]
+    },
+    "notes": "新式闭区间包含终点。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.5 L178-L184",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-016",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getElementsSingle",
+      "line": 319,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li[0:3:0]@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "0"
+      ]
+    },
+    "notes": "零步长按列表长度处理。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.5 L178-L184",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-017",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getElementsSingle",
+      "line": 319,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li[-1,3:-2:-10]@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "3",
+        "2"
+      ]
+    },
+    "notes": "负步长绝对值过大时取一步；索引三重复去重。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.5 L178-L184",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-018",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getElementsSingle",
+      "line": 319,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li[!0,-1]@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "1",
+        "2"
+      ]
+    },
+    "notes": "新式排除首尾。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.5 L178-L184",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-019",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getElementsSingle",
+      "line": 319,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li!0:1:2:3@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "旧式排除所有项。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.5 L178-L184",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-020",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getElementsSingle",
+      "line": 319,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li[8:9]@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "新式区间两端同侧越界。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.5 L178-L184",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-021",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getElementsSingle",
+      "line": 319,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<ul><li>0</li><li>1</li><li>2</li><li>3</li></ul>",
+      "documentType": "html",
+      "rule": "tag.li[-8:1]@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "0",
+        "1"
+      ]
+    },
+    "notes": "新式单侧越界钳制。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.5 L178-L184",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-022",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span>A<b>B</b>C</span>",
+      "documentType": "html",
+      "rule": "tag.span@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "ABC"
+      ]
+    },
+    "notes": "text 合并后代文本。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L155",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-023",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span> A <b>B</b> C </span>",
+      "documentType": "html",
+      "rule": "tag.span@textNodes",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A\nC"
+      ]
+    },
+    "notes": "textNodes 将直接文本节点合成单项。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L156",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-024",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span><b>B</b></span>",
+      "documentType": "html",
+      "rule": "tag.span@textNodes",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "textNodes 无直接文本节点。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L156",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-025",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span>A<b>B</b>C</span>",
+      "documentType": "html",
+      "rule": "tag.span@ownText",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "AC"
+      ]
+    },
+    "notes": "ownText 不含后代文本。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L157",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-026",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span><b>B</b></span>",
+      "documentType": "html",
+      "rule": "tag.span@ownText",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "ownText 无自身文本。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L157",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-027",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span>A<script>x</script><style>x</style></span>",
+      "documentType": "html",
+      "rule": "tag.span@html",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "<span>A</span>"
+      ]
+    },
+    "notes": "html 删除 script 和 style 后返回外层 HTML。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L158",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-028",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span></span>",
+      "documentType": "html",
+      "rule": "tag.span@html",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "<span></span>"
+      ]
+    },
+    "notes": "html 保留空元素外层标记。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L158",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-029",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span>A</span>",
+      "documentType": "html",
+      "rule": "tag.span@all",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "<span>A</span>"
+      ]
+    },
+    "notes": "all 返回外层 HTML。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L159",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-030",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<span></span>",
+      "documentType": "html",
+      "rule": "tag.span@all",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "<span></span>"
+      ]
+    },
+    "notes": "all 保留空元素标记。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L159",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-031",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a href=\"x\">A</a><a href=\"x\">B</a><a href=\" \">C</a>",
+      "documentType": "html",
+      "rule": "tag.a@href",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "x"
+      ]
+    },
+    "notes": "属性值去重并跳过空白。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L160",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-032",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<a>A</a>",
+      "documentType": "html",
+      "rule": "tag.a@href",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "属性缺失为空列表。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.3 L160",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-default-033",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByJSoup.kt",
+      "method": "getStringList",
+      "line": 72,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<section><div><a>A</a></div></section><section><div><a>B</a></div></section>",
+      "documentType": "html",
+      "rule": "tag.section@tag.div@tag.a@text",
+      "variables": {
+        "operation": "AnalyzeRule.getStringList"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A",
+        "B"
+      ]
+    },
+    "notes": "嵌套 @ 链逐级选择后拉平。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §5.2 L149",
+    "verification": "spec-derived, not run on Android"
+  }
+]

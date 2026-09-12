@@ -1,0 +1,149 @@
+[
+  {
+    "id": "synthetic-regex-001",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByRegex.kt",
+      "method": "getElements",
+      "line": 32,
+      "commit": "cb664b84d"
+    },
+    "kind": "regex",
+    "input": {
+      "document": "x12y34",
+      "documentType": "text",
+      "rule": ":([0-9]+)",
+      "variables": {
+        "operation": "AnalyzeRule.getElements",
+        "projection": "[1]"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "12",
+        "34"
+      ]
+    },
+    "notes": "正则列表投影分组一。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.1 L31; §4 L128-L138",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-regex-002",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByRegex.kt",
+      "method": "getElements",
+      "line": 32,
+      "commit": "cb664b84d"
+    },
+    "kind": "regex",
+    "input": {
+      "document": "abc",
+      "documentType": "text",
+      "rule": ":([0-9]+)",
+      "variables": {
+        "operation": "AnalyzeRule.getElements",
+        "projection": "[1]"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": []
+    },
+    "notes": "正则无匹配返回空列表。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.1 L31; §4 L128-L138",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-regex-003",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByRegex.kt",
+      "method": "getElement",
+      "line": 9,
+      "commit": "cb664b84d"
+    },
+    "kind": "regex",
+    "input": {
+      "document": "A1 B2",
+      "documentType": "text",
+      "rule": ":([A-Z])([0-9])",
+      "variables": {
+        "operation": "AnalyzeRule.getElement"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "A1",
+        "A",
+        "1"
+      ]
+    },
+    "notes": "单对象入口保留组零与所有分组。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.1 L31; §4 L128-L138",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-regex-004",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByRegex.kt",
+      "method": "getElements",
+      "line": 32,
+      "commit": "cb664b84d"
+    },
+    "kind": "regex",
+    "input": {
+      "document": "b ab",
+      "documentType": "text",
+      "rule": ":(a)?b",
+      "variables": {
+        "operation": "AnalyzeRule.getElements",
+        "projection": "[1]"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "",
+        "a"
+      ]
+    },
+    "notes": "列表入口未参与分组归一为空串。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.1 L31; §4 L128-L138",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-regex-005",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeByRegex.kt",
+      "method": "getElements",
+      "line": 32,
+      "commit": "cb664b84d"
+    },
+    "kind": "regex",
+    "input": {
+      "document": "A1 B2",
+      "documentType": "text",
+      "rule": ":[A-Z][0-9]&&([0-9])",
+      "variables": {
+        "operation": "AnalyzeRule.getElements",
+        "projection": "[1]"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "1",
+        "2"
+      ]
+    },
+    "notes": "多正则先拼接组零再运行末正则。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.1 L31; §4 L128-L138",
+    "verification": "spec-derived, not run on Android"
+  }
+]

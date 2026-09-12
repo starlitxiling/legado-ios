@@ -1,0 +1,186 @@
+[
+  {
+    "id": "synthetic-template-001",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "makeUpRule",
+      "line": 776,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "<p>A</p>",
+      "documentType": "html",
+      "rule": "value={{1+2}}",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "value=3"
+    },
+    "notes": "整数内插无小数部分。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.4 L63-L70; §7.3 L237-L239; §8 L245-L258",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-template-002",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "makeUpRule",
+      "line": 776,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "<p>A</p>",
+      "documentType": "html",
+      "rule": "a{{null}}b",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "ab"
+    },
+    "notes": "null 内插不插入文本。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.4 L63-L70; §7.3 L237-L239; §8 L245-L258",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-template-003",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "makeUpRule",
+      "line": 776,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "<p>A</p>",
+      "documentType": "html",
+      "rule": "{{@CSS:p@text}}",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "A"
+    },
+    "notes": "内插可嵌入规则。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.4 L63-L70; §7.3 L237-L239; §8 L245-L258",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-template-004",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "makeUpRule",
+      "line": 776,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "<p>A</p>",
+      "documentType": "html",
+      "rule": "tag.p@text{{1}}",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "tag.p@text1"
+    },
+    "notes": "模板出现在替换之前使整段变为文本。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.4 L63-L70; §7.3 L237-L239; §8 L245-L258",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-template-005",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "makeUpRule",
+      "line": 776,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "<p>A</p>",
+      "documentType": "html",
+      "rule": "@get:{missing}",
+      "variables": {
+        "operation": "AnalyzeRule.getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": ""
+    },
+    "notes": "缺失变量返回空串。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.4 L63-L70; §7.3 L237-L239; §8 L245-L258",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-template-006",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "makeUpRule",
+      "line": 776,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "<h1>A</h1>",
+      "documentType": "html",
+      "rule": "@put:{\"n\":\"tag.h1@text\"}@get:{n}",
+      "variables": {
+        "operation": "AnalyzeRule.getString",
+        "ruleData": {}
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "A"
+    },
+    "notes": "同一段先写变量再展开模板。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.4 L63-L70; §7.3 L237-L239; §8 L245-L258",
+    "verification": "spec-derived, not run on Android"
+  },
+  {
+    "id": "synthetic-template-007",
+    "source": {
+      "file": "app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt",
+      "method": "makeUpRule",
+      "line": 776,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "<h1>A</h1>",
+      "documentType": "html",
+      "rule": "@put:{\"n\":\"tag.missing@text\"}left@get:{n}right",
+      "variables": {
+        "operation": "AnalyzeRule.getString",
+        "ruleData": {}
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "leftright"
+    },
+    "notes": "空子规则结果写入变量后读取为空。 期望值按规格推导，未经 Android 实测。",
+    "requiresAndroid": true,
+    "derivedFrom": "rule-engine.md §2.4 L63-L70; §7.3 L237-L239; §8 L245-L258",
+    "verification": "spec-derived, not run on Android"
+  }
+]
