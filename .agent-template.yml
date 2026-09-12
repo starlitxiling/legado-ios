@@ -1,0 +1,6 @@
+# 由 claude-code-global 管理，非必要请勿手动编辑
+source: git@github.com:pkulijing/claude-code-global.git
+template_commit: a5469852a54b35c0dc088e1cb7253ddfb6ef89dd
+bootstrap_time: 2026-09-12T07:16:09Z
+stacks: []
+skipped: []

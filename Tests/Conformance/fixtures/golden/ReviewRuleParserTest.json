@@ -1,0 +1,86 @@
+[
+  {
+    "id": "golden-ReviewRuleParserTest-001",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/ReviewRuleParserTest.kt",
+      "method": "local rule bindings are explicit and limited to review variables",
+      "line": 415,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "{}",
+      "documentType": "json",
+      "rule": "[typeof paraIndex, typeof paraData, typeof page].join('|')",
+      "variables": {
+        "operation": "AnalyzeRule.evalJS"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "undefined|undefined|undefined"
+    },
+    "notes": "使用 AnalyzeRule Android 宿主（TextUtils / 共享 JS scope）；locals 通过 setLocal 注入，不等同于全部 JS globals。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-ReviewRuleParserTest-002",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/ReviewRuleParserTest.kt",
+      "method": "local rule bindings are explicit and limited to review variables",
+      "line": 425,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "{}",
+      "documentType": "json",
+      "rule": "[typeof custom, typeof paraIndex + ':' + paraIndex, typeof paraData + ':' + paraData, typeof page + ':' + page].join('|')",
+      "variables": {
+        "operation": "AnalyzeRule.evalJS",
+        "locals": {
+          "custom": "hidden",
+          "paraIndex": "8",
+          "paraData": "",
+          "page": "3"
+        }
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "undefined|string:8|string:|number:3"
+    },
+    "notes": "使用 AnalyzeRule Android 宿主（TextUtils / 共享 JS scope）；locals 通过 setLocal 注入，不等同于全部 JS globals。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-ReviewRuleParserTest-003",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/ReviewRuleParserTest.kt",
+      "method": "local rule bindings are explicit and limited to review variables",
+      "line": 432,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "{}",
+      "documentType": "json",
+      "rule": "custom",
+      "variables": {
+        "operation": "AnalyzeRule.get",
+        "locals": {
+          "custom": "hidden",
+          "paraIndex": "8",
+          "paraData": "",
+          "page": "3"
+        }
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "hidden"
+    },
+    "notes": "使用 AnalyzeRule Android 宿主（TextUtils / 共享 JS scope）；locals 通过 setLocal 注入，不等同于全部 JS globals。",
+    "requiresAndroid": true
+  }
+]

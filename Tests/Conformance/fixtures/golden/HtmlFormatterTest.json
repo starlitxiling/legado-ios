@@ -1,0 +1,170 @@
+[
+  {
+    "id": "golden-HtmlFormatterTest-001",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/utils/HtmlFormatterTest.kt",
+      "method": "intro formatter keeps paragraphs left aligned",
+      "line": 34,
+      "commit": "cb664b84d"
+    },
+    "kind": "format",
+    "input": {
+      "document": "<p>第一段</p><p>第二段</p>",
+      "documentType": "html",
+      "rule": "formatIntro"
+    },
+    "expect": {
+      "type": "string",
+      "value": "第一段\n第二段"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-HtmlFormatterTest-002",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/utils/HtmlFormatterTest.kt",
+      "method": "intro formatter keeps paragraphs left aligned",
+      "line": 38,
+      "commit": "cb664b84d"
+    },
+    "kind": "format",
+    "input": {
+      "document": "第一段\n第二段",
+      "documentType": "text",
+      "rule": "formatIntro"
+    },
+    "expect": {
+      "type": "string",
+      "value": "第一段\n第二段"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-HtmlFormatterTest-003",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/utils/HtmlFormatterTest.kt",
+      "method": "intro formatter cleans markup without inventing indentation",
+      "line": 45,
+      "commit": "cb664b84d"
+    },
+    "kind": "format",
+    "input": {
+      "document": " \n<div>别名：A&nbsp;&nbsp;</div><!-- hidden --><div>主角：B</div>\n",
+      "documentType": "html",
+      "rule": "formatIntro"
+    },
+    "expect": {
+      "type": "string",
+      "value": "别名：A\n主角：B"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-HtmlFormatterTest-004",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/utils/HtmlFormatterTest.kt",
+      "method": "intro formatter cleans markup without inventing indentation",
+      "line": 46,
+      "commit": "cb664b84d"
+    },
+    "kind": "format",
+    "input": {
+      "document": "　　手动缩进\n第二行",
+      "documentType": "text",
+      "rule": "formatIntro"
+    },
+    "expect": {
+      "type": "string",
+      "value": "　　手动缩进\n第二行"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-HtmlFormatterTest-005",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/utils/HtmlFormatterTest.kt",
+      "method": "intro formatter cleans markup without inventing indentation",
+      "line": 47,
+      "commit": "cb664b84d"
+    },
+    "kind": "format",
+    "input": {
+      "document": null,
+      "documentType": "text",
+      "rule": "formatIntro"
+    },
+    "expect": {
+      "type": "string",
+      "value": ""
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-HtmlFormatterTest-006",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/utils/HtmlFormatterTest.kt",
+      "method": "formatters normalize escaped line breaks from source responses",
+      "line": 52,
+      "commit": "cb664b84d"
+    },
+    "kind": "format",
+    "input": {
+      "document": "第一段\\n\\n第二段",
+      "documentType": "text",
+      "rule": "format"
+    },
+    "expect": {
+      "type": "string",
+      "value": "第一段\n　　第二段"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-HtmlFormatterTest-007",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/utils/HtmlFormatterTest.kt",
+      "method": "formatters normalize escaped line breaks from source responses",
+      "line": 53,
+      "commit": "cb664b84d"
+    },
+    "kind": "format",
+    "input": {
+      "document": "第一段\\r\\n第二段",
+      "documentType": "text",
+      "rule": "formatIntro"
+    },
+    "expect": {
+      "type": "string",
+      "value": "第一段\n第二段"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-HtmlFormatterTest-008",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/utils/HtmlFormatterTest.kt",
+      "method": "formatters normalize escaped line breaks from source responses",
+      "line": 54,
+      "commit": "cb664b84d"
+    },
+    "kind": "format",
+    "input": {
+      "document": "<p>第一段</p>\\n<p>第二段</p>",
+      "documentType": "html",
+      "rule": "formatIntro"
+    },
+    "expect": {
+      "type": "string",
+      "value": "第一段\n第二段"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  }
+]

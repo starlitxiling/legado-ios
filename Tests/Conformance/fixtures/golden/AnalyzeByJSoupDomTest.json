@@ -1,0 +1,319 @@
+[
+  {
+    "id": "golden-AnalyzeByJSoupDomTest-001",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeByJSoupDomTest.kt",
+      "method": "ordinary nested tags still exclude descendant text from textNodes",
+      "line": 23,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<div>before<a>link</a><span>nested</span>after</div>",
+      "documentType": "html",
+      "rule": "div@textNodes",
+      "variables": {
+        "operation": "getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "before\nafter"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-AnalyzeByJSoupDomTest-002",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeByJSoupDomTest.kt",
+      "method": "ordinary nested tags still exclude descendant text from textNodes",
+      "line": 24,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<div>before<a>link</a><span>nested</span>after</div>",
+      "documentType": "html",
+      "rule": "a@text",
+      "variables": {
+        "operation": "getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "link"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-AnalyzeByJSoupDomTest-003",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeByJSoupDomTest.kt",
+      "method": "ordinary nested tags still exclude descendant text from textNodes",
+      "line": 25,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<div>before<a>link</a><span>nested</span>after</div>",
+      "documentType": "html",
+      "rule": "span@text",
+      "variables": {
+        "operation": "getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "nested"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-AnalyzeByJSoupDomTest-004",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeByJSoupDomTest.kt",
+      "method": "ordinary nested tags still exclude descendant text from textNodes",
+      "line": 26,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<div><custom/>after</div>",
+      "documentType": "html",
+      "rule": "div@textNodes",
+      "variables": {
+        "operation": "getString"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "after"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-AnalyzeByJSoupDomTest-005",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeByJSoupDomTest.kt",
+      "method": "excluding indexes filters results without removing document nodes",
+      "line": 102,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<p><a id=a>A</a><a id=b>B</a><a id=c>C</a></p>",
+      "documentType": "html",
+      "rule": "tag.a!0:2",
+      "variables": {
+        "operation": "getElements",
+        "projection": "id",
+        "repeat": 2
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "b"
+      ]
+    },
+    "notes": "原测试 mapOf 的每个参数展开；同一个解析器连续执行两轮。仅覆盖结果值，节点身份和文档不变性另列待确认。",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-AnalyzeByJSoupDomTest-006",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeByJSoupDomTest.kt",
+      "method": "excluding indexes filters results without removing document nodes",
+      "line": 104,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<p><a id=a>A</a><a id=b>B</a><a id=c>C</a></p>",
+      "documentType": "html",
+      "rule": "tag.a",
+      "variables": {
+        "operation": "getElements",
+        "projection": "id",
+        "beforeEach": [
+          {
+            "operation": "getElements",
+            "rule": "tag.a!0:2"
+          }
+        ],
+        "repeat": 2
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "a",
+        "b",
+        "c"
+      ]
+    },
+    "notes": "每轮先执行排除索引规则，再读取完整列表；重复使用同一解析器。",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-AnalyzeByJSoupDomTest-007",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeByJSoupDomTest.kt",
+      "method": "excluding indexes filters results without removing document nodes",
+      "line": 102,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<p><a id=a>A</a><a id=b>B</a><a id=c>C</a></p>",
+      "documentType": "html",
+      "rule": "tag.a[!0,-1]",
+      "variables": {
+        "operation": "getElements",
+        "projection": "id",
+        "repeat": 2
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "b"
+      ]
+    },
+    "notes": "原测试 mapOf 的每个参数展开；同一个解析器连续执行两轮。仅覆盖结果值，节点身份和文档不变性另列待确认。",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-AnalyzeByJSoupDomTest-008",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeByJSoupDomTest.kt",
+      "method": "excluding indexes filters results without removing document nodes",
+      "line": 104,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<p><a id=a>A</a><a id=b>B</a><a id=c>C</a></p>",
+      "documentType": "html",
+      "rule": "tag.a",
+      "variables": {
+        "operation": "getElements",
+        "projection": "id",
+        "beforeEach": [
+          {
+            "operation": "getElements",
+            "rule": "tag.a[!0,-1]"
+          }
+        ],
+        "repeat": 2
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "a",
+        "b",
+        "c"
+      ]
+    },
+    "notes": "每轮先执行排除索引规则，再读取完整列表；重复使用同一解析器。",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-AnalyzeByJSoupDomTest-009",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeByJSoupDomTest.kt",
+      "method": "excluding indexes filters results without removing document nodes",
+      "line": 102,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<p><a id=a>A</a><a id=b>B</a><a id=c>C</a></p>",
+      "documentType": "html",
+      "rule": "tag.a!1",
+      "variables": {
+        "operation": "getElements",
+        "projection": "id",
+        "repeat": 2
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "a",
+        "c"
+      ]
+    },
+    "notes": "原测试 mapOf 的每个参数展开；同一个解析器连续执行两轮。仅覆盖结果值，节点身份和文档不变性另列待确认。",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-AnalyzeByJSoupDomTest-010",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeByJSoupDomTest.kt",
+      "method": "excluding indexes filters results without removing document nodes",
+      "line": 104,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<p><a id=a>A</a><a id=b>B</a><a id=c>C</a></p>",
+      "documentType": "html",
+      "rule": "tag.a",
+      "variables": {
+        "operation": "getElements",
+        "projection": "id",
+        "beforeEach": [
+          {
+            "operation": "getElements",
+            "rule": "tag.a!1"
+          }
+        ],
+        "repeat": 2
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "a",
+        "b",
+        "c"
+      ]
+    },
+    "notes": "每轮先执行排除索引规则，再读取完整列表；重复使用同一解析器。",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-AnalyzeByJSoupDomTest-011",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeByJSoupDomTest.kt",
+      "method": "positive and negative indexes keep selection order and node identity",
+      "line": 115,
+      "commit": "cb664b84d"
+    },
+    "kind": "jsoup-default",
+    "input": {
+      "document": "<p><a id=a>A</a><a id=b>B</a><a id=c>C</a></p>",
+      "documentType": "html",
+      "rule": "tag.a[-1,0]",
+      "variables": {
+        "operation": "getElements",
+        "projection": "id"
+      }
+    },
+    "expect": {
+      "type": "stringList",
+      "value": [
+        "c",
+        "a"
+      ]
+    },
+    "notes": "",
+    "requiresAndroid": false
+  }
+]

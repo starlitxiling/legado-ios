@@ -1,0 +1,147 @@
+[
+  {
+    "id": "golden-JsTest-001",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/JsTest.kt",
+      "method": "testMap",
+      "line": 36,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "$=result;id=$.id;id",
+      "variables": {
+        "operation": "RhinoScriptEngine.eval",
+        "bindings": {
+          "result": {
+            "id": "3242532321"
+          }
+        },
+        "bindingTypes": {
+          "result": "java.util.HashMap"
+        }
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "3242532321"
+    },
+    "notes": "宿主 Java Map 必须支持属性访问与 get 方法，不能仅注入普通 JS 对象。",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-JsTest-002",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/JsTest.kt",
+      "method": "testMap",
+      "line": 40,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "result.get(\"id\")",
+      "variables": {
+        "operation": "RhinoScriptEngine.eval",
+        "bindings": {
+          "result": {
+            "id": "3242532321"
+          }
+        },
+        "bindingTypes": {
+          "result": "java.util.HashMap"
+        }
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "3242532321"
+    },
+    "notes": "宿主 Java Map 必须支持属性访问与 get 方法，不能仅注入普通 JS 对象。",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-JsTest-003",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/JsTest.kt",
+      "method": "indirectEvalDynamicRealm",
+      "line": 211,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "(0, eval)('cache')",
+      "variables": {
+        "operation": "RhinoScriptEngine.eval",
+        "bindings": {
+          "cache": "EXEC_ENV"
+        }
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "EXEC_ENV"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-JsTest-004",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/JsTest.kt",
+      "method": "indirectEvalDynamicRealm",
+      "line": 212,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "new Function('return cache')()",
+      "variables": {
+        "operation": "RhinoScriptEngine.eval",
+        "bindings": {
+          "cache": "EXEC_ENV"
+        }
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "EXEC_ENV"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  },
+  {
+    "id": "golden-JsTest-005",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/JsTest.kt",
+      "method": "indirectEvalDynamicRealm",
+      "line": 213,
+      "commit": "cb664b84d"
+    },
+    "kind": "js",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "function f() { var loc = '-L'; return eval('cache + loc') }; f()",
+      "variables": {
+        "operation": "RhinoScriptEngine.eval",
+        "bindings": {
+          "cache": "EXEC_ENV"
+        }
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "EXEC_ENV-L"
+    },
+    "notes": "",
+    "requiresAndroid": false
+  }
+]

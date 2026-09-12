@@ -1,0 +1,211 @@
+[
+  {
+    "id": "golden-ReplacePreviewTest-001",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/ui/replace/edit/ReplacePreviewTest.kt",
+      "method": "preview applies one literal replacement rule",
+      "line": 35,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "1.2.3.测试.文本",
+      "documentType": "text",
+      "rule": ".",
+      "variables": {
+        "operation": "ReplacePreview.apply",
+        "replacement": "",
+        "isRegex": false
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "123测试文本"
+    },
+    "notes": "原入口使用 ReplaceRule 实体及替换引擎/JS 宿主；保守标记 Android 宿主依赖。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-ReplacePreviewTest-002",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/ui/replace/edit/ReplacePreviewTest.kt",
+      "method": "preview matches the reported escaped-dot regex example",
+      "line": 46,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "1.2.3.测试.文本",
+      "documentType": "text",
+      "rule": "\\.",
+      "variables": {
+        "operation": "ReplacePreview.apply",
+        "replacement": "",
+        "isRegex": true
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "123测试文本"
+    },
+    "notes": "原入口使用 ReplaceRule 实体及替换引擎/JS 宿主；保守标记 Android 宿主依赖。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-ReplacePreviewTest-003",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/ui/replace/edit/ReplacePreviewTest.kt",
+      "method": "preview applies one regular expression replacement rule",
+      "line": 57,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "a12b34",
+      "documentType": "text",
+      "rule": "\\d+",
+      "variables": {
+        "operation": "ReplacePreview.apply",
+        "replacement": "#",
+        "isRegex": true
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "a#b#"
+    },
+    "notes": "原入口使用 ReplaceRule 实体及替换引擎/JS 宿主；保守标记 Android 宿主依赖。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-ReplacePreviewTest-004",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/ui/replace/edit/ReplacePreviewTest.kt",
+      "method": "preview preserves js replacement semantics",
+      "line": 69,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "a 123 b",
+      "documentType": "text",
+      "rule": "[a-z]+",
+      "variables": {
+        "operation": "ReplacePreview.apply",
+        "replacement": "@js:result.toUpperCase()",
+        "isRegex": true
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "A 123 B"
+    },
+    "notes": "原入口使用 ReplaceRule 实体及替换引擎/JS 宿主；保守标记 Android 宿主依赖。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-ReplacePreviewTest-005",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/ui/replace/edit/ReplacePreviewTest.kt",
+      "method": "preview allows book as a js string literal",
+      "line": 110,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "x",
+      "documentType": "text",
+      "rule": ".",
+      "variables": {
+        "operation": "ReplacePreview.apply",
+        "replacement": "@js:'book'",
+        "isRegex": true
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "book"
+    },
+    "notes": "原入口使用 ReplaceRule 实体及替换引擎/JS 宿主；保守标记 Android 宿主依赖。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-ReplacePreviewTest-006",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/ui/replace/edit/ReplacePreviewTest.kt",
+      "method": "preview reports missing book context for context dependent js",
+      "line": 80,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "x",
+      "documentType": "text",
+      "rule": ".",
+      "variables": {
+        "operation": "ReplacePreview.apply",
+        "replacement": "@js:book.name",
+        "isRegex": true
+      }
+    },
+    "expect": {
+      "type": "error",
+      "value": "ReplacePreviewException"
+    },
+    "notes": "只断言原异常类型；不推导错误消息，reason 枚举另列待确认。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-ReplacePreviewTest-007",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/ui/replace/edit/ReplacePreviewTest.kt",
+      "method": "preview reports missing context for non property book references",
+      "line": 95,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "x",
+      "documentType": "text",
+      "rule": ".",
+      "variables": {
+        "operation": "ReplacePreview.apply",
+        "replacement": "@js:book == null ? result : ''",
+        "isRegex": true
+      }
+    },
+    "expect": {
+      "type": "error",
+      "value": "ReplacePreviewException"
+    },
+    "notes": "只断言原异常类型；不推导错误消息，reason 枚举另列待确认。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-ReplacePreviewTest-008",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/ui/replace/edit/ReplacePreviewTest.kt",
+      "method": "preview stops an infinite js replacement at the rule timeout",
+      "line": 122,
+      "commit": "cb664b84d"
+    },
+    "kind": "replace",
+    "input": {
+      "document": "x",
+      "documentType": "text",
+      "rule": ".",
+      "variables": {
+        "operation": "ReplacePreview.apply",
+        "replacement": "@js:while (true) {}",
+        "isRegex": true,
+        "timeoutMillisecond": 25
+      }
+    },
+    "expect": {
+      "type": "error",
+      "value": "ReplacePreviewException"
+    },
+    "notes": "只断言原异常类型；不推导错误消息，reason 枚举另列待确认。",
+    "requiresAndroid": true
+  }
+]

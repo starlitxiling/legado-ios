@@ -1,0 +1,59 @@
+# GitHub Issues 三轴 label 集合：type / area / priority。
+# bootstrap / sync-project-config 会读此文件后调 `gh label create --force` 写到 GitHub。
+#
+# - type 与 priority 是项目无关的，全集如下，不要删
+# - area 是项目特异的，下面给了 placeholder 一两条，**请按本项目实际模块自行替换**
+#
+# 颜色参考：
+#   红 B60205 / 橙 D93F0B / 黄 FBCA04 / 绿 0E8A16 / 蓝 1D76DB / 紫 5319E7 / 灰 BFD4F2
+
+# ---------- type ----------
+- name: "type:feat"
+  color: "0E8A16"
+  description: "新功能"
+- name: "type:bug"
+  color: "B60205"
+  description: "bug 修复"
+- name: "type:refactor"
+  color: "FBCA04"
+  description: "重构 / 内部结构调整"
+- name: "type:perf"
+  color: "D93F0B"
+  description: "性能优化"
+- name: "type:test"
+  color: "5319E7"
+  description: "测试基建"
+- name: "type:docs"
+  color: "1D76DB"
+  description: "文档"
+
+# ---------- priority ----------
+- name: "priority:P0"
+  color: "B60205"
+  description: "必须做、不做有重大风险"
+- name: "priority:P1"
+  color: "D93F0B"
+  description: "重大新功能 / 用户能感知的明显问题"
+- name: "priority:P2"
+  color: "FBCA04"
+  description: "一般小功能 / 偶发问题 / 触发面窄"
+
+# ---------- area ----------（请按本项目实际模块改）
+- name: "area:core"
+  color: "BFD4F2"
+  description: "规则引擎 Swift Package（LegadoCore）"
+- name: "area:app"
+  color: "BFD4F2"
+  description: "SwiftUI 应用与阅读器 UI"
+- name: "area:conformance"
+  color: "BFD4F2"
+  description: "一致性语料与 Kotlin 端对拍"
+- name: "area:tooling"
+  color: "BFD4F2"
+  description: "tools/ 下脚本与开发辅助"
+- name: "area:docs"
+  color: "BFD4F2"
+  description: "docs/ 文档与规格"
+- name: "area:ci"
+  color: "BFD4F2"
+  description: "GitHub Actions 与分发打包"

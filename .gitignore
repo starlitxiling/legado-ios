@@ -1,0 +1,21 @@
+# macOS
+.DS_Store
+
+# Xcode
+DerivedData/
+xcuserdata/
+*.xcuserstate
+*.xcscmblueprint
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM
+*.dSYM.zip
+
+# SwiftPM
+.build/
+.swiftpm/xcode/
+Package.resolved.bak
+
+# 环境变量（见全局规范「环境变量管理」）
+.env.local

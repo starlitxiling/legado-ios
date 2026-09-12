@@ -1,0 +1,178 @@
+[
+  {
+    "id": "golden-AnalyzeUrlNetworkOptionsTest-001",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeUrlNetworkOptionsTest.kt",
+      "method": "urlOptionExposesNetworkSettings",
+      "line": 84,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "getDnsIp",
+      "variables": {
+        "operation": "UrlOption",
+        "setters": {
+          "setTimeout": "5000",
+          "setFollowRedirects": "false",
+          "setDnsIp": " 1.1.1.1 "
+        }
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "1.1.1.1"
+    },
+    "notes": "依赖 AnalyzeUrl Android 模块或 JVM 网络地址类；不发网络请求。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-AnalyzeUrlNetworkOptionsTest-002",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeUrlNetworkOptionsTest.kt",
+      "method": "urlOptionExposesNetworkSettings",
+      "line": 90,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "{\"resolveIp\":\"8.8.8.8\"}",
+      "documentType": "json",
+      "rule": "getDnsIp",
+      "variables": {
+        "operation": "UrlOption.fromJson"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "8.8.8.8"
+    },
+    "notes": "依赖 AnalyzeUrl Android 模块或 JVM 网络地址类；不发网络请求。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-AnalyzeUrlNetworkOptionsTest-003",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeUrlNetworkOptionsTest.kt",
+      "method": "parsesOnlyIpLiterals",
+      "line": 109,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "1.1.1.1, [2001:db8::1]",
+      "documentType": "text",
+      "rule": "parseDnsIpAddresses",
+      "variables": {
+        "operation": "parseDnsIpAddresses",
+        "projection": "[0].hostAddress"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "1.1.1.1"
+    },
+    "notes": "依赖 AnalyzeUrl Android 模块或 JVM 网络地址类；不发网络请求。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-AnalyzeUrlNetworkOptionsTest-004",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeUrlNetworkOptionsTest.kt",
+      "method": "urlOptionDeserializesNetworkSettingsFromJson",
+      "line": 102,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "{\"timeout\":5000,\"followRedirects\":false,\"dnsIp\":\"1.1.1.1\"}",
+      "documentType": "json",
+      "rule": "getDnsIp",
+      "variables": {
+        "operation": "UrlOption.fromJson"
+      }
+    },
+    "expect": {
+      "type": "string",
+      "value": "1.1.1.1"
+    },
+    "notes": "AnalyzeUrl.UrlOption 所属模块依赖 Android。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-AnalyzeUrlNetworkOptionsTest-005",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeUrlNetworkOptionsTest.kt",
+      "method": "parsesOnlyIpLiterals",
+      "line": 111,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "dns.example",
+      "documentType": "text",
+      "rule": "parseDnsIpAddresses",
+      "variables": {
+        "operation": "parseDnsIpAddresses"
+      }
+    },
+    "expect": {
+      "type": "error",
+      "value": "IllegalArgumentException"
+    },
+    "notes": "原断言只限定异常类；JVM 网络地址解析，不发 DNS 请求。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-AnalyzeUrlNetworkOptionsTest-006",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeUrlNetworkOptionsTest.kt",
+      "method": "parsesOnlyIpLiterals",
+      "line": 114,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "999.1.1.1",
+      "documentType": "text",
+      "rule": "parseDnsIpAddresses",
+      "variables": {
+        "operation": "parseDnsIpAddresses"
+      }
+    },
+    "expect": {
+      "type": "error",
+      "value": "IllegalArgumentException"
+    },
+    "notes": "原断言只限定异常类；JVM 网络地址解析，不发 DNS 请求。",
+    "requiresAndroid": true
+  },
+  {
+    "id": "golden-AnalyzeUrlNetworkOptionsTest-007",
+    "source": {
+      "file": "app/src/test/java/io/legado/app/model/analyzeRule/AnalyzeUrlNetworkOptionsTest.kt",
+      "method": "rejectsDnsOverrideTogetherWithProxy",
+      "line": 139,
+      "commit": "cb664b84d"
+    },
+    "kind": "url-options",
+    "input": {
+      "document": "",
+      "documentType": "text",
+      "rule": "validateDnsIpProxyCompatibility",
+      "variables": {
+        "operation": "validateDnsIpProxyCompatibility",
+        "proxy": "http://proxy.example:8080",
+        "dnsIp": "1.1.1.1"
+      }
+    },
+    "expect": {
+      "type": "error",
+      "value": "IllegalArgumentException"
+    },
+    "notes": "网络配置互斥校验；不发网络请求。",
+    "requiresAndroid": true
+  }
+]
