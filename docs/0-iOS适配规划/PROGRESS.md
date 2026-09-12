@@ -1,6 +1,6 @@
 # 进度（阶段 0 · 立项与规格化）
 
-> 新会话先读本文件。最后更新：本机时钟 22:15（单元 3 中断处）
+> 新会话先读本文件。最后更新：本机时钟 22:30
 
 ## 1. 当前位置
 
@@ -17,12 +17,12 @@
 | 规则引擎语言无关规格 | 完成（ad042b55d） | 原生 general-purpose + Codex 修正 | `docs/spec/rule-engine.md`（368 行，96 处源码引用） | Codex 跨模型审出 6 处与源码不符已修并复审通过；主会话核实 3 条 |
 | Kotlin 测试 → 黄金用例 JSON | 完成（ad042b55d） | Codex | `Tests/Conformance/fixtures/golden/`（6 文件 42 条） | Codex 复审抽 6 条 + 主会话抽 1 条，期望值逐字一致 |
 | 公开书源语料频率统计 + 宿主 API 优先级表 | 完成（ad042b55d；r2 修正词表与选项解析，9 单测通过） | 主会话下载 + Codex | `tools/corpus/analyze_sources.py`、`docs/0-iOS适配规划/宿主API优先级.md` | 待抽查统计口径 |
-| Android 基线运行环境（JDK 21 + Android SDK） | 暂按「不装」推进，人类可随时改 | — | — | 本机无 JDK / SDK；期望值靠已有断言 + 规格推导，标「未经 Android 实测」 |
+| Android 基线运行环境（JDK 21 + Android SDK） | 已决：不装（PLAN §7） | — | — | 期望值靠断言 + 规格 + Kotlin 源码推导，复审时逐条回源核对 |
 | 合成 fixture（按语法特征自造 HTML / JSON）与期望值 | 完成（100 条 10 文件，Codex 独立复审抽 43 条 clean） | Codex | `Tests/Conformance/fixtures/synthetic/` | 期望值按规格推导，需 Android 基线校正 |
 | 阶段 0 收口：SUMMARY.md、DEVTREE 更新 | 完成（9b8874a56） | 主会话 | `docs/0-iOS适配规划/SUMMARY.md` | — |
 | 规格 §3 补精确（5 处：编码、游标后置条件、splitRule 终点、引号范围、innerRule 失败） | 完成（603a5d508，371 行 105 引用） | Codex | `docs/spec/rule-engine.md` | — |
 | **阶段 1 单元 2**：AnalyzeUrl 选项解析 + 一致性运行器（url-options 25 条） | 完成（1 轮复审 3 条全修；23 passed / 2 skipped） | Codex | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeUrl/`、`Conformance/ConformanceRunner.swift` | 需 swift test 原始输出与用例明细 |
-| **阶段 1 单元 3**：AnalyzeRule 词法 / ## 替换 / @get @put / 正则模式 / 合并，选择器引擎 protocol 化 | **中断**：Codex 任务两次被外部终止，工作树留有 5 个源文件 + 2 个测试文件（573 行，未跟踪、未验证），可用 session id resume 续做或清掉重派 | Codex | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeRule/` | 需 swift test 原始输出与 replace / template / prefix / regex / empty 用例明细 |
+| **阶段 1 单元 3**：AnalyzeRule 词法 / ## 替换 / @get @put / 正则模式 / 合并，选择器引擎 protocol 化 | 在途（半成品已清，nohup 脱离父进程重派） | Codex | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeRule/` | 需 swift test 原始输出与 replace / template / prefix / regex / empty 用例明细 |
 | **阶段 1 单元 1**：LegadoCore Package 骨架 + RuleAnalyzer（TDD） | 完成（2 轮复审 10 条全修，25 测试；第 3 轮修复留痕放行） | Codex | `Packages/LegadoCore/`（RuleAnalyzer 220 行、15 测试） | 报告附 swift test 全绿原始输出；沙箱需 `CLANG_MODULE_CACHE_PATH` 指向包内目录才能编译 |
 
 ## 3. 在途子 agent
@@ -38,4 +38,5 @@
 ## 4. 下一步与未决
 
 - **下一步**：三个 Codex 任务回收并抽查后，派一次收窄的 Codex 复审（两份 CLAUDE.md 修正 + 规格修正 + 黄金用例 + 统计），通过即在 master 提交规则改动、在 `ios` 分支做首个 commit；随后派「合成 fixture」任务。
-- **未决**：① Android 基线环境是否安装（见任务表）；② `ios` 分支推送到远端需人类同意；③ labels 同步远端需人类同意。
+- **未决**：labels 同步远端需人类同意。`ios` 分支已推送（origin/ios）。
+- **经验**：长跑 Codex 任务用 `nohup … &` + `disown` 脱离 Bash 工具的后台任务生命周期，再用 until 循环等 `-o` 文件；直接 `run_in_background` 的长任务两次被 stopped。

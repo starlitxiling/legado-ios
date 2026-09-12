@@ -140,6 +140,7 @@ TTS 听书（后台音频）、本地书籍（TXT 目录规则、EPUB、MOBI、P
 | MVP 范围 | **接受 §4 阶段 3 边界**（人类授权 Agent 决定） | 网络文字书源 + 书架 + 搜索 / 发现 + 阅读器 + 替换规则 + 书源管理 + 备份恢复。阶段 4 优先级：TTS 听书 > 本地 TXT / EPUB > `@webjs:` 与 webView 抓取 > RSS > 其余 |
 | 团队与工期 | **1 名人类 + Coding Agent，按阶段门禁推进，不设日历工期**（人类授权 Agent 决定） | 代码由子 agent 编写、主会话核验；每阶段以完成判据收口，不以日期收口 |
 | 最低系统版本与设备 | **iOS 17，Universal（iPhone 优先布局，iPad 可用）**（人类授权 Agent 决定） | iOS 17 起 SwiftUI Observation 框架与 `NavigationStack` 稳定，GRDB / SwiftSoup / Kanna 均支持；iPad 只保证可用，不做专属布局 |
+| Android 基线 | **不安装 JDK / Android SDK**（人类 2026-09-12 决定） | 合成用例期望值按规格 + Kotlin 源码推导，标 spec-derived；不做 Android 端自动对拍，正确性靠 Codex 与 Opus 双通道对照 Kotlin 逐条复审 |
 | 语料合规 | **仓库只提交合成 fixture 与聚合统计，不提交第三方站点抓取内容与整套书源合集** | 一致性测试用自造 HTML / JSON 覆盖同类语法特征；真实书源仅在本机缓存目录做频率统计，仓库记录合集来源 URL 与统计结果 |
 
 
