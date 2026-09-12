@@ -24,18 +24,17 @@
 
 ## 局限性
 
-- **Android 基线未跑**：本机没有 JDK 与 Android SDK，阶段 0 完成判据「语料在 Android 端一键跑出全绿基线」未达成。合成用例的期望值全部按规格推导，标 `spec-derived, not run on Android`，需要装环境后校正一次才能升为黄金。人类尚未决定是否安装。
-- **规格仍有 7 条待实测**：JsonPath 无 `$` 前缀是否自动补、jsoup 属性名大小写、`Element.data()` 返回值、Kotlin 正则替换串转义、`%.0f` 边界、URL 编码字符集、JsoupXpath 扩展函数集。
+- **Android 基线未跑**：本机没有 JDK 与 Android SDK，阶段 0 完成判据「语料在 Android 端一键跑出全绿基线」未达成。人类决定不安装（PLAN §7），合成用例的期望值全部按规格与 Kotlin 源码推导，标 `spec-derived, not run on Android`，正确性靠逐条回源复审保证。
+- **规格仍有待实测项**：jsoup 属性名大小写、`Element.data()` 返回值、Kotlin 正则替换串转义、`%.0f` 边界、URL 编码字符集；JsonPath 无 `$` 前缀自动补 `$.`（阶段 1 已按 jayway 源码核清）与 JsoupXpath 扩展函数集（按其 README 实现）已有结论。
 - **review 同模型**：本会话项目级 agent 定义未加载，所有 review 由 Codex 完成，Codex 实现的单元也由 Codex 独立上下文复审，跨模型交叉要等下个会话 Opus@high 可用后补。
 - **嵌套 Package 的 `.gitignore`**：根 `.gitignore` 的 `.swiftpm/xcode/` 匹配不到 `Packages/LegadoCore/` 下的同名目录，已在 Package 目录单独加。
 
 ## 后续 TODO
 
-1. 人类决定是否安装 JDK 21 + Android SDK；装了就补「Android 基线跑批」脚本，校正 100 条合成用例。
-2. 阶段 1 单元 1（`RuleAnalyzer`）已实现待复审；后续单元按规格章节推进：`AnalyzeRule` 六模式分派与 `##` / `{{}}` / `@get` / `@put`，`AnalyzeByJSoup`（SwiftSoup）私有语法，XPath（Kanna），JSONPath，正则，`AnalyzeUrl` 选项解析，JS 宿主一级 16 个方法。
-3. 一致性用例运行器：让 `swift test` 直接消费 golden 与 synthetic JSON，按 kind 分派到对应引擎入口。
-4. 下个会话先实际起一次 `opus-explorer` 确认项目级定义已加载，恢复「Codex 实现、Opus 复审」交叉。
-5. `ios` 分支推送到远端与 labels 同步均为对外动作，待人类同意。
+1. 阶段 2（轮次 1）：网络层、java 宿主网络方法、BookSource 导入、WebBook 流程、GRDB 与备份导入，见 `docs/1-阶段2数据与网络/PLAN.md`。
+2. 下个会话先实际起一次 `opus-explorer` 确认项目级定义已加载，对阶段 1 的 8 个单元补 Opus 交叉复审。
+3. 在 SwiftSoup DOM 上自研 XPath 求值器，根治桥接的祖先关系与 table 补全差异（触发条件：真实书源回归暴露）。
+4. labels 同步远端为对外动作，待人类同意。
 
 ## 阶段 1 增补（2026-09-13）
 
