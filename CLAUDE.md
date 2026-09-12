@@ -30,7 +30,7 @@
 5. **验证要求**：写代码的任务必须自己跑对应的构建 / 测试，**报告里附原始命令与输出摘要**，不接受「应该能过」。
 6. **交付格式**：报告结构（结论先行、改动文件清单、未解决项、`file:line` 证据），并限定篇幅，避免大段文件内容回灌主会话。
 
-互不依赖的任务在**同一条消息里并行派出**；有依赖的按序派。子 agent 类型按任务选：只找不改用 `Explore`，设计方案用 `Plan`，写代码用 `general-purpose`，review 走 `/review-loop`。
+互不依赖的任务在**同一条消息里并行派出**；有依赖的按序派。通道按下文「子 agent 通道」选，只有两种合法配置：本仓库 `.claude/agents/` 里的 Opus@high 类型，或 Codex astra@medium；review 走 `/review-loop`。
 
 ### 核验义务：子 agent 的报告是线索，不是结论
 
@@ -43,7 +43,32 @@
 
 ### 改进回路
 
-发现缺陷时，**用 SendMessage 把具体问题发回原子 agent** 让它带着已有上下文修，而不是重新派一个从零开始的；反馈要给到 `file:line` 与期望行为，不写「再检查一下」这类空指令。同一任务**最多两轮返修**，仍不收敛就由主会话判断：换任务拆法重派、自己接手收尾、或把卡点如实报告给用户。返修过程不进交付文档，只在对话里说明。
+发现缺陷时，**把具体问题发回原子 agent** 让它带着已有上下文修，而不是重新派一个从零开始的；反馈要给到 `file:line` 与期望行为，不写「再检查一下」这类空指令。返修通道按子 agent 类型分：原生 Agent 用 SendMessage；Codex 用 `codex exec resume <session-id>`（session id 从该任务的 `.log` 头部取，派出时登记进 `PROGRESS.md`）。同一任务**最多两轮返修**，仍不收敛就换任务拆法重派另一通道，或把卡点如实报告给用户；**主会话不因返修不收敛而自己接手代码**。主会话亲手改业务代码只有一种情形：两条通道都实际失败（能力缺失，附报错原文），这是「Write/Edit 只碰自己产物」规则的唯一例外，必须在 `PROGRESS.md` 与 commit message 留痕。返修过程不进交付文档，只在对话里说明。
+
+### 子 agent 通道：只允许 Opus@high 与 Codex astra@medium
+
+**硬规则（人类钉死）：子 agent 只能跑两种配置，其余一律禁止** —— 不传别的 `model`，不用无法钉死思考档的内置类型，不让子 agent 继承主会话的模型或思考档。
+
+| 通道 | 配置 | 怎么保证 | 用于 |
+| --- | --- | --- | --- |
+| **原生 Agent** | Claude **Opus**，思考档 **high** | Agent 工具没有 effort 入参，思考档只能由 agent 定义的 frontmatter 钉死，故**只允许起本仓库 `.claude/agents/` 里的类型**：`opus-explorer`（只读勘察 / 设计）、`opus-implementer`（可写实现）、以及覆盖全局定义的 `code-reviewer` / `code-reviewer-deep` / `review-orchestrator`（`/review-loop` 编队）。**禁止直接起内置 `Explore` / `Plan` / `general-purpose`**（它们继承主会话思考档，无法保证 high）。 | 代码库勘察与调用链梳理、方案设计、需要联网的调研（WebSearch / `gh api`；Codex 沙箱无网络）、需要本会话专属工具的任务、`/review-loop` 编队 |
+| **Codex** | `gpt-6-astra`，`model_reasoning_effort=medium` | `/codex-subagent` skill，命令行显式 `-m gpt-6-astra -c model_reasoning_effort=medium`，不按任务升降档 | 写 Swift 代码与测试、机械性多文件改动、从 Kotlin 提取规格与用例、跑构建与测试、**跨模型第二意见 review** |
+
+**agent 定义的拾取时机因情形而异**：官方文档称已存在的 agents 目录会被监听、改动数秒内生效，但首次创建该目录需要重启会话（本机实测 2026-09-12：会话中新建 `.claude/agents/` 后起 `opus-explorer` 报 `Agent type not found`）。判据是**实际起一次**：起不了就改派 Codex 或等下个会话，**不得**退回内置类型。
+
+**结合方式**：关键单元（规则引擎核心、JS 宿主层）用「一方实现、另一方复审」交叉 —— Codex 实现则派 `opus-explorer` 只读复审，Opus 实现则派 Codex 只读复审；普通单元单通道即可。两条通道都实际失败时才由主会话接手（见「改进回路」的唯一例外条款）。
+
+Codex 任务的硬规则以 `~/.claude/skills/codex-subagent/SKILL.md` 为单一真源，这里只重申三条：任务书必须带 `subagent_contract` 且信息一次给全（exec 模式无法追问）；`-C` 指向当前 worktree 绝对路径，调研 `-s read-only`、实现 `-s workspace-write`；一律 `run_in_background` 等完成通知，**严禁 `sleep` 轮询**。两条通道返回后都按「核验义务」抽查 `文件:行号`；实现类任务主会话亲自看 diff、核对报告里的测试原始输出，需要复验时另派子 agent，不自己跑测试。
+
+### 断点续传：进度文件是新会话的唯一入口
+
+工程周期长、会话可能因额度耗尽或中断而丢失上下文，**上下文不是持久化介质，进度文件才是**。
+
+- **位置**：`docs/<N>-*/PROGRESS.md`，每轮一份。内容四段，总长 ≤ 80 行：① 当前阶段与轮次、最近一次 commit；② 任务表（任务 / 状态：待办·在途·待核验·完成 / 通道 / 产物路径 / 验证状态）；③ 在途子 agent（任务书路径、`-o` 输出路径、codex session id、派出时间）；④ 下一步一句话 + 未决问题。
+- **何时写**：派出或收回一个子 agent、完成一个开发单元、每次 commit 之后、发现阻塞时。**写进度文件的成本远低于重跑一个子 agent。**
+- **新会话开场**：先读 `PROGRESS.md`，再检查在途 codex 任务的 `-o` 文件是否已有产物（可能在上个会话中断后才完成），**不重派已完成的任务**。
+- **额度保护**：一次子 agent 调用只做一个开发单元；产物落盘并 commit 后再开下一个，避免中断时丢掉整块工作；同时在途的开发 / 调研子 agent 不超过 4 个（`/review-loop` 编队按其 skill 的档位表执行，不计入此上限）；主会话等待期间不做重活，只更新进度文件。
+- 完成的任务从 `PROGRESS.md` 移到 `SUMMARY.md`，保持进度文件短小可读。
 
 ### 主会话上下文经济（fable 额度的真正杀手）
 
