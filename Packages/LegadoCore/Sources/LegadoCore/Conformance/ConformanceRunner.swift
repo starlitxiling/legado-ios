@@ -39,11 +39,11 @@ public enum ConformanceRunner {
 
     public static func run(_ cases: [ConformanceCase]) -> Report {
         Report(results: cases.map { test in
-            let ruleKinds = ["replace", "template", "prefix", "regex", "empty", "jsoup-default", "jsoup-css"]
+            let ruleKinds = ["replace", "template", "prefix", "regex", "empty", "jsoup-default", "jsoup-css", "jsonpath", "xpath"]
             let jsOperations = ["RhinoScriptEngine.eval", "AnalyzeRule.evalJS", "AnalyzeRule.get", "AnalyzeRule.getString", "AnalyzeRule.getStringList", "AnalyzeRule.getElement", "AnalyzeRule.getElements"]
             let jsFixture = test.kind == "js" && jsOperations.contains { test.input.variables?["operation"] == .string($0) }
             let ruleFixture = jsFixture || ruleKinds.contains(test.kind) || ["template", "prefix", "empty"].contains { test.id.hasPrefix("synthetic-\($0)-") }
-            guard test.kind == "url-options" || ruleFixture else {
+            guard test.kind == "url-options" || test.kind == "format" || ruleFixture else {
                 return result(test, status: .unsupported, detail: "本单元尚未实现 kind=\(test.kind)")
             }
             if test.input.variables?["operation"] == .string("ReplacePreview.apply") {
@@ -51,7 +51,9 @@ public enum ConformanceRunner {
             }
             do {
                 let actual: ConformanceCase.Expectation
-                if test.input.variables?["operation"] == .string("RhinoScriptEngine.eval") {
+                if test.kind == "format" {
+                    actual = try evaluateFormat(test.input)
+                } else if test.input.variables?["operation"] == .string("RhinoScriptEngine.eval") {
                     actual = try evaluateJS(test.input)
                 } else {
                     actual = try test.kind == "url-options" ? evaluateURL(test.input) : evaluateRule(test.input)
@@ -73,6 +75,17 @@ public enum ConformanceRunner {
     }
 
     private struct Skip: Error { let reason: String }
+
+    private static func evaluateFormat(_ input: ConformanceCase.Input) throws -> ConformanceCase.Expectation {
+        guard input.variables?.isEmpty != false else { throw Skip(reason: "format 尚未定义 variables 配置") }
+        switch input.rule {
+        case "format": return .string(HtmlFormatter.format(input.document))
+        case "formatIntro": return .string(HtmlFormatter.formatIntro(input.document))
+        case "formatKeepImg":
+            return .string(HtmlFormatter.formatKeepImg(input.document, redirectUrl: input.baseUrl.flatMap { URL(string: $0) }))
+        default: throw Skip(reason: "尚未实现 format 入口 \(input.rule)")
+        }
+    }
 
     private static func jsValue(_ value: ConformanceCase.JSONValue) -> Any {
         switch value {
@@ -125,7 +138,7 @@ public enum ConformanceRunner {
         if let key = variables.keys.sorted().first(where: { !supportedKeys.contains($0) }) {
             throw Skip(reason: "尚未实现规则 fixture 配置 \(key)")
         }
-        let parser = AnalyzeRule(content: input.document, engines: [.default: AnalyzeByJSoup(), .js: JsEngine(baseUrl: input.baseUrl ?? "")],
+        let parser = AnalyzeRule(content: input.document, engines: [.default: AnalyzeByJSoup(), .json: AnalyzeByJSonPath(), .xpath: AnalyzeByXPath(), .js: JsEngine(baseUrl: input.baseUrl ?? "")],
                                  ruleData: try values("ruleData").map { RuleVariableStore($0) })
         for (key, value) in try values("locals") ?? [:] { parser.setLocal(key, value: value) }
         if variables["isUrl"] == .bool(true), ["AnalyzeRule.getString", "AnalyzeRule.getStringList"].contains(operation) {

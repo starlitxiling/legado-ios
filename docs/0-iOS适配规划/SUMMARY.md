@@ -36,3 +36,22 @@
 3. 一致性用例运行器：让 `swift test` 直接消费 golden 与 synthetic JSON，按 kind 分派到对应引擎入口。
 4. 下个会话先实际起一次 `opus-explorer` 确认项目级定义已加载，恢复「Codex 实现、Opus 复审」交叉。
 5. `ios` 分支推送到远端与 labels 同步均为对外动作，待人类同意。
+
+## 阶段 1 增补（2026-09-13）
+
+规则引擎核心 `Packages/LegadoCore` 以 8 个开发单元落地，每个单元 Codex 实现、Codex 独立上下文复审、按 Kotlin 返修后提交，累计修正 45 条与 Kotlin 不一致的 finding：
+
+| 单元 | 内容 | 依赖 | 复审 finding |
+| --- | --- | --- | --- |
+| 1 | `RuleAnalyzer` 切分器（UTF-16 游标） | 无 | 10 |
+| 2 | `UrlOptions` 选项解析 + 一致性运行器 | 无 | 3 |
+| 3 | `AnalyzeRule` 词法 / 替换 / 变量 / 正则 / 合并 | 无 | 6 |
+| 4 | `AnalyzeByJSoup`（SwiftSoup 2.13.9） | SwiftSoup | 3 |
+| 5 | `JsEngine` + `JavaHost` 一级离线子集 | JavaScriptCore | 7 |
+| 6 | `AnalyzeByJSonPath`（jayway 语义子集，保序 JSON） | 无 | 4 |
+| 7 | `AnalyzeByXPath`（Kanna 6.1.0 桥接） | Kanna | 5（2 记已知差异） |
+| 8 | `HtmlFormatter` | 无 | 1 |
+
+结果：121 项 XCTest 0 失败；一致性用例 142/142 通过，8 条 UI 预览逻辑标 unsupported。已知差异记录在 `docs/spec/js-host-compat.md` 与 `docs/spec/xpath-compat.md`。工具链因 SwiftSoup 升到 swift-tools-version 6.0（语言模式 5）。
+
+局限：全部期望值仍是规格 / Kotlin 推导，未在 Android 端实测（人类决定不装 SDK）；所有复审为 Codex 同模型独立上下文，Opus 交叉复审待项目级 agent 定义在下个会话生效后补；XPath 桥接的祖先关系与 table 补全差异按 6.87% 使用率接受，自研求值器列入后续 TODO；HTML pretty-print 与 jsoup 的逐字符一致性未验证。

@@ -1,6 +1,6 @@
 # 进度（阶段 0 · 立项与规格化）
 
-> 新会话先读本文件。最后更新：2026-09-13 01:00（本机时钟）
+> 新会话先读本文件。最后更新：2026-09-13 03:10（本机时钟）
 
 ## 1. 当前位置
 
@@ -25,7 +25,9 @@
 | **阶段 1 单元 3**：AnalyzeRule 词法 / ## 替换 / @get @put / 正则模式 / 合并，选择器引擎 protocol 化 | 完成（1 轮复审 6 条全修） | Codex |
 | **阶段 1 单元 4**：SwiftSoup 实现 AnalyzeByJSoup（Default 私有语法 + CSS） | 完成（4d4ac0851；1 轮复审 3 条 P1 全修；HTML pretty-print 与 jsoup 逐字符对比未验证） | Codex |
 | **阶段 1 单元 5**：JavaScriptCore JS 引擎（<js> / @js: / {{}}、注入变量、java 宿主一级离线子集） | 完成（1 轮复审 7 条全修；92 测试；JS 用例 19/19；已知差异见 `docs/spec/js-host-compat.md`） | Codex |
-| **阶段 1 单元 6**：JSONPath 引擎（jayway 语义子集） | 在途 | Codex | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeByJSonPath/` | 需 swift test 输出与 jsonpath 用例明细 | `Packages/LegadoCore/Sources/LegadoCore/JsEngine/` | 需 swift test 输出、JS 相关用例明细、三项兼容决策实验 | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeByJSoup/` | 需 swift test 输出、用例明细、库差异清单 | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeRule/` | 需 swift test 原始输出与 replace / template / prefix / regex / empty 用例明细 |
+| **阶段 1 单元 6**：JSONPath 引擎（jayway 语义子集） | 完成（1 轮复审 4 条全修） | Codex |
+| **阶段 1 单元 7**：XPath 引擎（Kanna / libxml2，对齐 JsoupXpath） | 完成（1 轮复审 5 条：3 修 + 2 记已知差异 `docs/spec/xpath-compat.md`） | Codex |
+| **阶段 1 单元 8**：HtmlFormatter 排版（format 8 条黄金用例） | 完成（1 轮复审 1 条修） | Codex | `Packages/LegadoCore/Sources/LegadoCore/Format/` | 需 swift test 输出、8 条用例明细、正则方言差异 | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeByXPath/` | 需 swift test 输出、xpath 用例明细、库差异清单 | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeByJSonPath/` | 需 swift test 输出与 jsonpath 用例明细 | `Packages/LegadoCore/Sources/LegadoCore/JsEngine/` | 需 swift test 输出、JS 相关用例明细、三项兼容决策实验 | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeByJSoup/` | 需 swift test 输出、用例明细、库差异清单 | `Packages/LegadoCore/Sources/LegadoCore/AnalyzeRule/` | 需 swift test 原始输出与 replace / template / prefix / regex / empty 用例明细 |
 | **阶段 1 单元 1**：LegadoCore Package 骨架 + RuleAnalyzer（TDD） | 完成（2 轮复审 10 条全修，25 测试；第 3 轮修复留痕放行） | Codex | `Packages/LegadoCore/`（RuleAnalyzer 220 行、15 测试） | 报告附 swift test 全绿原始输出；沙箱需 `CLANG_MODULE_CACHE_PATH` 指向包内目录才能编译 |
 
 ## 3. 在途子 agent
@@ -33,10 +35,12 @@
 | 任务 | 通道 | 任务书 / 输出 | session id | 派出时间 |
 | --- | --- | --- | --- | --- |
 
-已完成单元的实现会话（返修时 resume）：单元 5 `01a09648-cf95-7ec1-b3c0-a690f2e43fc8`、单元 1 `01a095c4-1477-7210-97da-da028d2b31a2`、单元 2 `01a095d3-a3b2-70f0-b4d1-3b7cf579abb5`、单元 3 `01a09623-b332-7eb2-9119-f97b21766dc8`、单元 4 `01a09632-de41-7a71-a0b3-3e19f9d23597`。
+已完成单元的实现会话（返修时 resume）：单元 8 `01a0967a-7e6c-7d52-b57b-91820d47ec19`、单元 7 `01a0966c-8be4-7970-9f8b-d0bd3561f68b`、单元 6 `01a09661-de70-78f2-8772-fb2e079c0241`、单元 5 `01a09648-cf95-7ec1-b3c0-a690f2e43fc8`、单元 1 `01a095c4-1477-7210-97da-da028d2b31a2`、单元 2 `01a095d3-a3b2-70f0-b4d1-3b7cf579abb5`、单元 3 `01a09623-b332-7eb2-9119-f97b21766dc8`、单元 4 `01a09632-de41-7a71-a0b3-3e19f9d23597`。
 
 ## 4. 下一步与未决
 
-- **下一步**：单元 6 JSONPath 回收后复审、提交；之后 XPath（Kanna，4 条 unsupported）、format（HtmlFormatter，8 条）、阶段 1 收口（一致性总表 + SUMMARY 增补）；java 宿主网络类方法归阶段 2。
+- **阶段 1 里程碑**：8 个单元全部提交，121 项 XCTest 0 失败，一致性用例 142/142 通过（8 条 UI 预览逻辑标 unsupported）。规则引擎在离线语料上已全覆盖；真实书源回归要等阶段 2 网络层。
+- **下一步**：开阶段 2（轮次 1）：写 PROMPT / PLAN 待人类确认后再写代码——网络层（URLSession 按源选项）、java 宿主网络类方法（ajax / post / …）、BookSource 实体与 JSON 导入（含 Gson 宽松反序列化语义）、WebBook 搜索 / 目录 / 正文流程、GRDB schema。下个会话先实际起一次 `opus-explorer` 补 Opus 交叉复审。
+- **决策**：XPath 仅 6.87%（279/4063）书源使用，阶段 1 接受 outerHtml→libxml2 桥接及其已知差异；「在 SwiftSoup DOM 上自研 XPath 求值器」列入后续 TODO，触发条件是真实书源回归暴露桥接损失。
 - **未决**：labels 同步远端需人类同意。`ios` 分支已推送（origin/ios）。
 - **经验**：长跑 Codex 任务用 `nohup … &` + `disown` 脱离 Bash 工具的后台任务生命周期，再用 until 循环等 `-o` 文件；直接 `run_in_background` 的长任务两次被 stopped。

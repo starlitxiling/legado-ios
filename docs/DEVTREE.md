@@ -62,7 +62,7 @@ graph TD
 Swift Package `LegadoCore`（无 UI）：`RuleAnalyzer`、六模式分派、jsoup 私有语法、XPath / JSONPath / 正则、`AnalyzeUrl`、JavaScriptCore 宿主分三级实现；完成判据：一致性语料通过率达阶段 0 定义的阈值。
 
 
-- 状态：进行中（单元 1 RuleAnalyzer 已实现待复审）
+- 状态：核心完成（8 个单元：RuleAnalyzer / UrlOptions / AnalyzeRule / SwiftSoup / JS 引擎 / JSONPath / XPath / HtmlFormatter；121 测试，一致性 142/142；真实书源回归待阶段 2 网络层）
 - 轮次：0（延续）
 
 ### 阶段 2 · 数据与网络
