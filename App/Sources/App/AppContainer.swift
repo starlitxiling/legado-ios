@@ -7,7 +7,9 @@ import LegadoCore
 final class AppContainer {
     let database: AppDatabase
     let databaseLifecycle: DatabaseLifecycleCoordinator
-    let httpClient: BoundedURLSessionHttpClient
+    let httpClient: SourceLoginHttpClient
+    let sourceLogin: SourceLogin
+    let sourceChecker: SourceChecker
     let bookshelf: BookshelfRepository
     let bookGroups: BookGroupRepository
     let bookSources: BookSourceRepository
@@ -22,7 +24,10 @@ final class AppContainer {
         self.database = database
         databaseLifecycle = DatabaseLifecycleCoordinator(suspend: { database.suspend() },
                                                          resume: { database.resume() })
-        self.httpClient = httpClient
+        let sourceSecrets = SourceLoginKeychainStore()
+        self.httpClient = SourceLoginHttpClient(database: database, underlying: httpClient, secrets: sourceSecrets)
+        sourceLogin = SourceLogin(database: database, client: httpClient, secrets: sourceSecrets)
+        sourceChecker = SourceChecker(client: httpClient, database: database, secrets: sourceSecrets)
         bookshelf = BookshelfRepository(database: database)
         bookGroups = BookGroupRepository(database: database)
         bookSources = BookSourceRepository(database: database)

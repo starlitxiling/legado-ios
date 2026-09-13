@@ -90,7 +90,7 @@ public struct BackupArchive {
         self.files = files.filter { !$0.key.hasSuffix("/") }
     }
 
-    private static func inflate(_ data: Data, size: Int) throws -> Data {
+    static func inflate(_ data: Data, size: Int) throws -> Data {
         guard !data.isEmpty else { throw BackupArchiveError.invalidArchive }
         let capacity = max(1, size + 1)
         var output = [UInt8](repeating: 0, count: capacity)
@@ -127,7 +127,7 @@ public struct BackupArchive {
         return Data(output.prefix(size))
     }
 
-    private static func crc32(_ data: Data) -> UInt32 {
+    static func crc32(_ data: Data) -> UInt32 {
         var crc: UInt32 = 0xffffffff
         for byte in data {
             crc ^= UInt32(byte)

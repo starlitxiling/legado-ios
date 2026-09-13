@@ -140,6 +140,9 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
         if let redirects = options.followRedirects { values["followRedirects"] = redirects }
         let requestOptions = try UrlOptions.fromJSON(String(decoding: JSONSerialization.data(withJSONObject: values), as: UTF8.self))
         var requestHeaders = headers
+        if let session = engine.httpClient as? any SourceScriptClient {
+            requestHeaders = try session.loginHeaders(url: url, headers: requestHeaders)
+        }
         for (key, value) in options.headers { requestHeaders.setHTTPHeader(key, value) }
         let domain = source.key.flatMap { URL(string: $0)?.host == nil ? $0 : nil } ?? url
         let cookie = await engine.cookieStore.getCookie(url: domain)

@@ -6,12 +6,16 @@ struct SourcesView: View {
     @State private var importEntry: ManagementImportEntry?
     private let replaceRules: ReplaceRuleRepository
     private let httpClient: any ResponseLimitedHttpClient
+    private let sourceLogin: SourceLogin
+    private let sourceChecker: SourceChecker
 
     init(repository: BookSourceRepository, replaceRules: ReplaceRuleRepository,
-         httpClient: any ResponseLimitedHttpClient) {
+         httpClient: any ResponseLimitedHttpClient, sourceLogin: SourceLogin, sourceChecker: SourceChecker) {
         _model = State(initialValue: SourcesViewModel(repository: repository, httpClient: httpClient))
         self.replaceRules = replaceRules
         self.httpClient = httpClient
+        self.sourceLogin = sourceLogin
+        self.sourceChecker = sourceChecker
     }
 
     var body: some View {
@@ -34,6 +38,12 @@ struct SourcesView: View {
                     }
                 }
                 .disabled(model.isBusy)
+                .contextMenu {
+                    if let entity = loginSource(source) {
+                        NavigationLink("登录") { SourceLoginDestination(source: entity, service: sourceLogin) }
+                        NavigationLink("校验") { CheckSourceView(sources: [entity], checker: sourceChecker) }
+                    }
+                }
                 .swipeActions {
                     Button("删除", role: .destructive) { Task { await model.delete(source) } }
                         .disabled(model.isBusy)
@@ -64,6 +74,10 @@ struct SourcesView: View {
                     Button("从 URL 导入") { importEntry = .url }
                     Button("从文件导入") { importEntry = .file }
                     Button("从剪贴板导入") { importEntry = .clipboard }
+                    NavigationLink("Cookie 管理") { CookieManagementView(service: sourceLogin) }
+                    NavigationLink("批量校验") {
+                        CheckSourceView(sources: model.filteredSources.compactMap(loginSource), checker: sourceChecker)
+                    }
                     NavigationLink("替换规则") {
                         ReplaceRulesView(repository: replaceRules, httpClient: httpClient)
                     }
@@ -82,5 +96,9 @@ struct SourcesView: View {
                               }, cancel: { model.cancelImport() }, keepEnable: $model.keepEnable)
         }
         .task { await model.load() }
+    }
+
+    private func loginSource(_ row: BookSourceRow) -> BookSource? {
+        try? JSONDecoder().decode(BookSource.self, from: JSONEncoder().encode(row))
     }
 }

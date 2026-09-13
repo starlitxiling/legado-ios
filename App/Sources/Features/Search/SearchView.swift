@@ -36,6 +36,8 @@ struct SearchView: View {
                         BookDetailView(results: result.sources, container: container, onRead: onRead)
                     } label: {
                         VStack(alignment: .leading, spacing: 5) {
+                            RemoteImage(url: result.book.coverUrl, origin: result.book.origin)
+                                .frame(width: 48, height: 68)
                             Text(result.book.name ?? "未命名书籍").font(Theme.bookTitle)
                             Text(result.book.author ?? "未知作者")
                             Text("\(result.sources.count) 个来源")

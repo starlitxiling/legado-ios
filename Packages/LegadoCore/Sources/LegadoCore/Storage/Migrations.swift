@@ -186,6 +186,20 @@ enum Migrations {
             try db.create(index: "index_bookmarks_bookName_bookAuthor", on: "bookmarks", columns: ["bookName", "bookAuthor"], unique: false)
             try db.execute(sql: "CREATE INDEX index_readRecord_snapshot ON readRecord(bookName, author, lastRead DESC, deviceId, resolvedAuthor)")
         }
+        migrator.registerMigration("v2") { db in
+            try db.create(table: "txtTocRules") { t in
+                t.primaryKey("id", .integer)
+                t.column("name", .text).notNull()
+                t.column("rule", .text).notNull()
+                t.column("replacement", .text).notNull().defaults(to: "")
+                t.column("example", .text)
+                t.column("serialNumber", .integer).notNull()
+                t.column("enable", .boolean).notNull()
+            }
+            for rule in TxtTocRule.builtIn { try rule.insert(db) }
+        }
+        SourceLoginMigration.register(in: &migrator)
         return migrator
+
     }
 }

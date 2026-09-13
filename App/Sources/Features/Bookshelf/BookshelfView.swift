@@ -42,6 +42,11 @@ struct BookshelfView: View {
         }
         .navigationTitle("书架")
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink {
+                    LocalImportView(database: container.database)
+                } label: { Label("导入本地书", systemImage: "square.and.arrow.down") }
+            }
             ToolbarItem(placement: .topBarLeading) {
                 Menu {
                     Picker("分组", selection: $model.selectedGroupID) {
@@ -76,14 +81,21 @@ struct BookshelfView: View {
     }
 
     private func bookSummary(_ book: BookRow) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(book.name.isEmpty ? "未命名书籍" : book.name).font(Theme.bookTitle)
-            Text(book.author.isEmpty ? "未知作者" : book.author)
-            Text("已读 \(min(max(0, book.durChapterIndex), max(0, book.totalChapterNum))) / 共 \(max(0, book.totalChapterNum)) 章")
-            Text("来源：\(book.originName.isEmpty ? book.origin : book.originName)")
+        NavigationLink {
+            ReaderView(book: book, database: container.database, client: container.httpClient)
+        } label: {
+            VStack(alignment: .leading, spacing: 6) {
+                RemoteImage(url: book.customCoverUrl ?? book.coverUrl, origin: book.origin,
+                            book: try? DiscoveryStorage.book(book))
+                    .frame(width: 60, height: 84)
+                Text(book.name.isEmpty ? "未命名书籍" : book.name).font(Theme.bookTitle)
+                Text(book.author.isEmpty ? "未知作者" : book.author)
+                Text("已读 \(min(max(0, book.durChapterIndex), max(0, book.totalChapterNum))) / 共 \(max(0, book.totalChapterNum)) 章")
+                Text("来源：\(book.originName.isEmpty ? book.origin : book.originName)")
+            }
+            .font(Theme.detail)
+            .foregroundStyle(.secondary)
+            .padding(.vertical, 4)
         }
-        .font(Theme.detail)
-        .foregroundStyle(.secondary)
-        .padding(.vertical, 4)
     }
 }

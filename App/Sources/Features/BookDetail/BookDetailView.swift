@@ -17,11 +17,9 @@ struct BookDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
                 HStack(alignment: .top, spacing: 16) {
-                    Image(systemName: "book.closed")
-                        .font(.system(size: 44))
+                    RemoteImage(url: model.book?.coverUrl ?? model.results.first?.coverUrl,
+                                origin: model.book?.origin ?? model.results.first?.origin, book: model.book)
                         .frame(width: 90, height: 125)
-                        .background(Theme.accent.opacity(0.1), in: RoundedRectangle(cornerRadius: 8))
-                        .accessibilityLabel("封面占位")
                     VStack(alignment: .leading, spacing: 8) {
                         Text(model.book?.name ?? model.results.first?.name ?? "书籍详情").font(.title2)
                         Text(model.book?.author ?? "")

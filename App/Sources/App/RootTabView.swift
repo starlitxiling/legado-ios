@@ -11,10 +11,15 @@ struct RootTabView: View {
                     .id(restoreRevision)
             }
             .tabItem { Label("书架", systemImage: "books.vertical") }
+            NavigationStack {
+                ExploreView(container: container).id(restoreRevision)
+            }
+            .tabItem { Label("发现", systemImage: "safari") }
             placeholder("搜索", image: "magnifyingglass", message: "搜索功能将在后续版本提供")
             NavigationStack {
                 SourcesView(repository: container.bookSources, replaceRules: container.replaceRules,
-                            httpClient: ImportHttpClient())
+                            httpClient: ImportHttpClient(), sourceLogin: container.sourceLogin,
+                            sourceChecker: container.sourceChecker)
                     .id(restoreRevision)
             }
             .tabItem { Label("书源", systemImage: "tray.full") }

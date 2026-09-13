@@ -32,12 +32,14 @@ actor ReaderChapterCache {
     func content(book: Book, chapter: BookChapter, nextURL: String?, source: BookSource?,
                  client: any HttpClient) async throws -> CachedReaderChapter {
         try Task.checkCancellation()
-        let identity = [book.bookUrl ?? "", book.origin ?? "", chapter.url ?? "", String(chapter.index)]
+        var identity = [book.bookUrl ?? "", book.origin ?? "", chapter.url ?? "", String(chapter.index)]
+        if LocalBook.isLocal(book) { identity.append(chapter.variable ?? "") }
         let key = SHA256.hash(data: try JSONEncoder().encode(identity)).map { String(format: "%02x", $0) }.joined()
         let url = directory.appendingPathComponent(key).appendingPathExtension("json")
         if let data = try? Data(contentsOf: url), let cached = try? JSONDecoder().decode(CachedReaderChapter.self, from: data) {
             return cached
         }
+        let source = source ?? (LocalBook.isLocal(book) ? BookSource() : nil)
         guard let source else { throw ReaderError.missingSource }
         let consumerID = UUID()
         return try await withTaskCancellationHandler {

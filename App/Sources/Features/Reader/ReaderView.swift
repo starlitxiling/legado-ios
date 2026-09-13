@@ -47,11 +47,19 @@ struct ReaderView: View {
                 VStack(spacing: 0) {
                     ZStack(alignment: .topLeading) {
                         if let pagination = model.pagination, pagination.pages.indices.contains(model.pageIndex) {
-                            CoreTextReaderPage(pagination: pagination, pageIndex: model.pageIndex)
-                                .frame(width: pagination.contentSize.width, height: pagination.contentSize.height)
-                                .padding(.leading, model.settings.paddingLeft)
-                                .padding(.top, model.settings.paddingTop)
-                                .accessibilityLabel(pagination.pages[model.pageIndex].text.string)
+                            if let imageURL = pagination.pages[model.pageIndex].imageURL {
+                                RemoteImage(url: imageURL, origin: model.book?.origin,
+                                            book: model.book.flatMap { try? DiscoveryStorage.book($0) }, isCover: false)
+                                    .frame(width: pagination.contentSize.width, height: pagination.contentSize.height)
+                                    .padding(.leading, model.settings.paddingLeft)
+                                    .padding(.top, model.settings.paddingTop)
+                            } else {
+                                CoreTextReaderPage(pagination: pagination, pageIndex: model.pageIndex)
+                                    .frame(width: pagination.contentSize.width, height: pagination.contentSize.height)
+                                    .padding(.leading, model.settings.paddingLeft)
+                                    .padding(.top, model.settings.paddingTop)
+                                    .accessibilityLabel(pagination.pages[model.pageIndex].text.string)
+                            }
                         }
                     }
                     .frame(width: pageSize.width, height: pageSize.height, alignment: .topLeading)

@@ -7,6 +7,7 @@ struct ReaderPage {
     let range: NSRange
     let text: NSAttributedString
     let frame: CTFrame?
+    var imageURL: String? = nil
 }
 
 struct ReaderPagination {
@@ -32,14 +33,33 @@ struct Paginator {
     var fontName = "PingFangSC-Regular"
 
     func paginate(title: String, paragraphs: [String], size: CGSize,
-                  settings: ReaderSettings) throws -> ReaderPagination {
+                  settings: ReaderSettings, imageBaseURL: String? = nil) throws -> ReaderPagination {
         let settings = settings.normalized
         let contentSize = CGSize(width: size.width - settings.paddingLeft - settings.paddingRight,
                                  height: size.height - settings.paddingTop - settings.paddingBottom)
         guard contentSize.width.isFinite, contentSize.height.isFinite,
               contentSize.width > 0, contentSize.height > 0 else { throw PaginationError.invalidPageSize }
         let body = paragraphs.joined(separator: "\n")
-        let string = title.isEmpty ? body : title + (body.isEmpty ? "" : "\n" + body)
+        let rawString = title.isEmpty ? body : title + (body.isEmpty ? "" : "\n" + body)
+        let imagePattern = try NSRegularExpression(pattern: #"<img\b[^>]*\bsrc\s*=\s*(?:"([^"]+)"|'([^']+)'|([^\s>]+))[^>]*>"#, options: .caseInsensitive)
+        let raw = rawString as NSString
+        let matches = imagePattern.matches(in: rawString, range: NSRange(location: 0, length: raw.length))
+        var string = "", images: [(offset: Int, url: String)] = [], start = 0
+        for match in matches {
+            let prefix = raw.substring(with: NSRange(location: start, length: match.range.location - start))
+            if !prefix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { string += prefix }
+            let source = (1...3).first { match.range(at: $0).location != NSNotFound }!
+            var url = raw.substring(with: match.range(at: source)).replacingOccurrences(of: "&amp;", with: "&")
+            if let imageBaseURL {
+                url = URL(string: url, relativeTo: URL(string: imageBaseURL))?.absoluteURL.absoluteString ?? url
+            }
+            images.append((offset: (string as NSString).length, url: url))
+            // Android 单图排版用一个空格占据章节字符坐标。
+            string += " "
+            start = NSMaxRange(match.range)
+        }
+        let suffix = raw.substring(from: start)
+        if matches.isEmpty || !suffix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { string += suffix }
         let font = CTFontCreateWithName(fontName as CFString, settings.textSize, nil)
         func paragraphStyle(indent: CGFloat, multiplier: CGFloat) -> CTParagraphStyle {
             var indent = indent
@@ -79,7 +99,14 @@ struct Paginator {
         var pages: [ReaderPage] = [], offset = 0
         while offset < text.length {
             try Task.checkCancellation()
-            let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: offset, length: 0), path, nil)
+            if let image = images.first(where: { $0.offset == offset }) {
+                let range = NSRange(location: offset, length: 1)
+                pages.append(ReaderPage(range: range, text: text.attributedSubstring(from: range), frame: nil, imageURL: image.url))
+                offset += 1
+                continue
+            }
+            let boundary = images.first(where: { $0.offset > offset })?.offset ?? text.length
+            let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: offset, length: boundary - offset), path, nil)
             let visible = CTFrameGetVisibleStringRange(frame)
             guard visible.length > 0 else { throw PaginationError.noVisibleCharacters }
             let range = NSRange(location: offset, length: visible.length)

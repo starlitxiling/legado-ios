@@ -26,6 +26,7 @@ public final class JsEngine: SelectorEngine {
     public var baseUrl: String
     public var bindings: [String: Any]
     public var libraryInitializer: ((JSContext) throws -> Void)?
+    public var sourceBindingInstaller: ((JSContext) throws -> Void)?
     public var logger: (String) -> Void
     public var timeZone: TimeZone
     public var httpClient: any HttpClient
@@ -66,6 +67,7 @@ public final class JsEngine: SelectorEngine {
             context.scriptSession = session
         }
         for (key, value) in values { session.context.setObject(session.host.bridge(value), forKeyedSubscript: key as NSString) }
+        try sourceBindingInstaller?(session.context)
         return try run(rule, in: session)
     }
 
@@ -120,6 +122,7 @@ public final class JsEngine: SelectorEngine {
             let mapped = adapt?.call(withArguments: [context.objectForKeyedSubscript(key)!])
             context.setObject(mapped, forKeyedSubscript: key as NSString)
         }
+        try sourceBindingInstaller?(context)
         try libraryInitializer?(context)
         if let exception = context.exception { throw JsEngineError.exception(exception.toString()) }
         return JsSession(context: context, host: host)
@@ -130,6 +133,7 @@ public final class JsEngine: SelectorEngine {
                             httpClient: httpClient, cookieStore: cookieStore, cacheManager: cacheManager,
                             networkSource: networkSource, rateLimiter: rateLimiter, downloadStore: downloadStore)
         copy.libraryInitializer = libraryInitializer
+        copy.sourceBindingInstaller = sourceBindingInstaller
         copy.networkConcurrency = networkConcurrency
         return copy
     }

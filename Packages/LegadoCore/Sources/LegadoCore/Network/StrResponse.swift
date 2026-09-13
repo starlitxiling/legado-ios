@@ -12,4 +12,9 @@ public struct StrResponse: Sendable {
         self.raw = raw
         body = try ResponseDecoder.decode(raw.body, headers: raw.headers, charset: charset)
     }
+
+    public init(raw: HttpResponse, body: String) {
+        self.raw = raw
+        self.body = body
+    }
 }

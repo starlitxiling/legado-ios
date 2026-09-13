@@ -22,7 +22,7 @@ public final class WebBook {
                 precisionSearch: Bool = false, tocCountWords: Bool = false,
                 now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }) {
         self.source = source
-        self.client = client
+        self.client = (client as? any SourceSessionClientProviding)?.client(for: source) ?? client
         self.processor = ContentProcessor(rules: replaceRules)
         self.now = now
         self.precisionSearch = precisionSearch
@@ -79,6 +79,12 @@ public final class WebBook {
     }
 
     public func chapterList(book: inout Book) async throws -> [BookChapter] {
+        if LocalBook.isLocal(book) {
+            let chapters = try LocalBook.chapterList(book: book)
+            book.totalChapterNum = chapters.count
+            book.latestChapterTitle = chapters.last?.title
+            return chapters
+        }
         let context = WebBookContext(source: source, client: client, book: book, cookies: cookies)
         let chapters = try await BookChapterList.load(context: context, book: book, tocCountWords: tocCountWords)
         let timestamp = now()
@@ -144,6 +150,7 @@ final class WebBookContext {
         let engine = JsEngine(baseUrl: baseURL, httpClient: client, cookieStore: cookies,
             networkSource: .init(key: source.bookSourceUrl, enabledCookieJar: source.enabledCookieJar ?? true,
                                  concurrentRate: source.concurrentRate), rateLimiter: limiter)
+        (client as? any SourceScriptClient)?.configureSourceBindings(engine)
         if let header = source.header, !header.isEmpty {
             let text = header.hasPrefix("@js:") ? ruleText(try engine.evaluateScript(String(header.dropFirst(4)))) : header
             engine.networkSource.headers = try JSONDecoder().decode([String: String].self, from: Data(text.utf8))
@@ -179,7 +186,11 @@ final class WebBookContext {
         if let book { values["book"] = try Self.object(book) }
         values["source"] = try Self.object(source)
         let executor = try AnalyzeUrlExecutor(url, engine: engine(baseURL: baseURL), bindings: values)
-        let response = try await executor.getStrResponse()
+        var response = try await executor.getStrResponse()
+        if let session = client as? any SourceScriptClient {
+            let checked = try await session.checkResponse(StrResponse(raw: response.raw, body: response.body))
+            response = .init(raw: checked.raw, body: checked.body, callTime: response.callTime)
+        }
         try Task.checkCancellation()
         guard response.isSuccessful else { throw WebBookError.httpStatus(response.code, response.url) }
         return response

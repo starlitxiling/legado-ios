@@ -27,6 +27,7 @@ public enum BookContent {
                           imageStyle: book.readConfig?.imageStyle ?? rule.imageStyle ?? (context.source.bookSourceType == 2 ? "FULL" : nil),
                           payAction: rule.payAction)
         }
+        if LocalBook.isLocal(book) { return try finish(LocalBook.content(book: book, chapter: chapter), chapter: chapter) }
         if chapter.isVolume && (chapter.url ?? "").hasPrefix(chapter.title ?? "") { return try finish("", chapter: chapter) }
         if (rule.content ?? "").isEmpty { return try finish(chapter.url ?? "", chapter: chapter) }
         if !(rule.webJs ?? "").isEmpty || !(rule.sourceRegex ?? "").isEmpty {
