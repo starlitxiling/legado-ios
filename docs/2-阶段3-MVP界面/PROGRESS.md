@@ -1,11 +1,11 @@
 # 进度（阶段 3 · MVP 界面，轮次 2）
 
-> 新会话先读本文件。最后更新：2026-09-13 23:15（本机时钟）。
+> 新会话先读本文件。最后更新：2026-09-14 16:10（本机时钟）。
 
 ## 1. 当前位置
 
-- 阶段 3 轮次 2，在 `ios` 分支直接开发。起点 commit：阶段 2 收口 `d1b64fd21`。
-- 环境：Xcode 26.6，iOS 26.5 SDK 头文件在但 **iOS 平台组件未安装**（`xcodebuild` 报 iOS 26.5 is not installed），正在用 `xcodebuild -downloadPlatform iOS` 下载；XcodeGen 2.46.0 已装。
+- 阶段 3 轮次 2，在 `ios` 分支直接开发。起点 `d1b64fd21`；A1–A6 已提交 `bd4b545b4`（macOS 侧 333 测试 0 失败，iOS 编译待验证）。
+- 环境：Xcode 26.6，iOS 26.5 SDK 头文件在但 **iOS 平台组件未安装**；`xcodebuild -downloadPlatform iOS`（8.5 GB）第一次在 91% 被后台任务生命周期终止，第二次因磁盘不足失败，清理 /tmp 隔离副本与 tools 下 .build 后（可用 17 GB）以 `nohup` 脱离重下（日志 `/tmp/download-ios-platform-3.log`）；XcodeGen 2.46.0 已装。
 - 人类已通过 `/goal` 授权连续推进到应用可构建。
 
 ## 2. 任务表
@@ -30,4 +30,4 @@ A1 实现会话 `01a09968-252d-7c82-9638-77e09cab5232`。
 
 ## 4. 下一步与未决
 
-- 合并态验证通过：LegadoCore 276 + appcore-check 57 = 333 项测试 0 失败，工程重生成含 38 个源文件。A1–A6 先按此提交（macOS 侧验证），**iOS 编译尚未验证**：等平台组件下载完成后主会话代跑 `xcodebuild` 与 `tools/build-ipa.sh`，报错则派回对应会话修。
+- **阶段 3 完成**：iOS 26.5 平台组件装好后，`xcodebuild build` 通过、`tools/build-ipa.sh` 产出 `dist/Legado-1.0-bd4b545b4.ipa`（3.5 MB）、模拟器 `xcodebuild test` 通过、模拟器安装启动冒烟通过（截图书架空态 + 四 Tab）。SUMMARY 已写；收口配置（dist 忽略、Package 资源警告）由 Codex 处理后提交。

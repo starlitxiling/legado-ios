@@ -3,6 +3,7 @@
 
 # Xcode
 DerivedData/
+dist/
 xcuserdata/
 *.xcuserstate
 *.xcscmblueprint

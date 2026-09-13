@@ -14,6 +14,7 @@ let package = Package(
         .target(name: "LegadoCore", dependencies: [.product(name: "SwiftSoup", package: "SwiftSoup"),
                                                   .product(name: "Kanna", package: "Kanna"),
                                                   .product(name: "GRDB", package: "GRDB.swift")],
+                exclude: ["Resources"],
                 swiftSettings: [.swiftLanguageMode(.v5)]),
         .testTarget(name: "LegadoCoreTests", dependencies: ["LegadoCore"],
                     swiftSettings: [.swiftLanguageMode(.v5)])
