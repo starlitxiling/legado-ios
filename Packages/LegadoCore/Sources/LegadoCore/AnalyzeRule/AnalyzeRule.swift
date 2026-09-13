@@ -20,6 +20,7 @@ public final class AnalyzeRule {
     private var cache: [String: [SourceRule]] = [:]
     private var jsoupDocument: Element?
     private let replacer = RuleReplace()
+    private var isURLString = false
 
     /// 规格 §4、§8：未注入的非正则引擎显式报错；变量只写入提供的宿主。
     public init(content: Any? = nil, engines: [RuleMode: any SelectorEngine] = [:],
@@ -104,7 +105,10 @@ public final class AnalyzeRule {
     }
 
     /// 规格 §4：默认执行 HTML4 反转义；URL 后处理留给宿主集成层。
-    public func getString(_ rule: String?, unescape: Bool = true, content replacementContent: Any? = nil) throws -> String {
+    public func getString(_ rule: String?, unescape: Bool = true, content replacementContent: Any? = nil, isURL: Bool = false) throws -> String {
+        let previous = isURLString
+        isURLString = isURL
+        defer { isURLString = previous }
         let result = try evaluate(cached(rule), operation: .string, content: replacementContent)
         let text = result == nil || result is NSNull ? "" : ruleText(result)
         return unescape ? try HTML4Entities.unescape(text) : text
@@ -198,6 +202,9 @@ public final class AnalyzeRule {
     }
 
     private func dispatch(_ rule: String, mode: RuleMode, content: Any, operation: RuleOperation) throws -> Any? {
+        if isURLString && mode == .default && operation == .string {
+            return (try dispatch(rule, mode: mode, content: content, operation: .stringList) as? [String])?.first
+        }
         let selector = engine(mode)
         if mode == .js { return try selector.evaluate(rule, content: content, operation: .string, context: self) }
         let content = JsEngine.nativeValue(content) ?? NSNull()

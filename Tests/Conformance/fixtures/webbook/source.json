@@ -1,0 +1,22 @@
+{
+  "bookSourceUrl": "https://example.invalid",
+  "bookSourceName": "离线书源",
+  "searchUrl": "/search?key={{key}}&page={{page}}",
+  "ruleSearch": {
+    "bookList": "class.book", "name": "class.name@text", "author": "class.author@text",
+    "bookUrl": "class.name@href", "coverUrl": "tag.img@src", "kind": "class.kind@text"
+  },
+  "ruleBookInfo": {
+    "name": "tag.h1@text", "author": "class.author@text", "intro": "class.intro@text",
+    "tocUrl": "class.toc@href", "lastChapter": "class.latest@text", "coverUrl": "tag.img@src"
+  },
+  "ruleToc": {
+    "chapterList": "class.chapter", "chapterName": "tag.a@text", "chapterUrl": "tag.a@href",
+    "isVip": "tag.a@data-vip", "isPay": "tag.a@data-pay", "updateTime": "tag.a@data-tag",
+    "nextTocUrl": "class.next@href"
+  },
+  "ruleContent": {
+    "content": "class.content@html", "title": "tag.h1@text", "nextContentUrl": "class.next@href",
+    "replaceRegex": "##广告##", "imageStyle": "FULL"
+  }
+}

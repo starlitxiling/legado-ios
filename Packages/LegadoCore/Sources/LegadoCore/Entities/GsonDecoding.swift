@@ -263,12 +263,7 @@ indirect enum GsonValue: Decodable {
     static func parse(_ data: Data) throws -> GsonValue {
         // Foundation 验证结构；下面的词法读取只保留它不公开的数字字面量和对象顺序。
         _ = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
-        let text = String(decoding: data, as: UTF8.self)
-        let pattern = #""(?:[^"\\]|\\.)*"|-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?|true|false|null|[\[\]{},:]"#
-        let regex = try NSRegularExpression(pattern: pattern)
-        let tokens = regex.matches(in: text, range: NSRange(text.startIndex..., in: text)).map {
-            String(text[Range($0.range, in: text)!])
-        }
+        let tokens = tokenizeValidatedJSON(data)
         var index = 0
         func take() throws -> String {
             guard index < tokens.count else { throw corrupt() }
@@ -316,5 +311,41 @@ indirect enum GsonValue: Decodable {
         let value = try read()
         guard index == tokens.count else { throw corrupt() }
         return value
+    }
+
+    // 输入已由 Foundation 验证；逐字节扫描避免长字符串耗尽 ICU 正则的匹配栈。
+    private static func tokenizeValidatedJSON(_ data: Data) -> [String] {
+        let bytes = Array(data)
+        var offset = bytes.starts(with: [0xEF, 0xBB, 0xBF]) ? 3 : 0
+        var tokens: [String] = []
+        while offset < bytes.count {
+            let start = offset
+            switch bytes[offset] {
+            case 9, 10, 13, 32:
+                offset += 1
+                continue
+            case 34:
+                offset += 1
+                while offset < bytes.count {
+                    let byte = bytes[offset]
+                    offset += 1
+                    if byte == 92 { offset += 1 }
+                    else if byte == 34 { break }
+                }
+            case 91, 93, 123, 125, 44, 58:
+                offset += 1
+            default:
+                scanPrimitive: while offset < bytes.count {
+                    switch bytes[offset] {
+                    case 9, 10, 13, 32, 91, 93, 123, 125, 44, 58:
+                        break scanPrimitive
+                    default:
+                        offset += 1
+                    }
+                }
+            }
+            tokens.append(String(decoding: bytes[start..<offset], as: UTF8.self))
+        }
+        return tokens
     }
 }
