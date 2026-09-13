@@ -30,16 +30,25 @@ private final class JavaElement: NSObject, JavaElementExport {
     func attr(_ name: String) -> String { read { try element.attr(name) } }
 }
 
-/// 离线宿主；所有跨平台服务均通过显式异常留桩。
+/// 规则与平台宿主；网络服务通过独立依赖对象注入。
 public final class JavaHost {
     private let parser: AnalyzeRule?
     private let timeZone: TimeZone
     private let logger: (String) -> Void
+    private let network: JavaHostNetwork
 
     public init(parser: AnalyzeRule?, timeZone: TimeZone, logger: @escaping (String) -> Void) {
         self.parser = parser
         self.timeZone = timeZone
         self.logger = logger
+        self.network = JavaHostNetwork(engine: JsEngine(timeZone: timeZone, logger: logger))
+    }
+
+    init(parser: AnalyzeRule?, timeZone: TimeZone, logger: @escaping (String) -> Void, network: JavaHostNetwork) {
+        self.parser = parser
+        self.timeZone = timeZone
+        self.logger = logger
+        self.network = network
     }
 
     func install(in context: JSContext) {
@@ -54,24 +63,76 @@ public final class JavaHost {
         context.evaluateScript("""
         (function(invoke) {
             globalThis.java = {};
+            function javaMap(values, ignoreCase) {
+                const owns = key => Object.prototype.hasOwnProperty.call(values, key);
+                function find(key) {
+                    key = String(key);
+                    if (owns(key)) return key;
+                    return ignoreCase ? Object.keys(values).find(name => name.toLowerCase() === key.toLowerCase()) : undefined;
+                }
+                return new Proxy(values, {get: function(target, key) {
+                    if (key === 'get') return name => { const found = find(name); return found === undefined ? null : values[found]; };
+                    if (key === 'containsKey') return name => find(name) !== undefined;
+                    if (key === 'keySet') return () => Object.keys(values);
+                    if (key === 'size') return () => Object.keys(values).length;
+                    return Reflect.get(target, key);
+                }, has: (target, key) => ['get','containsKey','keySet','size'].includes(key) || Reflect.has(target, key)});
+            }
+            function callable(value) {
+                return new Proxy(() => value, {get: function(target, key) {
+                    if (key === Symbol.toPrimitive) return () => value !== null && typeof value === 'object' ? String(value) : value;
+                    if (key === 'toString') return () => String(value);
+                    if (key === 'valueOf' || key === 'toJSON') return () => value;
+                    if (value !== null && value !== undefined && key in Object(value)) {
+                        const member = value[key];
+                        return typeof member === 'function' ? member.bind(value) : member;
+                    }
+                    return Reflect.get(target, key);
+                }});
+            }
+            function response(value) {
+                if (Array.isArray(value)) return value.map(response);
+                if (!value || !value.__strResponse) return value;
+                const headers = javaMap(value.headers, true);
+                const result = {
+                    body: callable(value.body), url: callable(value.url), code: callable(value.code),
+                    headers: callable(headers), header: name => headers.get(name), raw: callable(value.raw),
+                    callTime: value.callTime, isSuccessful: callable(value.isSuccessful)
+                };
+                if (value.__connectionResponse) {
+                    const cookies = javaMap(value.cookies, false);
+                    result.cookies = callable(cookies);
+                    result.cookie = name => cookies.get(name);
+                    result.statusCode = callable(value.code);
+                }
+                return result;
+            }
             const methods = ['get','put','getString','getStringList','getElement','getElements','setContent',
                 'timeFormat','log','toast','md5Encode','base64Decode','toNumChapter','aesBase64DecodeToString',
-                'encodeURI','ajax','post','head','connect','ajaxAll','getCookie','webView','readFile','downloadFile'];
+                'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','readFile','downloadFile','cacheFile'];
             methods.forEach(function(name) {
                 java[name] = function() {
                     const args = Array.prototype.slice.call(arguments);
+                    const headerIndex = name === 'post' ? 2 : (name === 'get' || name === 'head' ? 1 : -1);
+                    if (headerIndex >= 0 && args[headerIndex] instanceof Map) args[headerIndex] = Object.fromEntries(args[headerIndex]);
                     if (name === 'put') {
                         if (args.length !== 2) throw new Error('未实现：java.put 重载');
                         args[0] = String(args[0]); args[1] = String(args[1]);
                     }
-                    const value = invoke(name, args);
+                    const value = response(invoke(name, args));
                     return name === 'setContent' ? java : value;
                 };
             });
-            ['cookie','cache'].forEach(function(name) {
+            const objects = {cookie:['getCookie','getKey','setCookie','replaceCookie','removeCookie'],
+                cache:['put','get','getInt','getLong','getDouble','getFloat','delete']};
+            Object.keys(objects).forEach(function(name) {
                 globalThis[name] = {};
-                ['get','put','remove','clear','getCookie','setCookie','removeCookie'].forEach(function(method) {
-                    globalThis[name][method] = function() { throw new Error('未实现：'+name+'.'+method); };
+                objects[name].forEach(function(method) {
+                    globalThis[name][method] = function() {
+                        const args = Array.prototype.slice.call(arguments);
+                        if (name === 'cache' && method === 'put' && args.length >= 2) args[1] = String(args[1]);
+                        return invoke(name+'.'+method,args);
+                    };
                 });
             });
         })(__legadoHost);
@@ -94,6 +155,11 @@ public final class JavaHost {
     }
 
     private func call(_ method: String, _ arguments: [Any]) throws -> Any? {
+        if method.hasPrefix("cookie.") || method.hasPrefix("cache.") ||
+            ["ajax", "ajaxAll", "ajaxTestAll", "connect", "post", "head", "getCookie", "downloadFile", "cacheFile"].contains(method) ||
+            (method == "get" && arguments.count >= 2) {
+            return try network.call(method, arguments)
+        }
         func value(_ index: Int) -> Any? { index < arguments.count ? arguments[index] : nil }
         func string(_ index: Int) -> String { ruleText(value(index)) }
         func boolean(_ index: Int) -> Bool? {

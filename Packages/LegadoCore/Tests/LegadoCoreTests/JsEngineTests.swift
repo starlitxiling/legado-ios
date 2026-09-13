@@ -77,7 +77,7 @@ final class JsEngineTests: XCTestCase {
 
     // rule-engine.md:265-280：result 与 src 分开绑定，page 尝试转整数。
     func testBindingsAndHosts() throws {
-        let engine = JsEngine(baseUrl: "https://example.invalid", timeZone: TimeZone(secondsFromGMT: 0)!)
+        let engine = JsEngine(baseUrl: "https://example.invalid", timeZone: TimeZone(secondsFromGMT: 0)!, httpClient: ReplayHttpClient(), cacheManager: CacheManager(directory: nil))
         let store = RuleVariableStore(name: "书名")
         let parser = AnalyzeRule(content: "original", engines: [.js: engine], book: store)
         parser.setLocal("page", value: "2")
@@ -88,7 +88,7 @@ final class JsEngineTests: XCTestCase {
         XCTAssertEqual(try parser.getString("@js:java.encodeURI('a +~*')"), "a+%2B%7E*")
         XCTAssertEqual(try parser.getString("@js:java.timeFormat(0)"), "1970/01/01 00:00")
         XCTAssertEqual(try parser.getString("@js:java.log('ok')"), "ok")
-        XCTAssertThrowsError(try parser.getString("@js:java.ajax('https://example.invalid')"), "已知差异：docs/spec/js-host-compat.md 的离线宿主桩")
+        XCTAssertNotNil(try parser.getString("@js:java.ajax('https://example.invalid')"))
     }
 
     // 已知差异：docs/spec/js-host-compat.md；这些断言记录边界，不表示已对齐 Rhino。
@@ -114,7 +114,7 @@ final class JsEngineTests: XCTestCase {
     }
 
     func testHostBoundariesAndNestedEvaluation() throws {
-        let engine = JsEngine()
+        let engine = JsEngine(httpClient: ReplayHttpClient(), cacheManager: CacheManager(directory: nil))
         let parser = AnalyzeRule(content: "<p>A</p>", engines: [.js: engine, .default: AnalyzeByJSoup()])
         XCTAssertEqual(try parser.getString("@js:java.getString('tag.p@text')"), "A")
         XCTAssertEqual(try parser.getString("@js:java.getElements('tag.p')[0].text()"), "A")
@@ -128,8 +128,8 @@ final class JsEngineTests: XCTestCase {
         XCTAssertThrowsError(try parser.getString("@js:java.base64Decode('!')"))
         // 已知差异：docs/spec/js-host-compat.md 的离线宿主桩。
         XCTAssertThrowsError(try parser.getString("@js:cookie.get('x')"))
-        XCTAssertThrowsError(try parser.getString("@js:cache.put('x','y')"))
-        XCTAssertEqual(try parser.getString("@js:try { java.post('x'); } catch(e) { e.message; }"), "未实现：java.post")
+        XCTAssertNoThrow(try parser.getString("@js:cache.put('x','y')"))
+        XCTAssertEqual(try parser.getString("@js:try { java.post('x'); } catch(e) { e.message; }"), "JavaScript: post 参数数量无效")
         XCTAssertEqual(try parser.getString("@js:java.aesBase64DecodeToString('cnJ+iB7c/QEApxhoeQm1ZQ==','0123456789abcdef','AES/ECB/NoPadding','')"), "0123456789abcdef")
         XCTAssertThrowsError(try parser.getString("@js:java.aesBase64DecodeToString('AA==','short','AES/CBC/PKCS5Padding','')"))
     }
