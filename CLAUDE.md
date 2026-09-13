@@ -95,7 +95,7 @@ Codex 任务的硬规则以 `~/.claude/skills/codex-subagent/SKILL.md` 为单一
 写任务书时把下面相关的条目抄给子 agent，省得它每次重新摸。
 
 - **项目**：Legado（阅读）的 iOS 版，纯 Swift 重写。路线与决策见 `docs/0-iOS适配规划/PLAN.md` §7：不复用 Android 代码，Kotlin 端当规格，两端靠一致性测试语料对齐。
-- **技术栈**：Swift 6.0 工具链（`swift-tools-version: 6.0`，语言模式保持 5，因 SwiftSoup 2.13.9 要求 6.0；本机 Xcode 26.6 / Swift 6.3）/ SwiftUI；规则引擎 JS 宿主用 JavaScriptCore；HTML 解析 SwiftSoup（对齐 jsoup 1.23.2 语义）、XPath 用 Kanna（libxml2）；数据库 GRDB；网络 URLSession。**最低 iOS 17，Universal**（iPhone 优先布局，iPad 只保证可用）。分发目标为自签侧载，不以 App Store 过审为设计约束。
+- **技术栈**：Swift 6.1 工具链（`swift-tools-version: 6.1`，语言模式保持 5；SwiftSoup 2.13.9 要求 6.0、GRDB 7.11.1 要求 6.1；本机 Xcode 26.6 / Swift 6.3）/ SwiftUI；规则引擎 JS 宿主用 JavaScriptCore；HTML 解析 SwiftSoup（对齐 jsoup 1.23.2 语义）、XPath 用 Kanna（libxml2）；数据库 GRDB；网络 URLSession。**最低 iOS 17，Universal**（iPhone 优先布局，iPad 只保证可用）。分发目标为自签侧载，不以 App Store 过审为设计约束。
 - **目录规划**（规划中，尚未建立）：
 
   | 路径 | 用途 |
