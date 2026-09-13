@@ -56,3 +56,16 @@
 - `getVerificationCode` 展示验证码页面并等待非空输入；`startBrowser` 展示后即返回；`startBrowserAwait` 等用户完成后返回当前 document，默认再用普通 HTTP 重取原 URL，可用第三参数 false 关闭重取。取消、退后台均结束等待。交互界面同时限一个，冲突明确报错。
 - `java.getWebViewUA()` 使用可注入提供者；App 在前台创建未设置 customUserAgent 的 WKWebView，读取 `navigator.userAgent`，返回真实 WebKit UA。对应 Kotlin `JsExtensions.kt:791-792`，不使用固定 Chrome UA 代替。
 - WebKit 保留平台 TLS 校验，不复刻 Android 的忽略 SSL 错误行为；请求附加头不保证传给后续子资源，合成 StrResponse 不保留 Android priorResponse 重定向链。App UI 和 WebKit 真机行为须由主会话构建及设备验证。
+
+## B17：局域网 WebSocket
+
+- 对照 Android `cb664b84d` 的 `web/WebSocketServer.kt`、`web/socket/BookSourceDebugWebSocket.kt`、`RssSourceDebugWebSocket.kt`、`BookSearchWebSocket.kt` 与 `api/controller/BookSourceController.kt`。在 B14 的同一个 NWListener 端口升级，原 HTTP API 保持原处理路径。
+- `/bookSourceDebug` 的首消息是 `{"tag":"书源 URL","key":"关键字或调试链接"}`；`/rssSourceDebug` 是 `{"tag":"订阅源 URL"}`；`/searchBook` 是 `{"key":"关键字"}`。同一连接的后续业务消息忽略，文本与二进制消息均按 JSON 解析。
+- 调试回复为纯文本日志，过滤状态 10、20、30、40；状态 -1、1000 后发送正常关闭帧，原因「调试结束」。搜索每次回复累计 SearchBook JSON 数组，结束原因 `Search finish`。缺少参数回复「不能为空」，源不存在回复「书源不存在」或「订阅源不存在」。非法 JSON 使用 1008，内部调试失败使用 1011。
+- 令牌值及是否必需复用 HTTP 配置。浏览器通过 `Sec-WebSocket-Protocol: legado, legado.token.<去填充的 base64url UTF-8 令牌>` 鉴权，响应只选择 `legado`。关闭令牌要求时仍需 `legado` 子协议。与 Android 一致，WebSocket 不使用 HTTP 的 `x-legado-token` 请求头。未通过鉴权返回 HTTP 403，未知 socket 路径返回 404。
+- 握手使用 SHA-1 与 Base64 计算 Accept；帧层支持掩码、文本、二进制、跨帧 UTF-8、126/127 扩展长度、穿插 ping/pong 和关闭帧。客户端帧必须掩码，消息上限 4 MiB；协议错误、无效 UTF-8、超限分别使用 1002、1007、1009。未协商扩展，拒绝 RSV 位，不支持压缩。
+- 首业务消息期限 10 秒，收到请求后每 30 秒发送 ping。正常主动关闭等待对端 close，最多 5 秒；被动关闭回送对端 close 后释放连接。帧协议错误立即进入不可恢复状态，清空解码缓冲，不再读取或处理远端帧，错误 close 写完后释放连接。断开、退后台、停止服务都取消调试和搜索任务。升级后取消 HTTP 的 120 秒总期限。
+- B8 的 SourceDebugger 直接提供书源日志。RSS 使用 B11 的 RssService 解析首个栏目及首篇文章，输出获取成功、列表大小、首项标题/时间/描述/图片/链接诊断、无时间戳空行和内容页起止日志；日志由解析过程发出，沿用 Debug 的时间戳及树形前缀。错误使用 Swift 描述，不复刻 Kotlin 堆栈文本。
+- 搜索读取保存的 searchScope、threadCount、precisionSearch：支持分组、单源、全部，范围无匹配时回退全部启用源；按配置并发，每源整体 30 秒超时。空批次仍回调累计结果，同名同作者合并，按精确匹配、分类包含、书名/作者包含、其他排序，前三类同级按来源数降序。Android 此 socket 入口只在首消息建立搜索任务，第一页搜索完成即关闭，不支持后续页；iOS 保持相同生命周期。每个调试连接拥有独立日志流，不复刻 Android 全局 Debug 回调独占及「调试通道占用中」提示。
+- 自写页面 `/debug.html` 提供书源 URL、关键字、令牌输入和实时日志；令牌不写入浏览器持久化存储，停止或离开页面关闭连接。
+- 验证使用工作区内 SwiftPM、假 HTTP 客户端和可注入会话发送回调，无真实外网请求。iOS 构建、浏览器至设备的真实 TCP 升级和后台切换仍需主会话验证；未运行 xcodebuild 或 XcodeGen。

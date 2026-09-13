@@ -16,6 +16,8 @@ targets:
     platform: iOS
     sources:
       - Sources
+      - path: Resources/AlternateIcons
+        buildPhase: resources
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.legado.ios
@@ -26,6 +28,34 @@ targets:
       path: Info.plist
       properties:
         CFBundleDisplayName: 阅读
+        CFBundleIcons:
+          CFBundleAlternateIcons:
+            launcher1:
+              CFBundleIconFiles: [launcher1]
+            launcher2:
+              CFBundleIconFiles: [launcher2]
+            launcher3:
+              CFBundleIconFiles: [launcher3]
+            launcher4:
+              CFBundleIconFiles: [launcher4]
+            launcher5:
+              CFBundleIconFiles: [launcher5]
+            launcher6:
+              CFBundleIconFiles: [launcher6]
+        CFBundleIcons~ipad:
+          CFBundleAlternateIcons:
+            launcher1:
+              CFBundleIconFiles: [launcher1]
+            launcher2:
+              CFBundleIconFiles: [launcher2]
+            launcher3:
+              CFBundleIconFiles: [launcher3]
+            launcher4:
+              CFBundleIconFiles: [launcher4]
+            launcher5:
+              CFBundleIconFiles: [launcher5]
+            launcher6:
+              CFBundleIconFiles: [launcher6]
         UIBackgroundModes: [audio, fetch]
         BGTaskSchedulerPermittedIdentifiers: [io.legado.ios.refresh]
         UILaunchScreen: {}

@@ -16,6 +16,7 @@
 | 2 `b603da0c2` | B4 WebView 抓取与内置浏览器；B5 纯 JS 书源；B6 听书 TTS；B7 MOBI / PDF | 3 / 4 / 10 / 4 |
 | 3 `2ebc26ecf` | B8 书源编辑与管理进阶；B9 阅读器进阶；B10 书架进阶与下载 | 5 / 5 / 7 |
 | 4 `981988159` | B11 RSS；B12 漫画 / 音频源；B13 备份上传；B13b 设置全集；B14 局域网 Web；B15 实体补齐 | 7 / 4 / 5 / 7 / 8 / 7 |
+| 补 | B16 备用启动图标（VectorDrawable 栅格化工具 `tools/icon-render`）；B17 WebSocket 调试 / 搜索 | — / 7 |
 
 **关键设计决策**：
 
@@ -31,13 +32,12 @@
 ## 局限性
 
 - **未做真机 / 模拟器交互验证**（人类指示不急）：后台播放、锁屏控制、BGAppRefreshTask、WKWebView 真实站点行为、翻页动画手感、局域网服务实际连通性均只有单元测试与 `xcodebuild` 编译保证。
-- **仍缺**：B14 的 WebSocket 调试 / 搜索接口；备用启动图标的栅格素材（Android 只有 VectorDrawable）；`customHosts`、`localPassword`（备份加密）只存偏好未生效；漫画 / 音频的视频类型只有占位。
+- **仍缺**：`customHosts`、`localPassword`（备份加密）只存偏好未生效；漫画 / 音频的视频类型与文件下载类型只有占位；WebSocket 搜索入口与 Android 一样只推第一页。
 - **复审同模型**：全部复审为 Codex 独立上下文，本会话项目级 Opus agent 定义未加载，Opus 交叉复审仍待补。
 - 磁盘长期只剩 1–3 GB，`DerivedData` 多次删除重建；`~/.codex` 会话日志约 2 GB 未清理。
 
 ## 后续 TODO
 
-1. B16 备用图标素材（VectorDrawable 栅格化）与 B17 WebSocket（已派出）。
-2. 真机自签冒烟：按 `tools/build-ipa.sh` 打包，逐功能走一遍并回填 `docs/spec/*-compat.md`。
-3. Opus@high 交叉复审规则引擎核心与 JS 宿主层。
-4. `customHosts` 接入网络层、备份加密。
+1. 真机自签冒烟：按 `tools/build-ipa.sh` 打包，逐功能走一遍并回填 `docs/spec/*-compat.md`。
+2. Opus@high 交叉复审规则引擎核心与 JS 宿主层。
+3. `customHosts` 接入网络层、备份加密。

@@ -14,44 +14,73 @@ public struct RssParser {
 
     public func parse(_ body: String, source: RssSource, sort: String = "", baseURL: String,
                       engine: JsEngine? = nil) throws -> RssPage {
+        try parse(body, source: source, sort: sort, baseURL: baseURL, engine: engine, debugLog: nil)
+    }
+
+    public func parse(_ body: String, source: RssSource, sort: String = "", baseURL: String,
+                      engine: JsEngine? = nil, debugLog: ((String) -> Void)?) throws -> RssPage {
         guard let rule = source.ruleArticles?.trimmingCharacters(in: .whitespacesAndNewlines), !rule.isEmpty else {
+            debugLog?("⇒列表规则为空, 使用默认规则解析")
             let delegate = FeedXMLDelegate(source: source, sort: sort, baseURL: baseURL)
             let parser = XMLParser(data: Data(body.utf8))
             parser.shouldResolveExternalEntities = false
             parser.delegate = delegate
             guard parser.parse() else { throw parser.parserError ?? RssError.invalidXML }
+            if let first = delegate.articles.first {
+                for (label, value) in [("标题", first.title), ("时间", first.pubDate ?? "null"),
+                                       ("描述", first.description ?? "null"), ("图片url", first.image ?? "null"),
+                                       ("文章链接", first.link)] {
+                    debugLog?("┌获取\(label)"); debugLog?("└\(value)")
+                }
+            }
             return RssPage(articles: delegate.articles, nextPageURL: nil)
         }
         let variables = RuleVariableStore()
         let parser = Self.analyzer(body, baseURL: baseURL, engine: engine, ruleData: variables)
+        debugLog?("┌获取列表")
         let items = try parser.getElements(rule.hasPrefix("-") ? String(rule.dropFirst()) : rule)
+        debugLog?("└列表大小:\(items.count)")
         var next: String?
+        if source.ruleNextPage?.isEmpty == false { debugLog?("┌获取下一页链接") }
         if source.ruleNextPage?.uppercased() == "PAGE" { next = baseURL }
         else if let value = source.ruleNextPage, !value.isEmpty {
             let extracted = try parser.getString(value)
             if !extracted.isEmpty { next = Self.absolute(extracted, base: baseURL) }
         }
+        if source.ruleNextPage?.isEmpty == false { debugLog?("└\(next ?? "")") }
         var articles: [RssArticle] = []
         let listVariables = variables.variables
-        for item in items {
+        for (index, item) in items.enumerated() {
+            func log(_ message: String) { if index == 0 { debugLog?(message) } }
             for key in Array(variables.variables.keys) { variables.setValue(nil, for: key) }
             for (key, value) in listVariables { variables.setValue(value, for: key) }
             parser.setContent(item)
+            log("┌获取标题")
             let title = try parser.getString(source.ruleTitle)
-            guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
+            log("└\(title)")
             var article = RssArticle(origin: source.sourceUrl, title: title)
             article.sort = sort; article.type = source.type
+            log("┌获取时间")
             article.pubDate = try parser.getString(source.rulePubDate)
+            log("└\(article.pubDate ?? "")")
+            log("┌获取描述")
             article.description = source.ruleDescription?.isEmpty == false ? try parser.getString(source.ruleDescription) : nil
+            log(article.description.map { "└\($0)" } ?? "└描述规则为空，将会解析内容页")
+            log("┌获取图片url")
             do {
                 let image = try parser.getString(source.ruleImage)
                 if !image.isEmpty { article.image = Self.absolute(image, base: source.sourceUrl) }
+                log("└\(article.image ?? "")")
             } catch {
                 try Task.checkCancellation()
                 if error is CancellationError { throw error }
                 engine?.logger("RSS 图片规则失败：\(error)")
+                log("└\(error.localizedDescription)")
             }
+            log("┌获取文章链接")
             article.link = Self.absolute(try parser.getString(source.ruleLink), base: baseURL)
+            log("└\(article.link)")
+            guard !title.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { continue }
             article.variable = String(decoding: try JSONEncoder().encode(variables.variables), as: UTF8.self)
             articles.append(article)
         }

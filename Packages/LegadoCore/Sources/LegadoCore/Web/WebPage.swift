@@ -4,7 +4,7 @@ enum WebPage {
     static let html = #"""
     <!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
     <title>Legado 局域网阅读</title><style>body{max-width:48rem;margin:2rem auto;padding:0 1rem;font:18px system-ui}button{padding:.6rem;margin:.2rem}pre{white-space:pre-wrap;line-height:1.8}li{margin:.5rem 0}</style>
-    <h1>Legado</h1><nav><button id="books">书架</button><button id="sources">书源</button></nav><p id="status" role="status"></p><main id="main"></main>
+    <h1>Legado</h1><nav><button id="books">书架</button><button id="sources">书源</button><a href="/debug.html">书源调试</a></nav><p id="status" role="status"></p><main id="main"></main>
     <script>
     const main=document.getElementById('main'),status=document.getElementById('status');
     async function api(path){status.textContent='加载中…';const r=await fetch(path);const v=await r.json();if(!v.isSuccess)throw Error(v.errorMsg);status.textContent='';return v.data}

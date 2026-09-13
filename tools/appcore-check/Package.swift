@@ -6,6 +6,8 @@ let package = Package(
     platforms: [.macOS(.v14)],
     dependencies: [.package(path: "../../Packages/LegadoCore")],
     targets: [
+        .testTarget(name: "WebSocketCheckTests", dependencies: ["WebServiceCheck"],
+                    swiftSettings: [.swiftLanguageMode(.v5)]),
         .testTarget(name: "AppPreferencesCheckTests", dependencies: ["SettingsBackupCheck"],
                     swiftSettings: [.swiftLanguageMode(.v5)]),
         .target(name: "RssCheck", dependencies: [.product(name: "LegadoCore", package: "LegadoCore")],

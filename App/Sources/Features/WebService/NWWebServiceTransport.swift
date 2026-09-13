@@ -10,6 +10,10 @@ final class NWWebServiceTransport: WebServiceTransport {
     private var connections: [UUID: NWConnection] = [:]
     private var requests: [UUID: Task<Void, Never>] = [:]
     private var deadlines: [UUID: DispatchWorkItem] = [:]
+    private var sockets: [UUID: WebSocketSession] = [:]
+    private let socketRoutes: WebSocketRoutes?
+
+    init(socketRoutes: WebSocketRoutes? = nil) { self.socketRoutes = socketRoutes }
 
     func start(port: UInt16, router: HttpRouter, state: @escaping (WebServiceState) -> Void) throws {
         stop()
@@ -60,6 +64,10 @@ final class NWWebServiceTransport: WebServiceTransport {
                 if let data { bytes.append(data) }
                 do {
                     if let request = try WebHttpRequest.parse(bytes) {
+                        if WebSocketHandshake.requested(request) {
+                            self.upgrade(request, bytes: bytes, connection: connection, id: id, router: router)
+                            return
+                        }
                         self.requests[id] = Task { [weak self] in
                             let response = await router.handle(request)
                             guard let self, !Task.isCancelled, self.connections[id] != nil else { return }
@@ -81,7 +89,54 @@ final class NWWebServiceTransport: WebServiceTransport {
         })
     }
 
+    private func upgrade(_ request: WebHttpRequest, bytes: Data, connection: NWConnection, id: UUID, router: HttpRouter) {
+        guard WebSocketRoutes.paths.contains(request.path), let socketRoutes else {
+            send(.init(status: 404, contentType: "text/plain", body: Data("WebSocket route not found".utf8)), to: connection, id: id)
+            return
+        }
+        guard router.authorizesWebSocket(request) else {
+            send(.init(status: 403, contentType: "text/plain; charset=utf-8", body: Data("Web 书源访问令牌未配置或不正确".utf8)), to: connection, id: id)
+            return
+        }
+        guard let response = try? WebSocketHandshake.response(request),
+              let boundary = bytes.range(of: Data("\r\n\r\n".utf8)),
+              bytes.starts(with: Data("GET ".utf8)),
+              String(decoding: bytes.prefix(boundary.lowerBound), as: UTF8.self).components(separatedBy: "\r\n").first?.hasSuffix(" HTTP/1.1") == true else {
+            send(.init(status: 400, contentType: "text/plain", body: Data("Invalid WebSocket handshake".utf8)), to: connection, id: id)
+            return
+        }
+        deadlines.removeValue(forKey: id)?.cancel()
+        let remaining = Data(bytes.dropFirst(boundary.upperBound))
+        connection.send(content: response, completion: .contentProcessed { [weak self] error in
+            MainActor.assumeIsolated {
+                guard let self, self.connections[id] != nil else { return }
+                guard error == nil else { self.close(id); return }
+                let session = WebSocketSession(path: request.path, routes: socketRoutes, send: { bytes, done in
+                    connection.send(content: bytes, completion: .contentProcessed { error in
+                        MainActor.assumeIsolated { done(error == nil) }
+                    })
+                }, end: { [weak self] in self?.close(id) })
+                self.sockets[id] = session
+                session.receive(remaining)
+                self.receiveSocket(connection, id: id)
+            }
+        })
+    }
+
+    private func receiveSocket(_ connection: NWConnection, id: UUID) {
+        guard sockets[id]?.shouldReceive == true else { return }
+        connection.receive(minimumIncompleteLength: 1, maximumLength: 64 * 1024) { [weak self] data, _, complete, error in
+            MainActor.assumeIsolated {
+                guard let self, let session = self.sockets[id] else { return }
+                if let data { session.receive(data) }
+                if complete || error != nil { self.close(id) }
+                else { self.receiveSocket(connection, id: id) }
+            }
+        }
+    }
+
     private func close(_ id: UUID) {
+        sockets.removeValue(forKey: id)?.stop()
         deadlines.removeValue(forKey: id)?.cancel()
         requests.removeValue(forKey: id)?.cancel()
         connections.removeValue(forKey: id)?.cancel()
@@ -124,7 +179,9 @@ extension WebServiceController {
                                                                    booksDirectory: URL.documentsDirectory.appendingPathComponent("Books")),
                                                        token: { UserDefaults.standard.string(forKey: "jsSourceApiToken") ?? token.value },
                                                        tokenRequired: { UserDefaults.standard.object(forKey: "jsSourceApiTokenRequired") as? Bool ?? true }),
-                                    transport: NWWebServiceTransport(), port: (1...65535).contains(stored) ? stored : 1122,
+                                    transport: NWWebServiceTransport(socketRoutes: .live(database: database, client: client,
+                                        searchOptions: { .saved() })),
+                                    port: (1...65535).contains(stored) ? stored : 1122,
                                     addresses: { NWWebServiceTransport.localAddresses() },
                                     savePort: { UserDefaults.standard.set($0, forKey: "webPort") },
                                     token: token, saveToken: {

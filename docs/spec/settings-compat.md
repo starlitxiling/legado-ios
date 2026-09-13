@@ -2,7 +2,7 @@
 
 规格为 Android cb664b84d 的 PreferKey、AppConfig、ThemeConfig、BackupConfig 和三个配置页及子页。仅记录能力，不记录用户数据。
 
-状态区分「已实现」「只存偏好」「未实现」与「平台不适用」；功能尚未接入不等于 iOS 没有对应能力。customHosts 与 localPassword 保留原任务明确允许的偏好存储。launcherIcon 已有系统调用入口，但主工程尚未配置备用图标资源，当前安装包不能实际切换。完整 iOS 工程编译与真机效果仍由主会话验证。
+状态区分「已实现」「只存偏好」「未实现」与「平台不适用」；功能尚未接入不等于 iOS 没有对应能力。customHosts 与 localPassword 保留原任务明确允许的偏好存储。launcherIcon 已接入系统调用入口、六套备用 PNG 和 iPhone / iPad 图标声明。完整 iOS 工程编译与真机效果仍由主会话验证。
 
 AppPreferences 是唯一可观察偏好实现；BackupPreferences 为兼容名称。普通偏好保留 Android 键名与 XML 类型，读取时合并既有 XML 和当前 UserDefaults。缺省空路径对应 Android 未设置的可空字符串；设备名缺省由设备型号派生。主题列表不写入 config.xml，而是使用 themeConfig.json。
 
@@ -59,7 +59,7 @@ AppPreferences 是唯一可观察偏好实现；BackupPreferences 为兼容名�
 | `coverRule` | 已实现 | 提供 JSON 编辑保存与内置 Android 规则；缺失封面时使用既有规则引擎搜索，支持规则中的编码和 JSONPath 调用。 |
 | `readRecordCover` | 已实现 | 阅读记录页面使用日间缺省封面，支持导入文件；文件归 covers 其他封面，恢复时重绑路径。 |
 | `readRecordCoverDark` | 已实现 | 阅读记录页面使用夜间缺省封面，支持导入文件；文件归 covers 其他封面，恢复时重绑路径。 |
-| `launcherIcon` | 已实现入口；待配置资源 | Android 使用 ic_launcher、launcher1…6 切换 Activity alias（help/LauncherIconHelp.kt:17–62；res/values/array_values.xml:4–11）。iOS 调用 UIApplication.setAlternateIconName，仅列出 Bundle 已声明图标，成功后写同名偏好；当前未配置备用资源，不能实际切换。Android cb664b84d 的六套自适应图标前景均仅有 VectorDrawable XML，无对应 PNG：素材待补：launcher1 前景为矢量（drawable/ic_launcher2.xml）；素材待补：launcher2 前景为矢量（drawable/ic_launcher5.xml）；素材待补：launcher3 前景为矢量（drawable/ic_launcher3.xml）；素材待补：launcher4 前景为矢量（drawable/ic_launcher4.xml）；素材待补：launcher5 前景为矢量（drawable/ic_launcher6.xml）；素材待补：launcher6 前景为矢量（drawable/ic_launcher7.xml）。按素材规则跳过这六套；仅对成功生成并打包的 PNG 在 CFBundleIcons/CFBundleAlternateIcons 下登记对应名称，以 CFBundleIconFiles 引用图标，iPad 同步配置 CFBundleIcons~ipad。主图标 CFBundlePrimaryIcon 保持现有配置。 |
+| `launcherIcon` | 已实现 | Android 使用 ic_launcher、launcher1…6 切换 Activity alias（help/LauncherIconHelp.kt:17–62；res/values/array_values.xml:4–11）。iOS 调用 UIApplication.setAlternateIconName，仅列出 Bundle 已声明图标，成功后写同名偏好。tools/icon-render 从 Android cb664b84d 的六套自适应图标生成 120×120、180×180 不透明 PNG；project.yml 在 CFBundleIcons 与 CFBundleIcons~ipad 下登记 launcher1…6，CFBundleIconFiles 引用同名资源。按任务约定将 108dp 图层合成后裁取中心 72dp，主图标保持不变。工程生成、打包与实际切换由主会话验证。 |
 | `barElevation` | 未实现 | Android 为工具栏阴影高度（lib/theme/MaterialValueHelper.kt:145–155）。iOS 可用栏外观或自绘阴影实现视觉等价；当前尚未接入，不能归为平台无能力。 |
 | `transparentStatusBar` | 未实现 | Android 控制状态栏透明背景（base/BaseActivity.kt:252–254）。iOS 可控制状态栏后方的背景和安全区延伸；当前未将该键映射到此行为，并非平台无能力。 |
 | `immNavigationBar` | 平台不适用 | Android 切换系统底部导航栏原色或加深色（base/BaseActivity.kt:263–269）。iOS 没有 Android 三键系统导航栏，Home indicator 也没有可设置背景色的等价公开属性。 |

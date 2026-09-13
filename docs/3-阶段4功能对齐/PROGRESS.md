@@ -1,6 +1,6 @@
 # 进度（阶段 4 · 功能对齐，轮次 3）
 
-> 新会话先读本文件。最后更新：2026-09-14 15:30（本机时钟）。
+> 新会话先读本文件。最后更新：2026-09-14 17:20（本机时钟）。
 
 ## 1. 当前位置
 
@@ -26,18 +26,17 @@
 | B13 备份上传与设置 | 完成（`981988159`；复审 5 条已修） | LegadoCore `Backup/`、App `Features/{Backup,Settings}` | 离线测试，只用假客户端 |
 | B14 局域网 Web 服务 | 完成（`981988159`；复审 8 条已修） | LegadoCore `Web/`、App `Features/WebService` | 离线测试 |
 | B15 实体与表补齐 | 完成（`981988159`；复审 7 条已修） |
-| B16 备用图标素材 / B17 WebSocket | 在途（补 B13b / B14 的遗留） | LegadoCore `Entities/ Storage/ Backup/`、App `Features/Settings` | 离线测试 |
+| B16 备用图标素材 | 完成（本次提交） |
+| B17 WebSocket | 完成（本次提交；复审 7 条已修） | LegadoCore `Entities/ Storage/ Backup/`、App `Features/Settings` | 离线测试 |
 | B13b 设置全集对齐 | 完成（`981988159`；复审 7 条已修） | App `Features/Settings`、`docs/spec/settings-compat.md` | — |
 
 ## 3. 在途子 agent
 
 | 任务 | 通道 | 输出 | session id | 派出时间 |
 | --- | --- | --- | --- | --- |
-| B16 备用图标素材（VD 栅格化） | Codex workspace-write（nohup） | `/tmp/codex-sub/s4-b16-icons.md` | `01a09cd9-8547-79e2-ae0d-23ce7b12611a` | 2026-09-14 15:30 |
-| B17 WebSocket 调试 / 搜索 | Codex workspace-write（nohup） | `/tmp/codex-sub/s4-b17-websocket.md` | `01a09cd9-8522-7631-a037-12741679f739` | 2026-09-14 15:30 |
 
 批次 1 实现会话（返修时 resume）：B1 `01a09b74-f5a7-7f02-b1e3-cdc7232de023`、B2 `01a09b74-f5a7-7933-bc9b-219b4a42829e`、B3 `01a09b74-f5a7-7a32-bc80-133de4717b46`。批次 1 提交 `1480ad923`。
 
 ## 4. 下一步与未决
 
-- 批次 1–4（B1–B15）已合并推送（`981988159`）：Core 520 + App 225，xcodebuild 通过；SUMMARY.md 已写。B16 / B17 在途，回来后复审 → 返修 → 收口（全量 + xcodegen/xcodebuild）→ 提交 → 更新 SUMMARY。
+- 阶段 4 全部完成：B1–B17 已合并推送；最终 LegadoCore 539 + appcore-check 232 + icon-render 7，xcodebuild 通过。下一步：真机自签冒烟（人类决定时机）、Opus 交叉复审、customHosts / 备份加密。

@@ -16,9 +16,14 @@ public struct RssService: Sendable {
 
     public func articles(source: RssSource, sort: String, url: String, page: Int = 1,
                          existing: [RssArticle] = []) async throws -> RssPage {
+        try await articles(source: source, sort: sort, url: url, page: page, existing: existing, debugLog: nil)
+    }
+
+    public func articles(source: RssSource, sort: String, url: String, page: Int = 1,
+                         existing: [RssArticle] = [], debugLog: ((String) -> Void)?) async throws -> RssPage {
         let engine = try engine(source: source, baseURL: source.sourceUrl)
-        let response = try await request(url, source: source, engine: engine, page: page)
-        var result = try RssParser().parse(response.body, source: source, sort: sort, baseURL: response.url, engine: engine)
+        let response = try await request(url, source: source, engine: engine, page: page, debugLog: debugLog)
+        var result = try RssParser().parse(response.body, source: source, sort: sort, baseURL: response.url, engine: engine, debugLog: debugLog)
         if source.ruleNextPage?.uppercased() == "PAGE" { result.nextPageURL = url }
         var seen = Set(existing.map(\.identity))
         result.articles = result.articles.filter { seen.insert($0.identity).inserted }
@@ -27,6 +32,10 @@ public struct RssService: Sendable {
     }
 
     public func content(article: RssArticle, source: RssSource) async throws -> RssReadContent {
+        try await content(article: article, source: source, debugLog: nil)
+    }
+
+    public func content(article: RssArticle, source: RssSource, debugLog: ((String) -> Void)?) async throws -> RssReadContent {
         if let description = article.description, !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             return target(description, article: article, source: source)
         }
@@ -42,12 +51,17 @@ public struct RssService: Sendable {
             let url = queue.removeFirst()
             guard visited.insert(url).inserted else { continue }
             guard visited.count <= 100 else { throw RssError.paginationLimit }
-            let response = try await request(url, source: source, engine: engine)
+            let firstPage = contents.isEmpty
+            let response = try await request(url, source: source, engine: engine,
+                                             debugLog: firstPage ? debugLog : nil, logResponseURL: true)
             visited.insert(response.url)
             let parser = RssParser.analyzer(response.body, baseURL: response.url, engine: engine, ruleData: variables)
             contents.append(try parser.getString(rule))
             if source.type == 0, article.type == 0, let next = source.nextContentUrl, !next.isEmpty {
-                queue += (try parser.getStringList(next) ?? []).filter { !$0.isEmpty }.map { RssParser.absolute($0, base: response.url) }
+                if firstPage { debugLog?("┌获取正文下一页链接") }
+                let links = (try parser.getStringList(next) ?? []).filter { !$0.isEmpty }.map { RssParser.absolute($0, base: response.url) }
+                if firstPage { debugLog?("└" + links.joined(separator: "，")) }
+                queue += links
             }
         }
         return target(contents.joined(separator: "\n"), article: article, source: source)
@@ -99,7 +113,8 @@ public struct RssService: Sendable {
         return value
     }
 
-    private func request(_ url: String, source: RssSource, engine: JsEngine, page: Int = 1) async throws -> AnalyzeUrlExecutor.Response {
+    private func request(_ url: String, source: RssSource, engine: JsEngine, page: Int = 1,
+                         debugLog: ((String) -> Void)? = nil, logResponseURL: Bool = false) async throws -> AnalyzeUrlExecutor.Response {
         var bindings = engine.bindings
         bindings["page"] = page
         let executor = try AnalyzeUrlExecutor(url, engine: engine, bindings: bindings)
@@ -124,6 +139,7 @@ public struct RssService: Sendable {
             } catch { throw original }
         }
         guard response.isSuccessful else { throw RssError.httpStatus(response.code) }
+        debugLog?("≡获取成功:\(logResponseURL ? response.url : executor.url)")
         return response
     }
 }

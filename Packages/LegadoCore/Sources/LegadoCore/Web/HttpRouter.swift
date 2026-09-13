@@ -101,7 +101,14 @@ public struct HttpRouter: Sendable {
         return response
     }
 
+    public func authorizesWebSocket(_ request: WebHttpRequest) -> Bool {
+        WebSocketHandshake.authorized(request, token: token(), required: tokenRequired())
+    }
+
     private func dispatch(_ request: WebHttpRequest) async -> WebHttpResponse {
+        if request.method == "GET", request.path == "/debug.html" {
+            return WebHttpResponse(contentType: "text/html; charset=utf-8", body: Data(WebSocketDebugPage.html.utf8))
+        }
         if request.method == "OPTIONS" { return WebHttpResponse(contentType: "text/plain; charset=utf-8", body: Data()) }
         if request.method == "GET", request.path == "/getJsSourceApiTokenRequired" {
             return WebHttpResponse(body: (try? JSONEncoder().encode(ReturnData(data: tokenRequired()))) ?? Data())
