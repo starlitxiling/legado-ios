@@ -13,6 +13,7 @@ struct LegadoApp: App {
                 if let container {
                     RootTabView(container: container)
                         .environment(container)
+                        .modifier(BackupLifecycleModifier(container: container))
                 } else if let startupError {
                     VStack(spacing: 16) {
                         EmptyStateView(title: "无法打开书库", systemImage: "exclamationmark.triangle",
@@ -32,9 +33,12 @@ struct LegadoApp: App {
     private func openDatabase() {
         do {
             let opened = try AppContainer.live()
+            opened.webService.observe(background: UIApplication.didEnterBackgroundNotification,
+                                      foreground: UIApplication.willEnterForegroundNotification)
             opened.databaseLifecycle.observe(background: UIApplication.didEnterBackgroundNotification,
                                              foreground: UIApplication.willEnterForegroundNotification)
             if UIApplication.shared.applicationState == .background {
+                opened.webService.enterBackground()
                 opened.databaseLifecycle.didEnterBackground()
             }
             container = opened

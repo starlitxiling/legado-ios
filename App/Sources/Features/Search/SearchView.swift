@@ -9,12 +9,21 @@ struct SearchView: View {
     init(container: AppContainer, onRead: ((Book, Int) -> Void)? = nil) {
         self.container = container
         self.onRead = onRead
-        _model = State(initialValue: SearchViewModel(sources: container.bookSources, client: container.httpClient))
+        _model = State(initialValue: SearchViewModel(sources: container.bookSources, client: container.httpClient,
+                                                    keywords: SearchKeywordRepository(database: container.database)))
     }
 
     var body: some View {
         @Bindable var model = model
         List {
+            if !model.history.isEmpty {
+                Section("搜索历史") {
+                    ForEach(model.history, id: \.word) { keyword in
+                        Button(keyword.word) { Task { await model.search(keyword.word) } }
+                    }
+                    Button("清空历史", role: .destructive) { Task { await model.clearHistory() } }
+                }
+            }
             Section {
                 Toggle("精准搜索", isOn: $model.precisionSearch)
                 if model.isSearching {
@@ -55,6 +64,7 @@ struct SearchView: View {
             }
         }
         .navigationTitle("搜索")
+        .task { await model.loadHistory() }
         .searchable(text: $model.query, prompt: "书名或作者")
         .onSubmit(of: .search) { Task { await model.search(model.query) } }
         .onDisappear { model.cancel() }

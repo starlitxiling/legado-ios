@@ -16,6 +16,7 @@ public struct ReplaceRuleRow: StorageRow {
     public var `isEnabled`: Bool = true
     public var `isRegex`: Bool = true
     public var `timeoutMillisecond`: Int64 = 3000
+    public var previewText: String? = nil
     public var `order`: Int = Int(Int32.min)
 
     public init() {}
@@ -25,6 +26,7 @@ public struct ReplaceRuleRow: StorageRow {
     }
 
     enum CodingKeys: String, CodingKey {
+        case previewText
         case `id`
         case `name`
         case `group`

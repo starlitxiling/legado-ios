@@ -77,12 +77,13 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
     }
 
     public func getStrResponse(jsStr: String? = nil, sourceRegex: String? = nil, useWebView: Bool = true,
-                               skipRateLimit: Bool = false) async throws -> Response {
-        try await getStrResponseAwait(jsStr: jsStr, sourceRegex: sourceRegex, useWebView: useWebView, skipRateLimit: skipRateLimit)
+                               skipRateLimit: Bool = false, forceWebView: Bool = false) async throws -> Response {
+        try await getStrResponseAwait(jsStr: jsStr, sourceRegex: sourceRegex, useWebView: useWebView,
+                                      skipRateLimit: skipRateLimit, forceWebView: forceWebView)
     }
 
     public func getStrResponseAwait(jsStr: String? = nil, sourceRegex: String? = nil, useWebView: Bool = true,
-                                    isTest: Bool = false, skipRateLimit: Bool = false) async throws -> Response {
+                                    isTest: Bool = false, skipRateLimit: Bool = false, forceWebView: Bool = false) async throws -> Response {
         if options.type != nil {
             let data = try await getByteArray()
             return Response(raw: syntheticRaw(), body: data.map { String(format: "%02x", $0) }.joined())
@@ -90,7 +91,7 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
         if !skipRateLimit { try await engine.rateLimiter.acquire(key: source.key, rate: source.concurrentRate) }
         let start = Date()
         do {
-            if useWebView && options.useWebView {
+            if useWebView && (options.useWebView || forceWebView) {
                 guard let loader = engine.headlessWebView else { throw HeadlessWebViewError.unavailable }
                 var address = url
                 var html: String?

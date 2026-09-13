@@ -14,7 +14,7 @@ public final class WebBook {
     private let client: any HttpClient
     private let processor: ContentProcessor
     private let now: () -> Int64
-    private let cookies = CookieStore()
+    private let cookies: CookieStore
     private let precisionSearch: Bool
     private let tocCountWords: Bool
     private let jsSourceApi = JsSourceApi()
@@ -27,8 +27,15 @@ public final class WebBook {
         try JsSourceEngine(source: source, client: client, cookies: cookies, api: jsSourceApi)
     }
 
+    public convenience init(source: BookSource, client: any HttpClient, replaceRules: [ReplaceRule] = [],
+                            precisionSearch: Bool = false, tocCountWords: Bool = false,
+                            now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }) {
+        self.init(source: source, client: client, replaceRules: replaceRules, precisionSearch: precisionSearch,
+                  tocCountWords: tocCountWords, cookies: CookieStore(), now: now)
+    }
+
     public init(source: BookSource, client: any HttpClient, replaceRules: [ReplaceRule] = [],
-                precisionSearch: Bool = false, tocCountWords: Bool = false,
+                precisionSearch: Bool = false, tocCountWords: Bool = false, cookies: CookieStore,
                 now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }) {
         self.source = source
         self.client = (client as? any SourceSessionClientProviding)?.client(for: source) ?? client
@@ -36,6 +43,7 @@ public final class WebBook {
         self.now = now
         self.precisionSearch = precisionSearch
         self.tocCountWords = tocCountWords
+        self.cookies = cookies
     }
 
     public func checkKeyword(default fallback: String) -> String {
@@ -205,13 +213,14 @@ final class WebBookContext {
         return parser
     }
 
-    func request(_ url: String, baseURL: String, bindings: [String: Any] = [:]) async throws -> AnalyzeUrlExecutor.Response {
+    func request(_ url: String, baseURL: String, bindings: [String: Any] = [:],
+                 webJs: String? = nil, sourceRegex: String? = nil, forceWebView: Bool = false) async throws -> AnalyzeUrlExecutor.Response {
         try Task.checkCancellation()
         var values = bindings
         if let book { values["book"] = try Self.object(book) }
         values["source"] = try Self.object(source)
         let executor = try AnalyzeUrlExecutor(url, engine: engine(baseURL: baseURL), bindings: values)
-        var response = try await executor.getStrResponse()
+        var response = try await executor.getStrResponse(jsStr: webJs, sourceRegex: sourceRegex, forceWebView: forceWebView)
         if let session = client as? any SourceScriptClient {
             let checked = try await session.checkResponse(StrResponse(raw: response.raw, body: response.body))
             response = .init(raw: checked.raw, body: checked.body, callTime: response.callTime)

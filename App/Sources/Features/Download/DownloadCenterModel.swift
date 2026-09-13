@@ -22,12 +22,13 @@ final class DownloadCenterModel {
     private(set) var errorMessage: String?
     private(set) var isRefreshing = false
     private(set) var refreshReport: BookshelfRefresh.Report?
-    let queue = CacheBook()
+    let queue: CacheBook
     private let database: AppDatabase
     private let client: any HttpClient
     let directory: URL
 
-    init(database: AppDatabase, client: any HttpClient, directory: URL = URL.applicationSupportDirectory.appendingPathComponent("Legado/ReaderCache")) {
+    init(database: AppDatabase, client: any HttpClient, directory: URL = URL.applicationSupportDirectory.appendingPathComponent("Legado/ReaderCache"), threadCount: Int = 3) {
+        queue = CacheBook(maximumConcurrent: min(128, max(1, threadCount)))
         self.database = database; self.client = client; self.directory = directory
     }
 

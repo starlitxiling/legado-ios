@@ -2,7 +2,9 @@ import SwiftUI
 import UIKit
 import CoreText
 import LegadoCore
+import Network
 
+@MainActor
 struct ReaderView: View {
     let destination: ReaderDestination
     @State private var model: ReaderViewModel
@@ -16,6 +18,8 @@ struct ReaderView: View {
     @State private var showsHighlights = false
     @State private var showsReviews = false
     @State private var autoRead = AutoReadController()
+    @State private var networkMonitor: NWPathMonitor?
+    @State private var networkAvailable: Bool?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
@@ -24,8 +28,45 @@ struct ReaderView: View {
         self.destination = destination
         let directory = cacheDirectory ?? URL.applicationSupportDirectory
             .appendingPathComponent("Legado/ReaderCache", isDirectory: true)
-        _model = State(initialValue: ReaderViewModel(database: database, client: client,
-            cacheDirectory: directory, settings: ReaderSettings.load()))
+        let model = ReaderViewModel(database: database, client: client,
+            cacheDirectory: directory, settings: ReaderSettings.load(), preDownloadCount: {
+                UserDefaults.standard.object(forKey: "preDownloadNum") as? Int ?? 2
+            })
+        model.replaceEnableDefault = { UserDefaults.standard.object(forKey: "replaceEnableDefault") as? Bool ?? true }
+        @MainActor func webDavClient() throws -> WebDavClient? {
+            let settings = SettingsViewModel(store: KeychainStore(), httpClient: client)
+            guard !settings.address.isEmpty else { return nil }
+            let credentials = try settings.credentials()
+            return WebDavClient(baseURL: credentials.baseURL, username: credentials.username, password: credentials.password, httpClient: client)
+        }
+        model.prepareLocalBook = { book in
+            let preferences = AppPreferences.shared
+            guard book.origin == "loc_book" || book.origin.hasPrefix("webDav::"),
+                  preferences.boolean("webDavBookAutoRestore") || book.origin.hasPrefix("webDav::"),
+                  let dav = try webDavClient() else { return book }
+            return try await WebDavLocalBookRestore(client: dav, directory: preferences.string("webDavDir"),
+                destination: URL.applicationSupportDirectory.appendingPathComponent("Legado/LocalBooks", isDirectory: true))
+                .restore(book, enabled: preferences.boolean("webDavBookAutoRestore"))
+        }
+        model.synchronizeWebDav = { book, exiting in
+            let preferences = AppPreferences.shared
+            let action = BookProgressSync.readingAction(syncEnabled: preferences.boolean("syncBookProgress"),
+                plusEnabled: preferences.boolean("syncBookProgressPlus"), exiting: exiting)
+            guard action != .none, let dav = try webDavClient() else { return nil }
+            let sync = BookProgressSync(client: dav, directory: preferences.string("webDavDir"))
+            let now = Int64(Date().timeIntervalSince1970 * 1000)
+            if action == .synchronize {
+                let result = try await sync.synchronizeReading(book, now: now)
+                if result.book.syncTime != book.syncTime {
+                    try await BookProgressSync.save(result.book, replacing: book, database: database)
+                }
+                return exiting ? nil : result.remoteProgress
+            }
+            let uploaded = try await sync.upload(book, now: now)
+            try await BookProgressSync.save(uploaded, replacing: book, database: database)
+            return nil
+        }
+        _model = State(initialValue: model)
         _readAloud = State(initialValue: ReadAloudController(database: database, client: client))
     }
 
@@ -122,6 +163,27 @@ struct ReaderView: View {
             await model.load(bookURL: destination.bookURL, chapterIndex: destination.chapterIndex)
             await readAloud.attach(model)
             await model.refreshHighlights()
+            let monitor = NWPathMonitor()
+            networkAvailable = nil
+            monitor.pathUpdateHandler = { path in
+                let available = path.status == .satisfied
+                Task { @MainActor in
+                    let restored = networkAvailable == false && available
+                    networkAvailable = available
+                    if restored { await model.syncWebDavProgress() }
+                }
+            }
+            networkMonitor?.cancel()
+            networkMonitor = monitor
+            monitor.start(queue: DispatchQueue(label: "Legado.reader.webdav.network"))
+        }
+        .alert("发现更新的阅读进度", isPresented: Binding(get: { model.pendingWebDavProgress != nil }, set: { if !$0 { model.pendingWebDavProgress = nil } }), presenting: model.pendingWebDavProgress) { progress in
+            Button("跳转") {
+                Task { await model.acceptWebDavProgress(progress) }
+            }
+            Button("取消", role: .cancel) { model.pendingWebDavProgress = nil }
+        } message: { _ in
+            Text("是否跳转到远端的阅读位置？")
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { autoRead.stop(); Task { await model.saveProgress() } }
@@ -135,7 +197,7 @@ struct ReaderView: View {
                readAloud.engine.chapterIndex == model.chapterIndex,
                readAloud.engine.characterOffset != offset { readAloud.stop() }
         }
-        .onDisappear { autoRead.stop(); readAloud.detach(); Task { await model.close() } }
+        .onDisappear { networkMonitor?.cancel(); networkMonitor = nil; autoRead.stop(); readAloud.detach(); Task { await model.close() } }
     }
 
     private var controls: some View {
@@ -370,6 +432,7 @@ private final class ReaderTextCanvas: UIView {
         let page = pagination.pages[pageIndex]
         guard let frame = page.frame else { return }
         context.saveGState()
+        context.setShouldAntialias(UserDefaults.standard.bool(forKey: "antiAlias"))
         defer { context.restoreGState() }
         context.textMatrix = .identity
         context.translateBy(x: 0, y: bounds.height)

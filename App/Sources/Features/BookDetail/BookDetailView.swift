@@ -3,6 +3,7 @@ import LegadoCore
 
 struct BookDetailView: View {
     @State private var model: BookDetailViewModel
+    @State private var confirmingAdd = false
     private let container: AppContainer
     private let onRead: ((Book, Int) -> Void)?
 
@@ -41,11 +42,18 @@ struct BookDetailView: View {
                 .disabled(model.isSaving)
                 Text(model.book?.intro ?? "暂无简介")
                 Button(model.isOnBookshelf ? "移出书架" : "加入书架") {
-                    Task { await model.toggleBookshelf() }
+                    if !model.isOnBookshelf, AppPreferences.shared.boolean("showAddToShelfAlert") { confirmingAdd = true }
+                    else { Task { await model.toggleBookshelf() } }
+                }
+                .confirmationDialog("将这本书加入书架？", isPresented: $confirmingAdd, titleVisibility: .visible) {
+                    Button("加入书架") { Task { await model.toggleBookshelf() } }
                 }
                 .buttonStyle(.borderedProminent)
                 .disabled(model.book == nil || model.isLoading || model.isSaving)
                 if let book = model.book, let source = model.source {
+                    if book.mediaKind != .text {
+                        NavigationLink("打开") { MediaReaderDestination(book: book, container: container) }
+                    } else {
                     NavigationLink("查看目录") {
                         TocView(book: book, source: source, container: container) { index in
                             onRead?(book, index)
@@ -53,6 +61,7 @@ struct BookDetailView: View {
                     }
                     Button("开始阅读") { onRead?(book, book.durChapterIndex) }
                         .disabled(onRead == nil)
+                    }
                 }
             }
             .padding()

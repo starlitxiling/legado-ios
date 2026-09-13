@@ -3,7 +3,15 @@ import GRDB
 
 public enum LocalBook {
     public static func isLocal(_ book: Book) -> Bool {
-        book.origin == "loc_book" && URL(string: book.bookUrl ?? "")?.isFileURL == true
+        (book.origin == "loc_book" && (fileURL(book) != nil || book.type & 256 != 0)) || book.origin?.hasPrefix("webDav::") == true
+    }
+
+    public static func fileURL(_ book: Book) -> URL? {
+        if let value = book.variable, let data = value.data(using: .utf8),
+           let variables = try? JSONDecoder().decode([String: String].self, from: data),
+           let path = variables["legadoIOSLocalFile"], let url = URL(string: path), url.isFileURL { return url }
+        guard let url = URL(string: book.bookUrl ?? ""), url.isFileURL else { return nil }
+        return url
     }
 
     public static func nameAuthor(_ filename: String) -> (name: String, author: String) {
@@ -59,18 +67,19 @@ public enum LocalBook {
     }
 
     public static func chapterList(book: Book, rules: [TxtTocRule] = TxtTocRule.builtIn) throws -> [BookChapter] {
-        guard isLocal(book), let url = URL(string: book.bookUrl ?? "") else { throw LocalBookError.unsupportedFile }
+        guard isLocal(book), let url = fileURL(book) else { throw LocalBookError.unsupportedFile }
+        let identity = book.bookUrl ?? url.absoluteString
         switch url.pathExtension.lowercased() {
-        case "txt": return try TextFileParser(url: url).chapters(bookURL: url.absoluteString, rules: rules)
-        case "epub": return try EpubParserCache.shared.parser(for: url).chapters(bookURL: url.absoluteString)
-        case "mobi", "azw3": return try MobiParserCache.shared.parser(for: url).chapters(bookURL: url.absoluteString)
-        case "pdf": return try PdfFile(url: url).chapters(bookURL: url.absoluteString)
+        case "txt": return try TextFileParser(url: url).chapters(bookURL: identity, rules: rules)
+        case "epub": return try EpubParserCache.shared.parser(for: url).chapters(bookURL: identity)
+        case "mobi", "azw3": return try MobiParserCache.shared.parser(for: url).chapters(bookURL: identity)
+        case "pdf": return try PdfFile(url: url).chapters(bookURL: identity)
         default: throw LocalBookError.unsupportedFile
         }
     }
 
     public static func content(book: Book, chapter: BookChapter) throws -> String {
-        guard isLocal(book), let url = URL(string: book.bookUrl ?? "") else { throw LocalBookError.unsupportedFile }
+        guard isLocal(book), let url = fileURL(book) else { throw LocalBookError.unsupportedFile }
         switch url.pathExtension.lowercased() {
         case "txt": return try TextFileParser(url: url).content(chapter: chapter)
         case "epub": return try EpubParserCache.shared.parser(for: url).content(chapter: chapter)

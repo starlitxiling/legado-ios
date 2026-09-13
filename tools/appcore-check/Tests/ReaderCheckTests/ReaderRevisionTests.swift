@@ -4,6 +4,21 @@ import LegadoCore
 
 @MainActor
 final class ReaderRevisionTests: XCTestCase {
+    func testConfiguredPreDownloadCountControlsRequests() async throws {
+        for count in [0, 2] {
+            let (database, book, directory) = try await fixture(count: 4)
+            defer { try? FileManager.default.removeItem(at: directory) }
+            let client = ReplayHttpClient()
+            for index in 0...count { await enqueue(client, index: index) }
+            let model = ReaderViewModel(database: database, client: client, cacheDirectory: directory, preDownloadCount: { count }, now: { 1 })
+            await model.load(bookURL: book.bookUrl)
+            await model.waitForPrefetch()
+            let requests = await client.requests
+            XCTAssertEqual(requests.count, count + 1)
+            XCTAssertNil(model.prefetchErrorMessage)
+            await model.close()
+        }
+    }
     private func fixture(count: Int = 3, savedIndex: Int = 0, savedOffset: Int = 0) async throws -> (AppDatabase, BookRow, URL) {
         let db = try AppDatabase.inMemory()
         var book = BookRow(); book.bookUrl = "https://revision.test/book"; book.origin = "https://revision.test"

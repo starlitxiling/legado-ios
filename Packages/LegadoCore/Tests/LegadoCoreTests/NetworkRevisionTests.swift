@@ -27,11 +27,12 @@ final class NetworkRevisionTests: XCTestCase {
 
     func testUserAgentSentinel() throws {
         let url = "https://example.com/"
-        XCTAssertEqual(try UrlRequestBuilder.build(url: url).headers["User-Agent"], UrlRequestBuilder.defaultUserAgent)
+        XCTAssertNil(try UrlRequestBuilder.build(url: url).headers["User-Agent"])
         let explicit = try UrlRequestBuilder.build(url: url, options: .fromJSON(#"{"headers":{"User-Agent":"custom"}}"#))
         XCTAssertEqual(explicit.headers["User-Agent"], "custom")
         let deleted = try UrlRequestBuilder.build(url: url, options: .fromJSON(#"{"headers":{"User-Agent":"null","X-Value":"null"}}"#))
-        XCTAssertNil(deleted.headers.httpHeader("User-Agent"))
+        XCTAssertEqual(deleted.headers.httpHeader("User-Agent"), "null")
+        XCTAssertNil(URLSessionHttpClient.urlRequest(deleted).value(forHTTPHeaderField: "User-Agent"))
         XCTAssertEqual(deleted.headers["X-Value"], "null")
     }
 

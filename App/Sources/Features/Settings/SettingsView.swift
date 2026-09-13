@@ -5,6 +5,7 @@ struct SettingsView: View {
     let container: AppContainer
     @State private var model: SettingsViewModel
     @State private var backupModel: BackupViewModel?
+    @State private var preferences = AppPreferences.shared
 
     init(container: AppContainer) {
         self.container = container
@@ -29,8 +30,14 @@ struct SettingsView: View {
             }
             .disabled(model.isTesting)
             Section {
+                NavigationLink("主题设置") { ThemeSettingsView(preferences: preferences) }
+                NavigationLink("其他设置") { OtherSettingsView(container: container, preferences: preferences) }
+                NavigationLink("备份设置") { BackupSettingsView(preferences: preferences) }
+                NavigationLink("Web 服务") { WebServiceView(model: container.webService) }
                 NavigationLink("TXT 目录规则") { TxtTocRulesView(database: container.database) }
                 NavigationLink("字典规则") { DictRulesView(database: container.database) }
+                NavigationLink("规则订阅") { RuleSubSettingsView(database: container.database, client: container.httpClient) }
+                NavigationLink("WebDAV 服务器") { ServerSettingsView(database: container.database, client: container.httpClient) }
                 NavigationLink("备份与恢复") {
                     BackupView(container: container, settings: model, model: $backupModel)
                 }
@@ -42,6 +49,7 @@ struct SettingsView: View {
             }
         }
         .navigationTitle("设置")
+        .onAppear { preferences.reload() }
     }
 }
 

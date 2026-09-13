@@ -1,0 +1,1 @@
+../../../../App/Sources/Features/Settings/SubscriptionSettingsModel.swift

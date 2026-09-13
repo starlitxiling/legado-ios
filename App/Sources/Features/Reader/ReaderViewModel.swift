@@ -65,18 +65,28 @@ final class ReaderViewModel {
     private var downloadTask: Task<CachedReaderChapter, Error>?
     private var layoutTask: Task<ReaderLayoutResult, Error>?
     private var prefetchTask: Task<Void, Never>?
+    private let preDownloadCount: @Sendable () -> Int
+    var replaceEnableDefault: () -> Bool = { true }
+    var prepareLocalBook: (BookRow) async throws -> BookRow = { $0 }
+    var synchronizeWebDav: (BookRow, Bool) async throws -> BookProgress? = { _, _ in nil }
+    var pendingWebDavProgress: BookProgress?
+    private(set) var closedWebDav = false
+    private var synchronizingWebDav = false
+    private var webDavWaiters: [CheckedContinuation<Void, Never>] = []
     private var saveTask: Task<Void, Never>?
     private var failedRequest: ChapterRequest?
     private var loadDestination: ReaderDestination?
 
     init(database: AppDatabase, client: any HttpClient, cacheDirectory: URL,
          settings: ReaderSettings = ReaderSettings(),
+         preDownloadCount: @escaping @Sendable () -> Int = { 1 },
          now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
          layoutDidStart: @escaping @Sendable () -> Void = {},
          waitForLayoutDebounce: @escaping @Sendable () async throws -> Void = {
              try await Task.sleep(nanoseconds: 80_000_000)
          }) {
         self.database = database; self.client = client
+        self.preDownloadCount = preDownloadCount
         cache = ReaderChapterCache(directory: cacheDirectory)
         self.settings = settings.normalized; self.now = now
         self.layoutDidStart = layoutDidStart
@@ -93,6 +103,8 @@ final class ReaderViewModel {
     }
 
     func load(bookURL: String, chapterIndex requestedIndex: Int? = nil) async {
+        closedWebDav = false
+        pendingWebDavProgress = nil
         let token = beginRequest()
         loadDestination = ReaderDestination(bookURL: bookURL, chapterIndex: requestedIndex)
         failedRequest = nil
@@ -100,10 +112,24 @@ final class ReaderViewModel {
         pagination = nil; layoutInput = nil; book = nil; chapters = []; bookmarks = []
         highlights = []; cachedChapterIndices = []
         do {
-            guard let book = try await BookshelfRepository(database: database).get(bookUrl: bookURL) else { throw ReaderError.missingBook }
-            let chapters = try await ChapterRepository(database: database).list(bookUrl: bookURL)
-            guard !chapters.isEmpty else { throw ReaderError.emptyChapters }
+            guard let stored = try await BookshelfRepository(database: database).get(bookUrl: bookURL) else { throw ReaderError.missingBook }
+            let book = try await prepareLocalBook(stored)
+            if book.variable != stored.variable {
+                try await database.write { db in
+                    try db.execute(sql: "UPDATE books SET variable = ? WHERE bookUrl = ? AND variable IS ?", arguments: [book.variable, stored.bookUrl, stored.variable])
+                }
+            }
             let entity = try ReaderEntityBridge.decode(Book.self, row: book)
+            let repository = ChapterRepository(database: database)
+            var chapters = try await repository.list(bookUrl: bookURL)
+            if chapters.isEmpty, LocalBook.isLocal(entity) {
+                let parsed = try LocalBook.chapterList(book: entity)
+                let restored = try parsed.map { try ReaderEntityBridge.decode(BookChapterRow.self, row: $0) }
+                guard generation == token else { return }
+                try await repository.replaceAll(bookUrl: bookURL, chapters: restored)
+                chapters = restored
+            }
+            guard !chapters.isEmpty else { throw ReaderError.emptyChapters }
             let sourceRow = try await BookSourceRepository(database: database).get(bookSourceUrl: book.origin)
             let source = try sourceRow.map { try ReaderEntityBridge.decode(BookSource.self, row: $0) }
             let bookmarks = try await BookmarkRepository(database: database).list(bookName: book.name, bookAuthor: book.author)
@@ -138,7 +164,8 @@ final class ReaderViewModel {
                 throw ReaderError.emptyChapters
             }
             let input = ReaderLayoutInput(book: entity, chapter: try ReaderEntityBridge.decode(BookChapter.self, row: row),
-                rawContent: cached.rawContent, rules: rules)
+                rawContent: cached.rawContent, rules: rules,
+                replaceEnableDefault: replaceEnableDefault())
             while token == generation {
                 let layoutToken = UUID(); layoutGeneration = layoutToken
                 do {
@@ -262,24 +289,34 @@ final class ReaderViewModel {
     private func prefetchNextChapter() {
         prefetchTask?.cancel(); prefetchErrorMessage = nil
         let previewToken = UUID(); previewGeneration = previewToken; nextChapterPagination = nil
-        guard let entity, chapterPosition + 1 < chapters.count else { return }
+        let count = min(100, max(0, preDownloadCount()))
+        guard count > 0, let entity, chapterPosition + 1 < chapters.count else { return }
         let position = chapterPosition + 1
         let row = chapters[position], nextURL = position + 1 < chapters.count ? chapters[position + 1].url : nil
         let cache = cache, source = source, client = client, token = generation
         let database = database, size = size, settings = settings
+        let following = Array(chapters.dropFirst(position + 1).prefix(max(0, count - 1)))
+        let chapterRows = chapters
         prefetchTask = Task { [weak self] in
             do {
                 try Task.checkCancellation()
                 let chapter = try ReaderEntityBridge.decode(BookChapter.self, row: row)
                 let cached = try await cache.content(book: entity, chapter: chapter, nextURL: nextURL, source: source, client: client)
                 let rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
-                let input = ReaderLayoutInput(book: entity, chapter: chapter, rawContent: cached.rawContent, rules: rules)
+                let input = ReaderLayoutInput(book: entity, chapter: chapter, rawContent: cached.rawContent, rules: rules,
+                    replaceEnableDefault: replaceEnableDefault())
                 let layout = Task.detached {
                     try ReaderLayout.build(input: input, size: size, settings: settings, didStart: {})
                 }
                 let result = try await withTaskCancellationHandler { try await layout.value } onCancel: { layout.cancel() }
                 guard !Task.isCancelled, self?.generation == token, self?.previewGeneration == previewToken else { return }
                 self?.nextChapterPagination = result.pagination
+                for row in following {
+                    try Task.checkCancellation()
+                    let chapter = try ReaderEntityBridge.decode(BookChapter.self, row: row)
+                    let next = chapterRows.firstIndex(where: { $0.url == row.url }).flatMap { $0 + 1 < chapterRows.count ? chapterRows[$0 + 1].url : nil }
+                    _ = try await cache.content(book: entity, chapter: chapter, nextURL: next, source: source, client: client)
+                }
             } catch {
                 guard !Task.isCancelled, self?.generation == token else { return }
                 self?.prefetchErrorMessage = error.localizedDescription
@@ -367,5 +404,38 @@ final class ReaderViewModel {
         _ = beginRequest(); isLoading = false
         await cache.cancelPending()
         await saveProgress()
+        if !closedWebDav {
+            closedWebDav = true
+            await syncWebDavProgress(exiting: true)
+        }
+    }
+
+    func syncWebDavProgress(exiting: Bool = false) async {
+        if exiting, synchronizingWebDav {
+            await withCheckedContinuation { webDavWaiters.append($0) }
+        }
+        guard exiting || !closedWebDav, !synchronizingWebDav, !isLoading,
+              let book, book.type & DiscoveryStorage.hiddenBook == 0 else { return }
+        let token = generation
+        synchronizingWebDav = true
+        defer {
+            synchronizingWebDav = false
+            let waiters = webDavWaiters
+            webDavWaiters = []
+            for waiter in waiters { waiter.resume() }
+        }
+        do {
+            await saveProgress()
+            guard let current = try await BookshelfRepository(database: database).get(bookUrl: book.bookUrl) else { return }
+            let progress = try await synchronizeWebDav(current, exiting)
+            if !exiting, !closedWebDav, token == generation { pendingWebDavProgress = progress }
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func acceptWebDavProgress(_ progress: BookProgress) async {
+        pendingWebDavProgress = nil
+        guard chapters.contains(where: { $0.index == progress.durChapterIndex }) else { return }
+        let token = beginRequest()
+        await openChapter(ChapterRequest(index: progress.durChapterIndex, offset: progress.durChapterPos), token: token)
     }
 }

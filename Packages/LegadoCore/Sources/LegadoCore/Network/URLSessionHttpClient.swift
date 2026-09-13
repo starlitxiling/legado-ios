@@ -63,6 +63,7 @@ public struct URLSessionHttpClient: HttpClient {
     }
 
     static func urlRequest(_ request: HttpRequest) -> URLRequest {
+        let request = request.resolvingUserAgent(defaultValue: UrlRequestBuilder.defaultUserAgent)
         var result = URLRequest(url: request.url, cachePolicy: .reloadIgnoringLocalCacheData, timeoutInterval: request.timeout)
         result.httpMethod = request.method
         result.allHTTPHeaderFields = request.headers

@@ -6,6 +6,7 @@ struct ReaderLayoutInput {
     let chapter: BookChapter
     let rawContent: String
     let rules: [ReplaceRuleRow]
+    var replaceEnableDefault = true
 }
 
 struct ReaderLayoutResult {
@@ -20,9 +21,10 @@ enum ReaderLayout {
         didStart()
         let rules = try input.rules.map { try ReaderEntityBridge.decode(ReplaceRule.self, row: $0) }
         let processor = ContentProcessor(rules: rules, paragraphIndent: settings.paragraphIndent)
-        let title = try processor.title(book: input.book, chapter: input.chapter)
+        let useReplace = input.book.readConfig?.useReplaceRule ?? input.replaceEnableDefault
+        let title = try processor.title(book: input.book, chapter: input.chapter, useReplace: useReplace)
         let content = try processor.getContent(book: input.book, chapter: input.chapter,
-            content: input.rawContent, includeTitle: false)
+            content: input.rawContent, includeTitle: false, useReplace: useReplace)
         let pagination = try Paginator().paginate(title: title, paragraphs: content.paragraphs,
             size: size, settings: settings, imageBaseURL: URL(string: input.chapter.url ?? "",
                 relativeTo: URL(string: input.chapter.baseUrl ?? input.book.bookUrl ?? ""))?.absoluteURL.absoluteString)

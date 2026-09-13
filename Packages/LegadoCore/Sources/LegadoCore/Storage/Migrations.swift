@@ -202,6 +202,9 @@ enum Migrations {
         HttpTTSMigration.register(in: &migrator)
         DictRuleMigration.register(in: &migrator)
         ReaderMigration.register(in: &migrator)
+        RssMigration.register(in: &migrator)
+        EntityCompatibilityMigration.register(in: &migrator)
+        WebPreviewMigration.register(in: &migrator)
         return migrator
 
     }

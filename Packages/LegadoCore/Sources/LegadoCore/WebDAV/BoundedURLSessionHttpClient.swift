@@ -28,6 +28,7 @@ public struct BoundedURLSessionHttpClient: ResponseLimitedHttpClient {
 
     public func send(_ request: HttpRequest, maximumResponseBytes: Int) async throws -> HttpResponse {
         guard maximumResponseBytes >= 0 else { throw WebDavError.responseTooLarge }
+        let request = request.resolvingUserAgent(defaultValue: UrlRequestBuilder.defaultUserAgent)
         let configuration = URLSessionConfiguration.ephemeral
         configuration.httpCookieStorage = nil
         configuration.urlCache = nil

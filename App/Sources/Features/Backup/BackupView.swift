@@ -15,6 +15,27 @@ struct BackupView: View {
         List {
             if let model {
                 Section {
+                    Button("备份到 WebDAV") {
+                        Task {
+                            do {
+                                try model.configure(credentials: settings.credentials(), httpClient: container.httpClient)
+                                await model.createBackup(upload: true)
+                            } catch { model.errorMessage = error.localizedDescription }
+                        }
+                    }
+                    Button("生成本地备份") { Task { await model.createBackup(upload: false) } }
+                    if let file = model.exportedFile { ShareLink("保存或分享 ZIP", item: file) }
+                    Toggle("自动备份", isOn: Binding(get: { model.preferences.boolean("autoBackup") }, set: { model.preferences.set("autoBackup", .boolean($0)) }))
+                    Toggle("进度同步", isOn: Binding(get: { model.preferences.boolean("syncBookProgress") }, set: { model.preferences.set("syncBookProgress", .boolean($0)) }))
+                    Button("立即同步阅读进度") {
+                        Task {
+                            do {
+                                try model.configure(credentials: settings.credentials(), httpClient: container.httpClient)
+                                await model.synchronizeProgress()
+                            } catch { model.errorMessage = error.localizedDescription }
+                        }
+                    }
+                    if let message = model.statusMessage { Text(message).foregroundStyle(.secondary) }
                     Button("列出 WebDAV 备份") {
                         Task {
                             do {
@@ -24,7 +45,7 @@ struct BackupView: View {
                         }
                     }
                     Button("从本地 ZIP 恢复") { selectingFile = true }
-                    Text("恢复会合并备份数据，相同记录可能被覆盖。WebDAV 仅使用读取操作。")
+                    Text("恢复会合并备份数据，相同记录可能被覆盖。")
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 .disabled(model.isBusy)

@@ -57,8 +57,8 @@ final class BackupTests: XCTestCase {
         unrelated.bookUrl = "unrelated"; unrelated.name = "保留"
         try await BookshelfRepository(database: database).upsert(unrelated)
         let report = try await importer.importArchive(fixture())
-        XCTAssertEqual(report.importedFiles, ["bookshelf.json", "bookmark.json", "bookGroup.json", "bookSource.json", "replaceRule.json", "readRecord.json"])
-        XCTAssertEqual(report.skippedFiles.sorted(), ["config.xml", "rssSources.json", "unknown.txt"])
+        XCTAssertEqual(Set(report.importedFiles), ["bookshelf.json", "bookGroup.json", "bookmark.json", "bookSource.json", "rssSources.json", "replaceRule.json", "readRecord.json", "config.xml"])
+        XCTAssertEqual(report.skippedFiles.sorted(), ["unknown.txt"])
         XCTAssertTrue(report.failures.isEmpty)
         _ = try await importer.importArchive(fixture())
         let books = try await BookshelfRepository(database: database).all()

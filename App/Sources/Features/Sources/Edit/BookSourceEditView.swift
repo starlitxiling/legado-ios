@@ -43,6 +43,7 @@ struct BookSourceEditView: View {
                                     do { try model.setValue($0, for: field); model.errorMessage = nil }
                                     catch { model.errorMessage = error.localizedDescription }
                                 }), axis: .vertical).textInputAutocapitalization(.never).autocorrectionDisabled()
+                                    .lineLimit(1...max(1, AppPreferences.shared.integer("sourceEditMaxLine")))
                             }
                         }
                     }

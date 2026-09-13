@@ -34,7 +34,7 @@ public enum ReplaceRuleImportResult: Equatable {
 
 /// 解析文本；纯 JS 通过执行顶层声明提取配置，不写入数据库。
 public struct SourceImporter {
-    private let now: () -> Int64
+    let now: () -> Int64
 
     public init(now: @escaping () -> Int64 = GsonDecoding.currentTimeMillis) {
         self.now = now

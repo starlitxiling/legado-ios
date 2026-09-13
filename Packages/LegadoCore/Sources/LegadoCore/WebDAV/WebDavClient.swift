@@ -65,6 +65,21 @@ public struct WebDavClient: Sendable {
         _ = try await request("MKCOL", url: url)
     }
 
+    public func delete(_ url: URL) async throws {
+        _ = try await request("DELETE", url: url)
+    }
+
+    public func ensureCollection(_ url: URL) async throws {
+        if try await exists(url) { return }
+        do { try await mkcol(url) }
+        catch WebDavError.httpStatus(405) {
+            let files = try await propfind(url, depth: 0)
+            guard files.contains(where: { $0.isDirectory && $0.url.standardized == url.standardized }) else {
+                throw WebDavError.httpStatus(405)
+            }
+        }
+    }
+
     private func request(_ method: String, url: URL, headers: [String: String] = [:], body: Data? = nil, maximumResponseBytes: Int? = nil) async throws -> HttpResponse {
         let origin = try self.url(path: "")
         func port(_ url: URL) -> Int { url.port ?? (url.scheme == "https" ? 443 : 80) }

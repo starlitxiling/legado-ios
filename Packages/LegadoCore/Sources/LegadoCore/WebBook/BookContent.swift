@@ -30,12 +30,17 @@ public enum BookContent {
         if LocalBook.isLocal(book) { return try finish(LocalBook.content(book: book, chapter: chapter), chapter: chapter) }
         if chapter.isVolume && (chapter.url ?? "").hasPrefix(chapter.title ?? "") { return try finish("", chapter: chapter) }
         if (rule.content ?? "").isEmpty { return try finish(chapter.url ?? "", chapter: chapter) }
-        if !(rule.webJs ?? "").isEmpty || !(rule.sourceRegex ?? "").isEmpty {
+        let mediaWebView = bookIsMedia(context) && (!(rule.webJs ?? "").isEmpty || !(rule.sourceRegex ?? "").isEmpty)
+        if !bookIsMedia(context), !(rule.webJs ?? "").isEmpty || !(rule.sourceRegex ?? "").isEmpty {
             throw WebBookError.unsupported("正文 WebView/webJs/sourceRegex")
         }
         let base = chapter.baseUrl ?? book.tocUrl ?? context.source.bookSourceUrl ?? ""
+        func request(_ url: String, baseURL: String) async throws -> AnalyzeUrlExecutor.Response {
+            try await context.request(url, baseURL: baseURL, bindings: ["chapter": try WebBookContext.object(chapter)],
+                webJs: rule.webJs, sourceRegex: rule.sourceRegex, forceWebView: mediaWebView)
+        }
         let firstURL = WebBookContext.absolute(chapter.url ?? "", base: base)
-        let first = try await context.request(firstURL, baseURL: base)
+        let first = try await request(firstURL, baseURL: base)
         let parser = try context.parser(first.body, baseURL: firstURL, chapter: chapter, nextChapterURL: nextChapterURL)
         let nextChapter = WebBookContext.absolute(nextChapterURL ?? "", base: first.url)
         var visited: Set<String> = [firstURL, first.url]
@@ -43,7 +48,7 @@ public enum BookContent {
         var contents = [data.0]
         if data.1.count == 1 {
             while let url = data.1.first, url != nextChapter, visited.insert(url).inserted {
-                let response = try await context.request(url, baseURL: first.url)
+                let response = try await request(url, baseURL: first.url)
                 if response.url == nextChapter || (response.url != url && !visited.insert(response.url).inserted) { break }
                 let next = try page(context: context, chapter: chapter, response: response, rule: rule, nextChapterURL: nextChapterURL, baseURL: url)
                 contents.append(next.0)
@@ -51,7 +56,7 @@ public enum BookContent {
             }
         } else {
             for url in data.1 where url != nextChapter && visited.insert(url).inserted {
-                let response = try await context.request(url, baseURL: first.url)
+                let response = try await request(url, baseURL: first.url)
                 if response.url == nextChapter || (response.url != url && !visited.insert(response.url).inserted) { continue }
                 let next = try page(context: context, chapter: chapter, response: response, rule: rule,
                                     getNext: false, nextChapterURL: nextChapterURL, baseURL: url)
@@ -85,8 +90,13 @@ public enum BookContent {
         try Task.checkCancellation()
         let parser = try context.parser(response.body, baseURL: baseURL, chapter: chapter, nextChapterURL: nextChapterURL)
         let raw = try parser.getString(rule.content, unescape: false)
-        let content = try HTML4Entities.unescape(HtmlFormatter.formatKeepImg(raw, redirectUrl: URL(string: response.url)))
+        let isMediaAddress = context.book?.isAudio == true || context.book?.isVideo == true
+        let content = isMediaAddress ? raw : try HTML4Entities.unescape(HtmlFormatter.formatKeepImg(raw, redirectUrl: URL(string: response.url)))
         let next = getNext ? try context.urls(parser, rule: rule.nextContentUrl, base: response.url) : []
         return (content, next)
+    }
+
+    private static func bookIsMedia(_ context: WebBookContext) -> Bool {
+        context.book?.isAudio == true || context.book?.isVideo == true || context.book?.isImage == true
     }
 }

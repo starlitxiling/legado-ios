@@ -21,6 +21,7 @@ final class ReadAloudController {
     private let database: AppDatabase
     private let client: any HttpClient
     private var title = ""
+    private let audioOwner = UUID()
     init(database: AppDatabase, client: any HttpClient) { self.database = database; self.client = client }
     func attach(_ reader: ReaderViewModel) async {
         detach()
@@ -58,10 +59,11 @@ final class ReadAloudController {
                 self.cancelRound()
                 self.interruption.userPaused()
                 self.reader?.clearReadAloudHighlight()
-                try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+                if AudioSessionOwnership.isOwner(self.audioOwner) {
+                    try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+                }
             }
         }
-        installControls()
         timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.engine.checkTimer() }
         }
@@ -85,8 +87,16 @@ final class ReadAloudController {
             engine.load(text: text, chapter: reader.chapterIndex, offset: reader.characterOffset, pageRanges: reader.pagination?.pages.map(\.range) ?? [])
         }
         do {
+            AudioSessionOwnership.claim(audioOwner) { [weak self] in self?.detach() }
+            installControls()
+            if timer == nil {
+                timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
+                    Task { @MainActor in self?.engine.checkTimer() }
+                }
+            }
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .spokenAudio)
+            try session.setCategory(.playback, mode: .spokenAudio,
+                                    options: UserDefaults.standard.bool(forKey: "ignoreAudioFocus") ? [.mixWithOthers] : [])
             try session.setActive(true)
             engine.rate = preferences.rate; engine.volume = preferences.volume
             engine.play(); errorMessage = nil
@@ -116,7 +126,9 @@ final class ReadAloudController {
         for (command, target) in commands { command.removeTarget(target) }
         commands.removeAll()
         for observer in observers { NotificationCenter.default.removeObserver(observer) }
-        observers.removeAll(); MPNowPlayingInfoCenter.default().nowPlayingInfo = nil
+        observers.removeAll()
+        if AudioSessionOwnership.isOwner(audioOwner) { MPNowPlayingInfoCenter.default().nowPlayingInfo = nil }
+        AudioSessionOwnership.relinquish(audioOwner)
     }
     private func cancelRound() {
         prefetchedPosition = nil
@@ -124,6 +136,7 @@ final class ReadAloudController {
         work.cancelAll { await service?.cancel() }
     }
     private func updateNowPlaying() {
+        guard AudioSessionOwnership.isOwner(audioOwner) else { return }
         MPNowPlayingInfoCenter.default().nowPlayingInfo = [
             MPMediaItemPropertyTitle: title,
             MPMediaItemPropertyAlbumTitle: reader?.chapterTitle ?? "",
@@ -139,10 +152,16 @@ final class ReadAloudController {
             let target = command.addTarget { _ in Task { @MainActor in action() }; return .success }
             commands.append((command, target))
         }
-        register(center.playCommand) { [weak self] in self?.play() }
+        register(center.playCommand) { [weak self] in
+            guard let self, self.engine.state != .stopped || UserDefaults.standard.bool(forKey: "readAloudByMediaButton") else { return }
+            self.play()
+        }
         register(center.pauseCommand) { [weak self] in self?.pause() }
         register(center.stopCommand) { [weak self] in self?.stop() }
-        register(center.togglePlayPauseCommand) { [weak self] in self?.toggle() }
+        register(center.togglePlayPauseCommand) { [weak self] in
+            guard let self, self.engine.state != .stopped || UserDefaults.standard.bool(forKey: "readAloudByMediaButton") else { return }
+            self.toggle()
+        }
         register(center.nextTrackCommand) { [weak self] in self?.nextParagraph() }
         register(center.previousTrackCommand) { [weak self] in self?.previousParagraph() }
         observers.append(NotificationCenter.default.addObserver(forName: AVAudioSession.interruptionNotification, object: nil, queue: .main) { [weak self] notification in

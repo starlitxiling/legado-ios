@@ -63,6 +63,9 @@ public final class JavaHost {
         context.evaluateScript("""
         (function(invoke) {
             globalThis.java = {};
+            globalThis.com = {jayway: {jsonpath: {JsonPath: {
+                read: function(content, path) { return invoke('jsonPathRead', [content, path]); }
+            }}}};
             function javaMap(values, ignoreCase) {
                 const owns = key => Object.prototype.hasOwnProperty.call(values, key);
                 function find(key) {
@@ -108,7 +111,7 @@ public final class JavaHost {
                 return result;
             }
             const methods = ['get','put','getString','getStringList','getElement','getElements','setContent',
-                'timeFormat','log','toast','md5Encode','base64Decode','toNumChapter','aesBase64DecodeToString',
+                'timeFormat','log','toast','md5Encode','base64Decode','base64Encode','hexDecodeToString','toNumChapter','aesBase64DecodeToString',
                 'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','readFile','downloadFile','cacheFile',
                 'webViewGetSource','webViewGetOverrideUrl','getVerificationCode','startBrowser','startBrowserAwait','getWebViewUA'];
             methods.forEach(function(name) {
@@ -175,6 +178,7 @@ public final class JavaHost {
             return parser
         }
         switch method {
+        case "jsonPathRead": return try AnalyzeByJSonPath(value(0) ?? NSNull()).getObject(string(1))
         case "get": return try analyzer().get(string(0))
         case "put":
             try analyzer().put(string(0), value: string(1))
@@ -214,6 +218,28 @@ public final class JavaHost {
             var digest = [UInt8](repeating: 0, count: Int(CC_MD5_DIGEST_LENGTH))
             data.withUnsafeBytes { _ = CC_MD5($0.baseAddress, CC_LONG(data.count), &digest) }
             return digest.map { String(format: "%02x", $0) }.joined()
+        case "base64Encode":
+            let flags = (value(1) as? NSNumber)?.intValue ?? 2
+            var encoded = Data(string(0).utf8).base64EncodedString()
+            if flags & 8 != 0 { encoded = encoded.replacingOccurrences(of: "+", with: "-").replacingOccurrences(of: "/", with: "_") }
+            if flags & 1 != 0 { encoded = encoded.replacingOccurrences(of: "=", with: "") }
+            if flags & 2 == 0, !encoded.isEmpty {
+                let characters = Array(encoded)
+                let separator = flags & 4 != 0 ? "\r\n" : "\n"
+                encoded = stride(from: 0, to: characters.count, by: 76).map {
+                    String(characters[$0..<min($0 + 76, characters.count)])
+                }.joined(separator: separator) + separator
+            }
+            return encoded
+        case "hexDecodeToString":
+            var hex = string(0).filter { !$0.isWhitespace }
+            if hex.count % 2 != 0 { hex = "0" + hex }
+            var data = Data()
+            while !hex.isEmpty {
+                guard let byte = UInt8(hex.prefix(2), radix: 16) else { throw JsEngineError.exception("hexDecodeToString 无效输入") }
+                data.append(byte); hex.removeFirst(2)
+            }
+            return String(decoding: data, as: UTF8.self)
         case "base64Decode":
             if value(0) == nil || value(0) is NSNull { return nil }
             let flags = (value(1) as? NSNumber)?.int32Value

@@ -36,6 +36,9 @@ final class SearchViewModel {
     private(set) var totalSources = 0
     private(set) var failedSources = 0
     private(set) var errorMessage: String?
+    private(set) var history: [SearchKeyword] = []
+    private let keywords: SearchKeywordRepository?
+    private let now: () -> Int64
 
     private let sources: BookSourceRepository
     private let client: any HttpClient
@@ -46,9 +49,12 @@ final class SearchViewModel {
     private var searchTask: Task<Void, Never>?
 
     init(sources: BookSourceRepository, client: any HttpClient,
+         keywords: SearchKeywordRepository? = nil, now: @escaping () -> Int64 = GsonDecoding.currentTimeMillis,
          concurrencyLimit: Int = 8, sourceTimeout: TimeInterval = 30,
          timeoutSleep: @escaping @Sendable (UInt64) async throws -> Void = { try await Task.sleep(nanoseconds: $0) }) {
         self.sources = sources
+        self.keywords = keywords
+        self.now = now
         self.client = client
         self.concurrencyLimit = max(1, concurrencyLimit)
         self.sourceTimeout = UInt64(min(max(sourceTimeout.isFinite ? sourceTimeout : 30, 0.001), 3600) * 1_000_000_000)
@@ -60,6 +66,16 @@ final class SearchViewModel {
         searchTask?.cancel()
         searchTask = nil
         isSearching = false
+    }
+
+    func loadHistory() async {
+        do { history = try await keywords?.history() ?? [] }
+        catch { errorMessage = error.localizedDescription }
+    }
+
+    func clearHistory() async {
+        do { try await keywords?.clear(); history = [] }
+        catch { errorMessage = error.localizedDescription }
     }
 
     func search(_ text: String) async {
@@ -93,6 +109,8 @@ final class SearchViewModel {
 
     private func run(key: String, precise: Bool, request: Int) async {
         do {
+            try await keywords?.record(key, at: now())
+            await loadHistory()
             let enabled = try await sources.list(enabled: true)
             guard request == generation, !Task.isCancelled else { return }
             totalSources = enabled.count

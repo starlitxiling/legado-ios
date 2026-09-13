@@ -4,6 +4,12 @@ import LegadoCore
 
 @MainActor
 final class SettingsBackupTests: XCTestCase {
+    private func isolatedPreferences() -> BackupPreferences {
+        let suite = "SettingsBackupTests." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        addTeardownBlock { defaults.removePersistentDomain(forName: suite) }
+        return BackupPreferences(defaults: defaults)
+    }
     func testCredentialsRoundTripAndDelete() throws {
         let store = MemoryKeychain()
         let model = SettingsViewModel(store: store, httpClient: ReplayHttpClient())
@@ -98,16 +104,17 @@ final class SettingsBackupTests: XCTestCase {
         XCTAssertNil(settings.errorMessage)
         let database = try AppDatabase.inMemory()
         var notifications = 0
-        let model = BackupViewModel(database: database, localDeviceID: "test-device", didRestore: { notifications += 1 })
+        let model = BackupViewModel(database: database, localDeviceID: "test-device", resourceDirectory: nil, preferences: isolatedPreferences(), didRestore: { notifications += 1 })
         try model.configure(credentials: settings.credentials(), httpClient: replay)
         await model.listBackups()
         XCTAssertEqual(model.files.count, 1)
         await model.restore(try XCTUnwrap(model.files.first))
         XCTAssertNil(model.errorMessage)
         let report = try XCTUnwrap(model.report)
-        XCTAssertEqual(report.importedCounts.count, 6)
-        XCTAssertTrue(report.importedCounts.values.allSatisfy { $0 == 1 })
-        XCTAssertEqual(Set(report.skippedFiles), ["rssSources.json", "config.xml", "unknown.txt"])
+        XCTAssertEqual(report.importedCounts.count, 8)
+        XCTAssertEqual(report.importedCounts["rssSources.json"], 0)
+        XCTAssertEqual(report.importedCounts["config.xml"], 0)
+        XCTAssertEqual(Set(report.skippedFiles), ["unknown.txt"])
         XCTAssertTrue(report.failures.isEmpty)
         XCTAssertEqual(notifications, 1)
         let books = try await BookshelfRepository(database: database).list()
@@ -121,7 +128,7 @@ final class SettingsBackupTests: XCTestCase {
     }
 
     func testLocalPartialFailureAndInvalidArchive() async throws {
-        let model = BackupViewModel(database: try .inMemory(), localDeviceID: "test-device")
+        let model = BackupViewModel(database: try .inMemory(), localDeviceID: "test-device", resourceDirectory: nil, preferences: isolatedPreferences())
         await model.restoreLocalFile(fixtureURL("malformed-json.zip"))
         XCTAssertEqual(model.report?.importedCounts["bookmark.json"], 1)
         XCTAssertNotNil(model.report?.failures["bookshelf.json"])
@@ -133,7 +140,7 @@ final class SettingsBackupTests: XCTestCase {
 
     func testRestoreRejectsReentry() async throws {
         let client = SuspendedDownload(data: try fixture("backup2024-01-02.zip"))
-        let model = BackupViewModel(database: try .inMemory(), localDeviceID: "test-device")
+        let model = BackupViewModel(database: try .inMemory(), localDeviceID: "test-device", resourceDirectory: nil, preferences: isolatedPreferences())
         let root = URL(string: "https://example.invalid/")!
         try model.configure(credentials: .init(baseURL: root, username: "", password: ""), httpClient: client)
         let file = WebDavFile(url: root.appendingPathComponent("backup.zip"), displayName: "backup.zip")
@@ -144,7 +151,7 @@ final class SettingsBackupTests: XCTestCase {
         XCTAssertNil(model.errorMessage)
         await client.finish()
         await first.value
-        XCTAssertEqual(model.report?.importedCounts.count, 6)
+        XCTAssertEqual(model.report?.importedCounts.count, 8)
         XCTAssertFalse(model.isBusy)
     }
 

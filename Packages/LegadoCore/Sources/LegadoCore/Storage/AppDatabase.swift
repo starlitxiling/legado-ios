@@ -6,6 +6,7 @@ public struct AppDatabase: Sendable {
 
     private init(writer: any DatabaseWriter) throws {
         try Migrations.migrator().migrate(writer)
+        try writer.write { db in try KeyboardAssist.seedIfEmpty(db) }
         self.writer = writer
     }
 

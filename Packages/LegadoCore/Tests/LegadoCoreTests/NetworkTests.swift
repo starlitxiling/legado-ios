@@ -12,7 +12,7 @@ final class NetworkTests: XCTestCase {
         XCTAssertEqual(request.callTimeout, 80)
         XCTAssertFalse(request.followRedirects)
         XCTAssertEqual(request.headers["X-Test"], "option")
-        XCTAssertEqual(request.headers["User-Agent"], UrlRequestBuilder.defaultUserAgent)
+        XCTAssertNil(request.headers["User-Agent"])
     }
 
     func testPostFormsAndJSON() throws {

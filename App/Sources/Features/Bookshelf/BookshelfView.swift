@@ -15,6 +15,9 @@ struct BookshelfView: View {
     @State private var confirmingDelete = false
     @AppStorage("bookshelfSort") private var sortValue = 0
     @State private var bookSheet: BookSheet?
+    @State private var appliedStartupSettings = false
+    @State private var resumeBook: BookRow?
+    @State private var showingResume = false
 
     init(bookshelf: any BookshelfReading, groups: any BookGroupReading) {
         _model = State(initialValue: BookshelfViewModel(bookshelf: bookshelf, groups: groups))
@@ -98,7 +101,22 @@ struct BookshelfView: View {
                 }
             }
         }
-        .task(id: model.selectedGroupID) { await refreshBooks() }
+        .task(id: model.selectedGroupID) {
+            await refreshBooks()
+            if !appliedStartupSettings {
+                appliedStartupSettings = true
+                let preferences = AppPreferences.shared
+                if preferences.boolean("defaultToRead"), let book = model.books.max(by: { $0.durChapterTime < $1.durChapterTime }), book.durChapterTime > 0 {
+                    resumeBook = book; showingResume = true
+                }
+                if preferences.boolean("auto_refresh") { await updateChapters() }
+            }
+        }
+        .navigationDestination(isPresented: $showingResume) {
+            if let resumeBook, let book = try? DiscoveryStorage.book(resumeBook) {
+                MediaReaderDestination(book: book, container: container)
+            }
+        }
         .onChange(of: sortValue) { _, _ in Task { await refreshBooks() } }
         .sheet(item: $bookSheet, onDismiss: { Task { await refreshBooks() } }) { item in
             NavigationStack {
@@ -133,7 +151,12 @@ struct BookshelfView: View {
 
     private func updateChapters() async {
         guard !container.databaseLifecycle.isSuspended else { return }
-        await container.downloads.refresh()
+        if AppPreferences.shared.boolean("onlyUpdateRead") {
+            do {
+                let books = try await container.bookshelf.all().filter { $0.totalChapterNum - $0.durChapterIndex - 1 <= 0 }
+                await container.downloads.refresh(books)
+            } catch { actionError = error.localizedDescription }
+        } else { await container.downloads.refresh() }
         await refreshBooks()
     }
 
@@ -182,7 +205,11 @@ struct BookshelfView: View {
                 .buttonStyle(.borderless)
             }
             NavigationLink {
-            ReaderView(book: book, database: container.database, client: container.httpClient)
+            if BookMediaKind(type: book.type) != .text, let entity = try? DiscoveryStorage.book(book) {
+                MediaReaderDestination(book: entity, container: container)
+            } else {
+                ReaderView(book: book, database: container.database, client: container.httpClient)
+            }
         } label: {
             VStack(alignment: .leading, spacing: 6) {
                 RemoteImage(url: book.customCoverUrl ?? book.coverUrl, origin: book.origin,

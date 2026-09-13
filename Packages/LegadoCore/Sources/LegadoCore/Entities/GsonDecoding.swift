@@ -8,6 +8,11 @@ public enum GsonDecoding {
 
     static let treeKey = CodingUserInfoKey(rawValue: "LegadoCore.Gson.tree")!
     static let timeKey = CodingUserInfoKey(rawValue: "LegadoCore.Gson.time")!
+    static let subscriptionIDKey = CodingUserInfoKey(rawValue: "LegadoCore.Gson.subscriptionID")!
+
+    static func subscriptionID(from decoder: Decoder) -> Int64 {
+        (decoder.userInfo[subscriptionIDKey] as? SubscriptionIDSequence)?.allocate() ?? time(from: decoder)
+    }
     static let ruleStringKey = CodingUserInfoKey(rawValue: "LegadoCore.Gson.ruleString")!
 
     static func time(from decoder: Decoder) -> Int64 {
@@ -36,9 +41,21 @@ public struct GsonJSONDecoder {
         let tree = try GsonValue.parse(data)
         let decoder = JSONDecoder()
         decoder.userInfo[GsonDecoding.treeKey] = tree
-        decoder.userInfo[GsonDecoding.timeKey] = now()
+        let timestamp = now()
+        decoder.userInfo[GsonDecoding.timeKey] = timestamp
+        decoder.userInfo[GsonDecoding.subscriptionIDKey] = SubscriptionIDSequence(start: timestamp)
         decoder.userInfo[GsonDecoding.ruleStringKey] = ruleString
         return try decoder.decode(type, from: data)
+    }
+}
+
+private final class SubscriptionIDSequence {
+    private var next: Int64
+    init(start: Int64) { next = start }
+    func allocate() -> Int64 {
+        let value = next
+        next = next == Int64.max ? 1 : next + 1
+        return value
     }
 }
 

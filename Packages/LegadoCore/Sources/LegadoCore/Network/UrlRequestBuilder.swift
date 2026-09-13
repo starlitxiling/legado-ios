@@ -19,10 +19,6 @@ public enum UrlRequestBuilder {
         for (key, value) in options.headers { headers.setHTTPHeader(key, value) }
         for key in headers.keys.filter({ $0.caseInsensitiveCompare("proxy") == .orderedSame }) { headers.removeValue(forKey: key) }
         for key in headers.keys.filter({ $0.caseInsensitiveCompare("CookieJar") == .orderedSame }) { headers.removeValue(forKey: key) }
-        if headers.httpHeader("User-Agent") == nil { headers["User-Agent"] = defaultUserAgent }
-        else if headers.httpHeader("User-Agent") == "null" {
-            for key in headers.keys.filter({ $0.caseInsensitiveCompare("User-Agent") == .orderedSame }) { headers.removeValue(forKey: key) }
-        }
         if let cookie {
             let merged = CookieStore.mergeCookies(cookie, headers.httpHeader("Cookie") ?? "")
             if !merged.isEmpty { headers.setHTTPHeader("Cookie", merged) }

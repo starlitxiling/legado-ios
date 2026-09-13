@@ -23,16 +23,28 @@ final class AppContainer {
     let browserInteraction: BrowserInteraction
     let downloads: DownloadCenterModel
     let backgroundRefresh: BookshelfBackgroundRefresh
+    let audioPlayback = AVPlayerAudioPlayer()
+    let webService: WebServiceController
 
     init(database: AppDatabase, httpClient: BoundedURLSessionHttpClient = .init()) {
         self.database = database
+        let httpClient = PreferenceHttpClient(underlying: httpClient,
+            userAgent: { UserDefaults.standard.string(forKey: "userAgent") ?? "" },
+            recordResponse: { request, response in
+                if UserDefaults.standard.bool(forKey: "recordHttpLog") {
+                    NSLog("HTTP %@ %d %@", request.method, response.status, response.finalURL.host ?? "")
+                }
+            })
         let browserInteraction = BrowserInteraction()
         self.browserInteraction = browserInteraction
         let headlessWebView = HeadlessWebViewScheduler(loader: HeadlessWebView(), maximumConcurrentLoads: 2,
             isForeground: { await MainActor.run { HeadlessWebView.keyWindow != nil } })
         self.headlessWebView = headlessWebView
         WebViewServices.shared.install(loader: headlessWebView, interaction: browserInteraction,
-            userAgent: { try await HeadlessWebView.defaultUserAgent() })
+            userAgent: {
+                let configured = UserDefaults.standard.string(forKey: "userAgent")?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+                return configured.isEmpty ? try await HeadlessWebView.defaultUserAgent() : configured
+            })
         databaseLifecycle = DatabaseLifecycleCoordinator(suspend: { database.suspend() },
                                                          resume: { database.resume() })
         let sourceSecrets = SourceLoginKeychainStore()
@@ -48,8 +60,10 @@ final class AppContainer {
         replaceRules = ReplaceRuleRepository(database: database)
         searchCache = SearchCacheRepository(database: database)
         cookies = CookieRepository(database: database)
-        downloads = DownloadCenterModel(database: database, client: self.httpClient)
+        downloads = DownloadCenterModel(database: database, client: self.httpClient,
+            threadCount: UserDefaults.standard.object(forKey: "threadCount") as? Int ?? 32)
         backgroundRefresh = BookshelfBackgroundRefresh(database: database, client: self.httpClient)
+        webService = WebServiceController.live(database: database, client: self.httpClient)
     }
 
     static func live() throws -> AppContainer {

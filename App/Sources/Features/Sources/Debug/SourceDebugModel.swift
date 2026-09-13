@@ -25,6 +25,7 @@ final class SourceDebugModel {
             for await line in stream {
                 guard !Task.isCancelled, let self, self.generation == run else { break }
                 self.lines.append(line)
+                if UserDefaults.standard.bool(forKey: "recordLog") { NSLog("%@", line.message) }
             }
             guard let self, self.generation == run else { return }
             self.isRunning = false; self.task = nil
