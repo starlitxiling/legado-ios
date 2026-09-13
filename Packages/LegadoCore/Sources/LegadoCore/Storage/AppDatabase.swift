@@ -17,6 +17,10 @@ public struct AppDatabase: Sendable {
         try AppDatabase(writer: DatabasePool(path: path, configuration: configuration(observesSuspension: true)))
     }
 
+    public func write<T>(_ updates: @escaping @Sendable (Database) throws -> T) async throws -> T {
+        try await writer.write(updates)
+    }
+
     /// GRDB 通知作用于进程内所有启用通知监听的数据库。
     public func suspend() {
         NotificationCenter.default.post(name: Database.suspendNotification, object: nil)

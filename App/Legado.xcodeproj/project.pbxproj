@@ -1,0 +1,688 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		02D73B0193722A2C8C4DDA05 /* ReaderLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = E8770C103C53E2021AE74142 /* ReaderLayout.swift */; };
+		067905B29B24A703228C2A07 /* LegadoApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69B0FA4E7E352B19E043F6E1 /* LegadoApp.swift */; };
+		08C3561C2521A85E11AB8498 /* SettingsViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0AC347420887AAD97A5E491 /* SettingsViewModel.swift */; };
+		0D28A91B7BCB1425294301AF /* ReaderViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 11EF2E517E8CAC0659A25BCA /* ReaderViewModel.swift */; };
+		1A7733AC4E6E96A1ACE576DD /* ChapterLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A277623B6C92CB5F945535DF /* ChapterLocator.swift */; };
+		2E3D819A8CBDB9EA9D946079 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 31526CB607D20D26CB94F0D5 /* RootTabView.swift */; };
+		4842CACE34A69C810C820C33 /* LegadoCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2B8D1732AA38FE3C656E2B4E /* LegadoCore */; };
+		4A5CDBDE1960912049ECAC27 /* ReaderChapterCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366D60FB81B1F0FC7CEED2A6 /* ReaderChapterCache.swift */; };
+		4AD4E6C03729B6FC2B55509E /* BookDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 017079B694A2178DE75CCD9C /* BookDetailViewModel.swift */; };
+		541105E267676EB040B24078 /* DiscoveryStorage.swift in Sources */ = {isa = PBXBuildFile; fileRef = 52ACFC31EBA16D2B7B54A8CB /* DiscoveryStorage.swift */; };
+		56BAC4894AA39AA73A1E7DB8 /* ReplaceRulesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9628C9AF5D69D5BE23FF8A5A /* ReplaceRulesViewModel.swift */; };
+		56FFDD9989E75B67727D1D8E /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47652D0C4F57BE82DC98A57 /* EmptyStateView.swift */; };
+		5DDF1A2EAA034E3250C0FA30 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06486326DF6BEE11419AC184 /* AppContainer.swift */; };
+		6724023A8846CB6F01D4E746 /* ReplaceRulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798333B66017390E2DB602EB /* ReplaceRulesView.swift */; };
+		67B50051008CEFA90F12D5E3 /* SourceImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21918C8894CEE859BBC5BD08 /* SourceImportSheet.swift */; };
+		67FD47AE8EEA343B3FBD3A30 /* TocView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EC5AE0D0A3DC71C11A5507D /* TocView.swift */; };
+		6A949AE029C62D413351B997 /* ReaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F199C5CAA312AF79379C910 /* ReaderView.swift */; };
+		6D53233FC77BC91C63A180B5 /* RestoreResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3350B7173A65705D7E0D6F0 /* RestoreResultView.swift */; };
+		76D5B83DA76E99A8B32BB692 /* Paginator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05708E47DF0F0D8F7E94FDF3 /* Paginator.swift */; };
+		7861C96659C6A88776C9831B /* ImportSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 519069D25D00DA0E8774F23C /* ImportSupport.swift */; };
+		787275E167619341BCE67895 /* DatabaseLifecycleCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 15969DF786FBE4DD3BA2C7F4 /* DatabaseLifecycleCoordinator.swift */; };
+		7BBACE9B0B951747C7D34971 /* BackupViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C042AF401C65EA9B73B36518 /* BackupViewModel.swift */; };
+		7EBA8CF9037111AA623478E7 /* SearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3E84CB29E81F0734D2A4A280 /* SearchView.swift */; };
+		878C24EBA2A3D80685CA86BD /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10F5A6F17AA39BC034C9A64 /* KeychainStore.swift */; };
+		8D6CFD7BC0E330E492E4D860 /* SourcesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B72790E03C55A9F5C40D600F /* SourcesView.swift */; };
+		9541816064C9716FAC3AFD79 /* TocViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A53458DD44D59B741AC92A0A /* TocViewModel.swift */; };
+		97B1570EDCE52C33C44BE843 /* BookshelfViewModelTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = B2033C42C23EE40D313F06E9 /* BookshelfViewModelTests.swift */; };
+		9C65F9EB66D38E25C461BF00 /* ReaderSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 46D115C93A7385181CD49809 /* ReaderSettings.swift */; };
+		A21F0CD61CF2F0CF4847E082 /* BookshelfViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E60A074AD55EACB85FDC970B /* BookshelfViewModel.swift */; };
+		A27AA8BDF6A6A27595D26D20 /* LegadoCore in Frameworks */ = {isa = PBXBuildFile; productRef = 61383F5B2BD936641009B1A2 /* LegadoCore */; };
+		A7E52C1C67E7CB2090FC9185 /* OpenSourceLicense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D0C6BD50309E9EA91974D3 /* OpenSourceLicense.swift */; };
+		A947020F907CC0561467CE3F /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B003960B446F9A3DA84970C /* BackupView.swift */; };
+		BB8A810EA4C36851F37BF6FC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B077CC4AD2C69481319FF3D /* SettingsView.swift */; };
+		C26AA4931AF6C58FDA1F4613 /* SourcesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32042FEEDA8756F3411B6099 /* SourcesViewModel.swift */; };
+		DB91C6B90EA741C38A36CA79 /* SourceChangeTransaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE06A0EDE83DE9C85048CDCE /* SourceChangeTransaction.swift */; };
+		DD708B296E7DF4A43890D1CF /* BookshelfView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D606638D55F0402D1B18B54A /* BookshelfView.swift */; };
+		F05F57242E180D5F1D65038A /* ImportHttpClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23E011461338C4A5D6BEFEAE /* ImportHttpClient.swift */; };
+		F354B6EEF3841EE4882D9E7A /* SearchViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E342230D3C6654F65BB5548 /* SearchViewModel.swift */; };
+		F3AF95D1C235C6774253F42B /* Theme.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2CE6E5ECCD14BA6D17FE726 /* Theme.swift */; };
+		F6B4DECECF8BB77C402092AF /* BookDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 227892C7F74C8B696DF197DC /* BookDetailView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		6EFBA978D2E19D135BA78261 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C88D041936DFBF20C4AA23 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 545F723F8243B8264D863A84;
+			remoteInfo = Legado;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		017079B694A2178DE75CCD9C /* BookDetailViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookDetailViewModel.swift; sourceTree = "<group>"; };
+		05708E47DF0F0D8F7E94FDF3 /* Paginator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Paginator.swift; sourceTree = "<group>"; };
+		06486326DF6BEE11419AC184 /* AppContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppContainer.swift; sourceTree = "<group>"; };
+		11EF2E517E8CAC0659A25BCA /* ReaderViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderViewModel.swift; sourceTree = "<group>"; };
+		15969DF786FBE4DD3BA2C7F4 /* DatabaseLifecycleCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DatabaseLifecycleCoordinator.swift; sourceTree = "<group>"; };
+		1B003960B446F9A3DA84970C /* BackupView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupView.swift; sourceTree = "<group>"; };
+		1B077CC4AD2C69481319FF3D /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		21918C8894CEE859BBC5BD08 /* SourceImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceImportSheet.swift; sourceTree = "<group>"; };
+		227892C7F74C8B696DF197DC /* BookDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookDetailView.swift; sourceTree = "<group>"; };
+		23E011461338C4A5D6BEFEAE /* ImportHttpClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportHttpClient.swift; sourceTree = "<group>"; };
+		31526CB607D20D26CB94F0D5 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
+		32042FEEDA8756F3411B6099 /* SourcesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesViewModel.swift; sourceTree = "<group>"; };
+		366D60FB81B1F0FC7CEED2A6 /* ReaderChapterCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderChapterCache.swift; sourceTree = "<group>"; };
+		3E84CB29E81F0734D2A4A280 /* SearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchView.swift; sourceTree = "<group>"; };
+		46D115C93A7385181CD49809 /* ReaderSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderSettings.swift; sourceTree = "<group>"; };
+		4F199C5CAA312AF79379C910 /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
+		519069D25D00DA0E8774F23C /* ImportSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportSupport.swift; sourceTree = "<group>"; };
+		52ACFC31EBA16D2B7B54A8CB /* DiscoveryStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoveryStorage.swift; sourceTree = "<group>"; };
+		59A8853C1A35902E09296991 /* LegadoCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LegadoCore; path = ../Packages/LegadoCore; sourceTree = SOURCE_ROOT; };
+		5E494EB6E5276C0FA16C637F /* Legado.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Legado.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		69B0FA4E7E352B19E043F6E1 /* LegadoApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LegadoApp.swift; sourceTree = "<group>"; };
+		798333B66017390E2DB602EB /* ReplaceRulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplaceRulesView.swift; sourceTree = "<group>"; };
+		8EC5AE0D0A3DC71C11A5507D /* TocView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TocView.swift; sourceTree = "<group>"; };
+		9628C9AF5D69D5BE23FF8A5A /* ReplaceRulesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplaceRulesViewModel.swift; sourceTree = "<group>"; };
+		9E342230D3C6654F65BB5548 /* SearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViewModel.swift; sourceTree = "<group>"; };
+		A0AC347420887AAD97A5E491 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
+		A277623B6C92CB5F945535DF /* ChapterLocator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChapterLocator.swift; sourceTree = "<group>"; };
+		A2CE6E5ECCD14BA6D17FE726 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
+		A2D0C6BD50309E9EA91974D3 /* OpenSourceLicense.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OpenSourceLicense.swift; sourceTree = "<group>"; };
+		A47652D0C4F57BE82DC98A57 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		A53458DD44D59B741AC92A0A /* TocViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TocViewModel.swift; sourceTree = "<group>"; };
+		B2033C42C23EE40D313F06E9 /* BookshelfViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookshelfViewModelTests.swift; sourceTree = "<group>"; };
+		B72790E03C55A9F5C40D600F /* SourcesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesView.swift; sourceTree = "<group>"; };
+		BE06A0EDE83DE9C85048CDCE /* SourceChangeTransaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceChangeTransaction.swift; sourceTree = "<group>"; };
+		C042AF401C65EA9B73B36518 /* BackupViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupViewModel.swift; sourceTree = "<group>"; };
+		C10F5A6F17AA39BC034C9A64 /* KeychainStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = KeychainStore.swift; sourceTree = "<group>"; };
+		D606638D55F0402D1B18B54A /* BookshelfView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookshelfView.swift; sourceTree = "<group>"; };
+		E60A074AD55EACB85FDC970B /* BookshelfViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookshelfViewModel.swift; sourceTree = "<group>"; };
+		E8770C103C53E2021AE74142 /* ReaderLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderLayout.swift; sourceTree = "<group>"; };
+		F3350B7173A65705D7E0D6F0 /* RestoreResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestoreResultView.swift; sourceTree = "<group>"; };
+		FE0C1C8D2F318FBFA601C6B7 /* LegadoTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = LegadoTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		5E1B8EEB9508C40F44974A16 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A27AA8BDF6A6A27595D26D20 /* LegadoCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		BDE26A88C38E7B77E5A21773 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4842CACE34A69C810C820C33 /* LegadoCore in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		0808FEAB73CB24DD70B2BA9C /* Settings */ = {
+			isa = PBXGroup;
+			children = (
+				A2D0C6BD50309E9EA91974D3 /* OpenSourceLicense.swift */,
+				1B077CC4AD2C69481319FF3D /* SettingsView.swift */,
+				A0AC347420887AAD97A5E491 /* SettingsViewModel.swift */,
+			);
+			path = Settings;
+			sourceTree = "<group>";
+		};
+		15DEB482CA55F9FA24262C73 /* Search */ = {
+			isa = PBXGroup;
+			children = (
+				52ACFC31EBA16D2B7B54A8CB /* DiscoveryStorage.swift */,
+				3E84CB29E81F0734D2A4A280 /* SearchView.swift */,
+				9E342230D3C6654F65BB5548 /* SearchViewModel.swift */,
+			);
+			path = Search;
+			sourceTree = "<group>";
+		};
+		21AC0F10617EB3DC4CA0C90D /* BookDetail */ = {
+			isa = PBXGroup;
+			children = (
+				227892C7F74C8B696DF197DC /* BookDetailView.swift */,
+				017079B694A2178DE75CCD9C /* BookDetailViewModel.swift */,
+			);
+			path = BookDetail;
+			sourceTree = "<group>";
+		};
+		2EFA8535A04955DF845418B2 = {
+			isa = PBXGroup;
+			children = (
+				8A026352A08576F4BA363FAC /* LegadoTests */,
+				3BD761BCFA0F9CC75BD6063C /* Packages */,
+				D39D584FF5AB311C74C6DC4F /* Sources */,
+				7A9998A08F31415169D8903D /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		3BD761BCFA0F9CC75BD6063C /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				59A8853C1A35902E09296991 /* LegadoCore */,
+			);
+			name = Packages;
+			sourceTree = "<group>";
+		};
+		4044E0F78CFB6EA4EEE513A3 /* Backup */ = {
+			isa = PBXGroup;
+			children = (
+				1B003960B446F9A3DA84970C /* BackupView.swift */,
+				C042AF401C65EA9B73B36518 /* BackupViewModel.swift */,
+				F3350B7173A65705D7E0D6F0 /* RestoreResultView.swift */,
+			);
+			path = Backup;
+			sourceTree = "<group>";
+		};
+		7A9998A08F31415169D8903D /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				5E494EB6E5276C0FA16C637F /* Legado.app */,
+				FE0C1C8D2F318FBFA601C6B7 /* LegadoTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		81EDA5F3651094AE1430E472 /* ReplaceRules */ = {
+			isa = PBXGroup;
+			children = (
+				798333B66017390E2DB602EB /* ReplaceRulesView.swift */,
+				9628C9AF5D69D5BE23FF8A5A /* ReplaceRulesViewModel.swift */,
+			);
+			path = ReplaceRules;
+			sourceTree = "<group>";
+		};
+		8444592A06DDBCD4824F99EC /* App */ = {
+			isa = PBXGroup;
+			children = (
+				06486326DF6BEE11419AC184 /* AppContainer.swift */,
+				15969DF786FBE4DD3BA2C7F4 /* DatabaseLifecycleCoordinator.swift */,
+				69B0FA4E7E352B19E043F6E1 /* LegadoApp.swift */,
+				31526CB607D20D26CB94F0D5 /* RootTabView.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		8A026352A08576F4BA363FAC /* LegadoTests */ = {
+			isa = PBXGroup;
+			children = (
+				B2033C42C23EE40D313F06E9 /* BookshelfViewModelTests.swift */,
+			);
+			name = LegadoTests;
+			path = Tests/LegadoTests;
+			sourceTree = "<group>";
+		};
+		9E3E561741698ACF1B6BA852 /* Reader */ = {
+			isa = PBXGroup;
+			children = (
+				05708E47DF0F0D8F7E94FDF3 /* Paginator.swift */,
+				366D60FB81B1F0FC7CEED2A6 /* ReaderChapterCache.swift */,
+				E8770C103C53E2021AE74142 /* ReaderLayout.swift */,
+				46D115C93A7385181CD49809 /* ReaderSettings.swift */,
+				4F199C5CAA312AF79379C910 /* ReaderView.swift */,
+				11EF2E517E8CAC0659A25BCA /* ReaderViewModel.swift */,
+			);
+			path = Reader;
+			sourceTree = "<group>";
+		};
+		A27F49EE7460EA7C4569B5E6 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				23E011461338C4A5D6BEFEAE /* ImportHttpClient.swift */,
+				519069D25D00DA0E8774F23C /* ImportSupport.swift */,
+				21918C8894CEE859BBC5BD08 /* SourceImportSheet.swift */,
+				B72790E03C55A9F5C40D600F /* SourcesView.swift */,
+				32042FEEDA8756F3411B6099 /* SourcesViewModel.swift */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		A538EDDFC03DC6C03117D84D /* Bookshelf */ = {
+			isa = PBXGroup;
+			children = (
+				D606638D55F0402D1B18B54A /* BookshelfView.swift */,
+				E60A074AD55EACB85FDC970B /* BookshelfViewModel.swift */,
+			);
+			path = Bookshelf;
+			sourceTree = "<group>";
+		};
+		B05C5B8E321A38CBE60FEB9B /* Toc */ = {
+			isa = PBXGroup;
+			children = (
+				A277623B6C92CB5F945535DF /* ChapterLocator.swift */,
+				BE06A0EDE83DE9C85048CDCE /* SourceChangeTransaction.swift */,
+				8EC5AE0D0A3DC71C11A5507D /* TocView.swift */,
+				A53458DD44D59B741AC92A0A /* TocViewModel.swift */,
+			);
+			path = Toc;
+			sourceTree = "<group>";
+		};
+		B9A6AC27A10E27F265E47833 /* Features */ = {
+			isa = PBXGroup;
+			children = (
+				4044E0F78CFB6EA4EEE513A3 /* Backup */,
+				21AC0F10617EB3DC4CA0C90D /* BookDetail */,
+				A538EDDFC03DC6C03117D84D /* Bookshelf */,
+				9E3E561741698ACF1B6BA852 /* Reader */,
+				81EDA5F3651094AE1430E472 /* ReplaceRules */,
+				15DEB482CA55F9FA24262C73 /* Search */,
+				0808FEAB73CB24DD70B2BA9C /* Settings */,
+				A27F49EE7460EA7C4569B5E6 /* Sources */,
+				B05C5B8E321A38CBE60FEB9B /* Toc */,
+			);
+			path = Features;
+			sourceTree = "<group>";
+		};
+		C0B6B17DFC3D0FB48FC92829 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				A47652D0C4F57BE82DC98A57 /* EmptyStateView.swift */,
+				C10F5A6F17AA39BC034C9A64 /* KeychainStore.swift */,
+				A2CE6E5ECCD14BA6D17FE726 /* Theme.swift */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		D39D584FF5AB311C74C6DC4F /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				8444592A06DDBCD4824F99EC /* App */,
+				B9A6AC27A10E27F265E47833 /* Features */,
+				C0B6B17DFC3D0FB48FC92829 /* Shared */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		545F723F8243B8264D863A84 /* Legado */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1799323148C07C0AECB8B810 /* Build configuration list for PBXNativeTarget "Legado" */;
+			buildPhases = (
+				CCC49AA83A8F2A053690E358 /* Sources */,
+				BDE26A88C38E7B77E5A21773 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Legado;
+			packageProductDependencies = (
+				2B8D1732AA38FE3C656E2B4E /* LegadoCore */,
+			);
+			productName = Legado;
+			productReference = 5E494EB6E5276C0FA16C637F /* Legado.app */;
+			productType = "com.apple.product-type.application";
+		};
+		8086C70D204522BE22D900CC /* LegadoTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 451503E854E225B81AFF0929 /* Build configuration list for PBXNativeTarget "LegadoTests" */;
+			buildPhases = (
+				5A75EE015A537D14B822DE9A /* Sources */,
+				5E1B8EEB9508C40F44974A16 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				17A0898F1AAAAAB662625624 /* PBXTargetDependency */,
+			);
+			name = LegadoTests;
+			packageProductDependencies = (
+				61383F5B2BD936641009B1A2 /* LegadoCore */,
+			);
+			productName = LegadoTests;
+			productReference = FE0C1C8D2F318FBFA601C6B7 /* LegadoTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		97C88D041936DFBF20C4AA23 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					545F723F8243B8264D863A84 = {
+						ProvisioningStyle = Manual;
+					};
+					8086C70D204522BE22D900CC = {
+						ProvisioningStyle = Manual;
+					};
+				};
+			};
+			buildConfigurationList = C5A9AF168B7272EB87E8395A /* Build configuration list for PBXProject "Legado" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 2EFA8535A04955DF845418B2;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				277782924F7DC95D54069756 /* XCLocalSwiftPackageReference "../Packages/LegadoCore" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 7A9998A08F31415169D8903D /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				545F723F8243B8264D863A84 /* Legado */,
+				8086C70D204522BE22D900CC /* LegadoTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXSourcesBuildPhase section */
+		5A75EE015A537D14B822DE9A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				97B1570EDCE52C33C44BE843 /* BookshelfViewModelTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CCC49AA83A8F2A053690E358 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5DDF1A2EAA034E3250C0FA30 /* AppContainer.swift in Sources */,
+				A947020F907CC0561467CE3F /* BackupView.swift in Sources */,
+				7BBACE9B0B951747C7D34971 /* BackupViewModel.swift in Sources */,
+				F6B4DECECF8BB77C402092AF /* BookDetailView.swift in Sources */,
+				4AD4E6C03729B6FC2B55509E /* BookDetailViewModel.swift in Sources */,
+				DD708B296E7DF4A43890D1CF /* BookshelfView.swift in Sources */,
+				A21F0CD61CF2F0CF4847E082 /* BookshelfViewModel.swift in Sources */,
+				1A7733AC4E6E96A1ACE576DD /* ChapterLocator.swift in Sources */,
+				787275E167619341BCE67895 /* DatabaseLifecycleCoordinator.swift in Sources */,
+				541105E267676EB040B24078 /* DiscoveryStorage.swift in Sources */,
+				56FFDD9989E75B67727D1D8E /* EmptyStateView.swift in Sources */,
+				F05F57242E180D5F1D65038A /* ImportHttpClient.swift in Sources */,
+				7861C96659C6A88776C9831B /* ImportSupport.swift in Sources */,
+				878C24EBA2A3D80685CA86BD /* KeychainStore.swift in Sources */,
+				067905B29B24A703228C2A07 /* LegadoApp.swift in Sources */,
+				A7E52C1C67E7CB2090FC9185 /* OpenSourceLicense.swift in Sources */,
+				76D5B83DA76E99A8B32BB692 /* Paginator.swift in Sources */,
+				4A5CDBDE1960912049ECAC27 /* ReaderChapterCache.swift in Sources */,
+				02D73B0193722A2C8C4DDA05 /* ReaderLayout.swift in Sources */,
+				9C65F9EB66D38E25C461BF00 /* ReaderSettings.swift in Sources */,
+				6A949AE029C62D413351B997 /* ReaderView.swift in Sources */,
+				0D28A91B7BCB1425294301AF /* ReaderViewModel.swift in Sources */,
+				6724023A8846CB6F01D4E746 /* ReplaceRulesView.swift in Sources */,
+				56BAC4894AA39AA73A1E7DB8 /* ReplaceRulesViewModel.swift in Sources */,
+				6D53233FC77BC91C63A180B5 /* RestoreResultView.swift in Sources */,
+				2E3D819A8CBDB9EA9D946079 /* RootTabView.swift in Sources */,
+				7EBA8CF9037111AA623478E7 /* SearchView.swift in Sources */,
+				F354B6EEF3841EE4882D9E7A /* SearchViewModel.swift in Sources */,
+				BB8A810EA4C36851F37BF6FC /* SettingsView.swift in Sources */,
+				08C3561C2521A85E11AB8498 /* SettingsViewModel.swift in Sources */,
+				DB91C6B90EA741C38A36CA79 /* SourceChangeTransaction.swift in Sources */,
+				67B50051008CEFA90F12D5E3 /* SourceImportSheet.swift in Sources */,
+				8D6CFD7BC0E330E492E4D860 /* SourcesView.swift in Sources */,
+				C26AA4931AF6C58FDA1F4613 /* SourcesViewModel.swift in Sources */,
+				F3AF95D1C235C6774253F42B /* Theme.swift in Sources */,
+				67FD47AE8EEA343B3FBD3A30 /* TocView.swift in Sources */,
+				9541816064C9716FAC3AFD79 /* TocViewModel.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		17A0898F1AAAAAB662625624 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 545F723F8243B8264D863A84 /* Legado */;
+			targetProxy = 6EFBA978D2E19D135BA78261 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1008F408AA1428A45896270A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		279372C4A648B73D30A64ED3 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.legado.ios.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Legado.app/Legado";
+			};
+			name = Release;
+		};
+		3A170A988C78DAA1B821D2F0 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.legado.ios.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Legado.app/Legado";
+			};
+			name = Debug;
+		};
+		8AB3E3FCC8820D9722F576DE /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Manual;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		BA82717EEACA8E58B6E6C2DC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.legado.ios;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		C944270FEB37CF0CCC46A458 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.legado.ios;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1799323148C07C0AECB8B810 /* Build configuration list for PBXNativeTarget "Legado" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				BA82717EEACA8E58B6E6C2DC /* Debug */,
+				C944270FEB37CF0CCC46A458 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		451503E854E225B81AFF0929 /* Build configuration list for PBXNativeTarget "LegadoTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3A170A988C78DAA1B821D2F0 /* Debug */,
+				279372C4A648B73D30A64ED3 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		C5A9AF168B7272EB87E8395A /* Build configuration list for PBXProject "Legado" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				8AB3E3FCC8820D9722F576DE /* Debug */,
+				1008F408AA1428A45896270A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		277782924F7DC95D54069756 /* XCLocalSwiftPackageReference "../Packages/LegadoCore" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../Packages/LegadoCore;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		2B8D1732AA38FE3C656E2B4E /* LegadoCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LegadoCore;
+		};
+		61383F5B2BD936641009B1A2 /* LegadoCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = LegadoCore;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 97C88D041936DFBF20C4AA23 /* Project object */;
+}

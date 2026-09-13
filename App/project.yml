@@ -1,0 +1,64 @@
+name: Legado
+options:
+  deploymentTarget:
+    iOS: '17.0'
+settings:
+  base:
+    SWIFT_VERSION: '5.0'
+    CODE_SIGN_STYLE: Manual
+    TARGETED_DEVICE_FAMILY: '1,2'
+packages:
+  LegadoCore:
+    path: ../Packages/LegadoCore
+targets:
+  Legado:
+    type: application
+    platform: iOS
+    sources:
+      - Sources
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.legado.ios
+    dependencies:
+      - package: LegadoCore
+        product: LegadoCore
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: 阅读
+        UILaunchScreen: {}
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+        UISupportedInterfaceOrientations~ipad:
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
+  LegadoTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - Tests/LegadoTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.legado.ios.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: $(BUILT_PRODUCTS_DIR)/Legado.app/Legado
+        BUNDLE_LOADER: $(TEST_HOST)
+    dependencies:
+      - target: Legado
+      - package: LegadoCore
+        product: LegadoCore
+schemes:
+  Legado:
+    build:
+      targets:
+        Legado: all
+        LegadoTests: [test]
+    test:
+      targets:
+        - LegadoTests
