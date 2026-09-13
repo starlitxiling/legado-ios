@@ -69,7 +69,8 @@ Swift Package `LegadoCore`（无 UI）：`RuleAnalyzer`、六模式分派、jsou
 
 GRDB 新 schema、Legado 备份包导入、WebDAV 客户端、URLSession 封装；完成判据：从 Android 端 WebDAV 备份恢复后书架与书源在 iOS 可用。
 
-- 轮次：（尚未开轮）
+- 状态：核心完成（6 单元；WebDAV 只读冒烟与 1 条真实书源端到端通过；见轮次 1 SUMMARY）
+- 轮次：1
 
 ### 阶段 3 · MVP UI
 
