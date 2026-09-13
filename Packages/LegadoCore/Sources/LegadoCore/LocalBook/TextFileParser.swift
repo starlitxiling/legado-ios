@@ -6,7 +6,7 @@ public enum LocalBookError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .identityConflict(let name, let author): return "书架已存在同名同作者书籍：\(name) / \(author)"
-        case .unsupportedFile: return "只支持本地 TXT 和 EPUB 文件。"
+        case .unsupportedFile: return "只支持本地 TXT、EPUB、MOBI、AZW3 和 PDF 文件。"
         case .invalidEncoding: return "无法识别文本编码。"
         case .emptyFile: return "文件中没有正文。"
         case .invalidOffsets: return "章节偏移超出文件范围，请重新导入。"

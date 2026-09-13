@@ -199,6 +199,7 @@ enum Migrations {
             for rule in TxtTocRule.builtIn { try rule.insert(db) }
         }
         SourceLoginMigration.register(in: &migrator)
+        HttpTTSMigration.register(in: &migrator)
         return migrator
 
     }

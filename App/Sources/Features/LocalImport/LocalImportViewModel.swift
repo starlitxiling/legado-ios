@@ -39,10 +39,11 @@ final class LocalImportViewModel {
             defer {
                 try? FileManager.default.removeItem(at: staging)
                 EpubParserCache.shared.invalidate(staging.appendingPathComponent(url.lastPathComponent))
+                MobiParserCache.shared.invalidate(staging.appendingPathComponent(url.lastPathComponent))
             }
             var published = false, hasBackup = false
             do {
-                guard ["txt", "epub"].contains(url.pathExtension.lowercased()) else { throw LocalBookError.unsupportedFile }
+                guard ["txt", "epub", "mobi", "azw3", "pdf"].contains(url.pathExtension.lowercased()) else { throw LocalBookError.unsupportedFile }
                 let rules = try await TxtTocRuleRepository(database: database).list(enabledOnly: true)
                 try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
                 let stagedFile = staging.appendingPathComponent(url.lastPathComponent)
@@ -72,6 +73,7 @@ final class LocalImportViewModel {
                 }
                 try FileManager.default.moveItem(at: staging, to: directory); published = true
                 EpubParserCache.shared.invalidate(destination)
+                MobiParserCache.shared.invalidate(destination)
                 try await LocalBook.save(book: parsed.book, chapters: parsed.chapters, database: database, keepBoth: keepBoth)
                 if hasBackup { try? FileManager.default.removeItem(at: backup) }
                 importedCount += 1

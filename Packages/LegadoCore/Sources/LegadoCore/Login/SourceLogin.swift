@@ -65,7 +65,7 @@ public actor SourceLogin {
     public func rows(source: BookSource) async throws -> [LoginRow] {
         guard let ui = source.loginUi else { return [] }
         if Self.isScript(ui) {
-            let value = try await evaluate(source: source, script: Self.script(source.loginUrl ?? "") + "\n" + Self.script(ui))
+            let value = try await evaluate(source: source, script: Self.loginScript(source) + "\n" + Self.script(ui))
             if let text = value as? String { return try Self.parseUI(text) }
             guard let value, JSONSerialization.isValidJSONObject(value) else { throw SourceLoginError.invalidUI("脚本未返回数组") }
             return try Self.parseUI(String(decoding: JSONSerialization.data(withJSONObject: value), as: UTF8.self))
@@ -80,7 +80,7 @@ public actor SourceLogin {
 
     @discardableResult
     public func submit(source: BookSource, values: [String: String], action: String? = nil) async throws -> LoginActionResult {
-        let code = Self.script(source.loginUrl ?? "")
+        let code = Self.loginScript(source)
         guard !code.isEmpty, !code.hasPrefix("http://"), !code.hasPrefix("https://") else { throw SourceLoginError.missingLoginScript }
         let bridge = SourceScriptBridge(source: source, database: database, secrets: secrets)
         if action == nil { try bridge.write("loginInfo", value: String(decoding: JSONEncoder().encode(values), as: UTF8.self)) }
@@ -105,7 +105,7 @@ public actor SourceLogin {
     public func check(source: BookSource, response: StrResponse) async throws -> StrResponse {
         guard let code = source.loginCheckJs, !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return response }
         let data: [String: Any] = ["body": response.body, "code": response.code, "url": response.url]
-        let loginCode = Self.script(source.loginUrl ?? "")
+        let loginCode = Self.loginScript(source)
         let definitions = loginCode.hasPrefix("http://") || loginCode.hasPrefix("https://") ? "" : loginCode
         let setup = definitions + "\nvar result = {body:function(){return __response.body},code:function(){return __response.code},url:function(){return __response.url}};\n"
         let value = try await evaluate(source: source, script: setup + "var __checked = eval(__checkCode); if (__checked === false || __checked == null) throw 'Login check rejected'; ({body:typeof __checked.body === 'function' ? String(__checked.body()) : __response.body, code:typeof __checked.code === 'function' ? Number(__checked.code()) : __response.code, url:typeof __checked.url === 'function' ? String(__checked.url()) : __response.url});", bindings: ["__response": data, "__checkCode": Self.script(code)])
@@ -147,7 +147,7 @@ public actor SourceLogin {
         let bridge = SourceScriptBridge(source: source, database: database, secrets: secrets)
         let engine = JsEngine(baseUrl: key, httpClient: client, cookieStore: cookies,
                               networkSource: .init(key: key, enabledCookieJar: source.enabledCookieJar ?? true, concurrentRate: source.concurrentRate))
-        engine.sourceBindingInstaller = { try bridge.install(in: $0, javaAliases: true) }
+        engine.sourceBindingInstaller = { [weak engine] in try bridge.install(in: $0, engine: engine, javaAliases: true) }
         engine.libraryInitializer = { context in
             initializer?(context)
             if let library = source.jsLib { context.evaluateScript(library) }
@@ -172,6 +172,10 @@ public actor SourceLogin {
     private static func isScript(_ text: String) -> Bool {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
         return text.hasPrefix("@js:") || text.hasPrefix("<js>")
+    }
+    static func loginScript(_ source: BookSource) -> String {
+        if let mainJs = source.mainJs, !mainJs.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return mainJs }
+        return script(source.loginUrl ?? "")
     }
     private static func script(_ text: String) -> String {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)

@@ -109,9 +109,10 @@ final class SourceImporterTests: XCTestCase {
         guard case .invalid = importer.parseBookSources(try fixture("invalid")) else { return XCTFail() }
     }
 
-    func testJavaScriptIsUnsupportedWithoutExecution() throws {
-        XCTAssertEqual(importer.parseBookSources(try fixture("javascript")), .jsSource(.unsupported))
-        XCTAssertEqual(importer.parseBookSources("arbitrary non-JSON text"), .jsSource(.unsupported))
+    func testJavaScriptConfigurationExtraction() throws {
+        guard case .sources(let sources) = importer.parseBookSources(try fixture("javascript")) else { return XCTFail() }
+        XCTAssertEqual(sources.first?.support, .supported)
+        XCTAssertEqual(importer.parseBookSources("arbitrary non-JSON text"), .invalid)
     }
 
     func testMalformedAndNullRules() throws {
@@ -194,8 +195,8 @@ final class SourceImporterTests: XCTestCase {
     }
 
     func testNonJSONCandidateBranchMatchesKotlin() {
-        XCTAssertEqual(importer.parseBookSources("{unfinished"), .jsSource(.unsupported))
-        XCTAssertEqual(importer.parseBookSources("[unfinished"), .jsSource(.unsupported))
+        XCTAssertEqual(importer.parseBookSources("{unfinished"), .invalid)
+        XCTAssertEqual(importer.parseBookSources("[unfinished"), .invalid)
     }
 
     func testAllEntityMissingDefaults() throws {

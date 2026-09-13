@@ -15,8 +15,7 @@ public struct ImportedBookSource: Equatable {
 
     public init(source: BookSource) {
         self.source = source
-        let hasScript = !(source.mainJs?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-        support = hasScript ? .unsupportedJavaScript : .supported
+        support = .supported
     }
 }
 
@@ -33,7 +32,7 @@ public enum ReplaceRuleImportResult: Equatable {
     case invalid
 }
 
-/// 只解析文本，不请求 URL、不执行脚本、不写入数据库。
+/// 解析文本；纯 JS 通过执行顶层声明提取配置，不写入数据库。
 public struct SourceImporter {
     private let now: () -> Int64
 
@@ -47,7 +46,10 @@ public struct SourceImporter {
         guard !text.isEmpty else { return .invalid }
         let isObject = text.hasPrefix("{") && text.hasSuffix("}")
         let isArray = text.hasPrefix("[") && text.hasSuffix("]")
-        guard isObject || isArray else { return .jsSource(.unsupported) }
+        guard isObject || isArray else {
+            guard let source = try? JsSourceConfig.extract(text) else { return .invalid }
+            return .sources([ImportedBookSource(source: source)])
+        }
         do {
             let data = Data(text.utf8)
             let tree = try GsonValue.parse(data)

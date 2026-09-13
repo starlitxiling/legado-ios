@@ -31,6 +31,9 @@ struct SourcesView: View {
                 })) {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(source.bookSourceName.isEmpty ? "未命名书源" : source.bookSourceName)
+                        if !(source.mainJs ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("JS 书源").font(.caption).foregroundStyle(.secondary)
+                        }
                         Text(source.bookSourceUrl).font(.caption).foregroundStyle(.secondary).lineLimit(1)
                         if let group = source.bookSourceGroup, !group.isEmpty {
                             Text(group).font(.caption).foregroundStyle(.secondary)

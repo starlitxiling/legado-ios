@@ -69,13 +69,13 @@ final class SourceImportRevisionTests: XCTestCase {
     }
 
     @MainActor
-    func testOnlyRecognizedJavaScriptGetsUnsupportedMessage() async throws {
+    func testInvalidJavaScriptReportsInvalidSource() async throws {
         let model = SourcesViewModel(repository: .init(database: try .inMemory()), httpClient: ReplayHttpClient())
         for script in ["function mainJs() { return []; }", "const mainJs = () => [];",
                        "// source\nvar source = {};\nfunction search() { return source; }",
                        "var config = {\nbookSourceUrl: 'https://book.test'\n};\nfunction search() {}"] {
             await model.prepareImport(text: script)
-            XCTAssertTrue(model.errorMessage?.contains("脚本书源") == true)
+            XCTAssertTrue(model.errorMessage?.contains("JSON 无效") == true)
         }
         for text in ["mainJs download failed", "<html>function mainJs() {}</html>", "{\"mainJs\":\"function mainJs() {}\""] {
             await model.prepareImport(text: text)

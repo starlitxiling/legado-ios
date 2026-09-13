@@ -36,13 +36,17 @@ public final class JsEngine: SelectorEngine {
     public var rateLimiter: ConcurrentRateLimiter
     public var downloadStore: any HostDownloadStore
     public var networkConcurrency: Int = 32
+    public var headlessWebView: (any HeadlessWebViewProtocol)?
+    public var webViewInteraction: (any WebViewUserInteraction)?
+    public var webViewUserAgent: (@Sendable () async throws -> String)?
     public static let sharedCookieStore = CookieStore()
 
     public init(baseUrl: String = "", bindings: [String: Any] = [:],
                 timeZone: TimeZone = .current, logger: @escaping (String) -> Void = { _ in },
                 httpClient: any HttpClient = URLSessionHttpClient(), cookieStore: CookieStore = JsEngine.sharedCookieStore,
                 cacheManager: CacheManager = .shared, networkSource: AnalyzeUrlExecutor.Source = .init(),
-                rateLimiter: ConcurrentRateLimiter = .shared, downloadStore: any HostDownloadStore = MemoryHostDownloadStore()) {
+                rateLimiter: ConcurrentRateLimiter = .shared, downloadStore: any HostDownloadStore = MemoryHostDownloadStore(),
+                headlessWebView: (any HeadlessWebViewProtocol)? = nil, webViewInteraction: (any WebViewUserInteraction)? = nil) {
         self.baseUrl = baseUrl
         self.bindings = bindings
         self.timeZone = timeZone
@@ -53,6 +57,10 @@ public final class JsEngine: SelectorEngine {
         self.networkSource = networkSource
         self.rateLimiter = rateLimiter
         self.downloadStore = downloadStore
+        let services = WebViewServices.shared.snapshot()
+        self.headlessWebView = headlessWebView ?? services.0
+        self.webViewInteraction = webViewInteraction ?? services.1
+        self.webViewUserAgent = services.2
     }
 
     public func evaluate(_ rule: String, content: Any, operation: RuleOperation, context: AnalyzeRule) throws -> Any? {
@@ -135,6 +143,9 @@ public final class JsEngine: SelectorEngine {
         copy.libraryInitializer = libraryInitializer
         copy.sourceBindingInstaller = sourceBindingInstaller
         copy.networkConcurrency = networkConcurrency
+        copy.headlessWebView = headlessWebView
+        copy.webViewInteraction = webViewInteraction
+        copy.webViewUserAgent = webViewUserAgent
         return copy
     }
 

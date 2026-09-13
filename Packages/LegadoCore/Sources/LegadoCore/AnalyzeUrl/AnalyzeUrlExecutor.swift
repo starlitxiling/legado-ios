@@ -90,7 +90,32 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
         if !skipRateLimit { try await engine.rateLimiter.acquire(key: source.key, rate: source.concurrentRate) }
         let start = Date()
         do {
-            if useWebView && options.useWebView { throw JsEngineError.unimplemented("AnalyzeUrl webView/webJs") }
+            if useWebView && options.useWebView {
+                guard let loader = engine.headlessWebView else { throw HeadlessWebViewError.unavailable }
+                var address = url
+                var html: String?
+                if options.method == "POST" {
+                    let raw = try await request(raw: false)
+                    let body = try ResponseDecoder.decode(raw.body, headers: raw.headers)
+                    if options.followRedirects == false, (300..<400).contains(raw.status) {
+                        return Response(raw: raw, body: body)
+                    }
+                    address = raw.finalURL.absoluteString
+                    html = body
+                }
+                var requestHeaders = headers
+                if let session = engine.httpClient as? any SourceScriptClient {
+                    requestHeaders = try session.loginHeaders(url: address, headers: requestHeaders)
+                }
+                for (key, value) in options.headers { requestHeaders.setHTTPHeader(key, value) }
+                let cookie = await engine.cookieStore.getCookie(url: source.key ?? address)
+                let response = try await loader.load(.init(url: address, html: html, headers: requestHeaders,
+                    cookies: cookie, javaScript: options.webJs ?? jsStr, delayTime: options.webViewDelayTime,
+                    sourceRegex: sourceRegex, timeout: Double(callTimeout ?? options.callTimeout ?? 60_000) / 1000,
+                    cookieStore: engine.cookieStore, tag: source.key,
+                    cookieSession: engine.httpClient as? any WebViewCookieSession))
+                return Response(raw: response.raw, body: response.body, callTime: Int(Date().timeIntervalSince(start) * 1000))
+            }
             let raw = try await request(raw: false)
             var body = try ResponseDecoder.decode(raw.body, headers: raw.headers)
             let contentType = raw.headers.httpHeader("Content-Type") ?? ""

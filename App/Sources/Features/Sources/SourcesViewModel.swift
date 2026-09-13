@@ -111,15 +111,15 @@ final class SourcesViewModel {
         }
         var unique: [String: ImportedBookSource] = [:]
         for item in imported { unique[item.source.bookSourceUrl!] = item }
-        let unsupported = unique.values.filter { $0.support == .unsupportedJavaScript }.count
-        let rows = try unique.values.filter { $0.support == .supported }.map {
+        let rows = try unique.values.map {
             try ManagementImport.row($0.source, defaults: BookSourceRow())
         }.sorted { ($0.customOrder, $0.bookSourceUrl) < ($1.customOrder, $1.bookSourceUrl) }
         let existing = Set(try await repository.list().map(\.bookSourceUrl))
         let overwritten = rows.filter { existing.contains($0.bookSourceUrl) }.count
         pendingSources = rows
         importPreview = ManagementImportPreview(newCount: rows.count - overwritten,
-                                               overwriteCount: overwritten, unsupportedCount: unsupported)
+                                               overwriteCount: overwritten, unsupportedCount: 0,
+                                               jsSourceCount: rows.filter { !($0.mainJs ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count)
     }
 
     private func clearPreview() {

@@ -69,11 +69,11 @@ final class SourceImporterRevisionTests: XCTestCase {
         let text = #"[{"bookSourceUrl":"https://example.invalid/plain"},{"bookSourceUrl":"https://example.invalid/js","mainJs":"function search() {}"}]"#
         guard case let .sources(items) = importer.parseBookSources(text) else { return XCTFail() }
         XCTAssertEqual(items.count, 2)
-        XCTAssertEqual(items.map(\.support), [.supported, .unsupportedJavaScript])
+        XCTAssertEqual(items.map(\.support), [.supported, .supported])
         XCTAssertEqual(items[1].source.mainJs, "function search() {}")
         XCTAssertEqual(items[1].source.bookSourceUrl, "https://example.invalid/js")
         guard case let .sources(single) = importer.parseBookSources(#"{"bookSourceUrl":"https://example.invalid/js","mainJs":"x"}"#) else { return XCTFail() }
-        XCTAssertEqual(single.first?.support, .unsupportedJavaScript)
+        XCTAssertEqual(single.first?.support, .supported)
         guard case let .sources(blank) = importer.parseBookSources(#"{"bookSourceUrl":"https://example.invalid/blank","mainJs":"  "}"#) else { return XCTFail() }
         XCTAssertEqual(blank.first?.support, .supported)
     }

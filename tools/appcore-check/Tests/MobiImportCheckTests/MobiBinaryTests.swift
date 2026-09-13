@@ -1,0 +1,1 @@
+../../../../Packages/LegadoCore/Tests/LegadoCoreTests/MobiBinaryTests.swift

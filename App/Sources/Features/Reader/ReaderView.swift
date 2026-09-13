@@ -6,6 +6,8 @@ import LegadoCore
 struct ReaderView: View {
     let destination: ReaderDestination
     @State private var model: ReaderViewModel
+    @State private var readAloud: ReadAloudController
+    @State private var showsReadAloud = false
     @State private var showsControls = false
     @State private var showsSettings = false
     @State private var showsChapters = false
@@ -19,6 +21,7 @@ struct ReaderView: View {
             .appendingPathComponent("Legado/ReaderCache", isDirectory: true)
         _model = State(initialValue: ReaderViewModel(database: database, client: client,
             cacheDirectory: directory, settings: ReaderSettings.load()))
+        _readAloud = State(initialValue: ReadAloudController(database: database, client: client))
     }
 
     init(book: BookRow, chapterIndex: Int? = nil, database: AppDatabase, client: any HttpClient) {
@@ -54,7 +57,7 @@ struct ReaderView: View {
                                     .padding(.leading, model.settings.paddingLeft)
                                     .padding(.top, model.settings.paddingTop)
                             } else {
-                                CoreTextReaderPage(pagination: pagination, pageIndex: model.pageIndex)
+                                CoreTextReaderPage(pagination: pagination, pageIndex: model.pageIndex, highlight: model.readAloudRange)
                                     .frame(width: pagination.contentSize.width, height: pagination.contentSize.height)
                                     .padding(.leading, model.settings.paddingLeft)
                                     .padding(.top, model.settings.paddingTop)
@@ -105,13 +108,23 @@ struct ReaderView: View {
         .statusBarHidden(!showsControls)
         .sheet(isPresented: $showsSettings) { settingsPanel }
         .sheet(isPresented: $showsChapters) { chapterPanel }
+        .sheet(isPresented: $showsReadAloud) { ReadAloudPanel(controller: readAloud) }
         .task(id: destination) {
             await model.load(bookURL: destination.bookURL, chapterIndex: destination.chapterIndex)
+            await readAloud.attach(model)
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { Task { await model.saveProgress() } }
         }
-        .onDisappear { Task { await model.close() } }
+        .onChange(of: model.chapterIndex) { _, chapter in
+            if readAloud.engine.state != .loading, readAloud.engine.chapterIndex != chapter { readAloud.engine.stop() }
+        }
+        .onChange(of: model.characterOffset) { _, offset in
+            if readAloud.engine.state == .playing || readAloud.engine.state == .paused,
+               readAloud.engine.chapterIndex == model.chapterIndex,
+               readAloud.engine.characterOffset != offset { readAloud.stop() }
+        }
+        .onDisappear { readAloud.detach(); Task { await model.close() } }
     }
 
     private var controls: some View {
@@ -132,6 +145,7 @@ struct ReaderView: View {
                     Button("目录") { showsChapters = true }
                     Spacer()
                     Button("设置") { showsSettings = true }
+                    Button("听书") { showsReadAloud = true }
                     Spacer()
                     Button("下一章") { Task { await model.nextChapter() } }
                         .disabled(model.chapterPosition + 1 >= model.chapters.count || model.isLoading)
@@ -199,17 +213,19 @@ struct ReaderView: View {
 private struct CoreTextReaderPage: UIViewRepresentable {
     let pagination: ReaderPagination
     let pageIndex: Int
+    let highlight: NSRange?
 
     func makeUIView(context: Context) -> ReaderTextCanvas { ReaderTextCanvas() }
 
     func updateUIView(_ view: ReaderTextCanvas, context: Context) {
-        view.pagination = pagination; view.pageIndex = pageIndex; view.setNeedsDisplay()
+        view.pagination = pagination; view.pageIndex = pageIndex; view.highlight = highlight; view.setNeedsDisplay()
     }
 }
 
 private final class ReaderTextCanvas: UIView {
     var pagination: ReaderPagination?
     var pageIndex = 0
+    var highlight: NSRange?
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -228,6 +244,23 @@ private final class ReaderTextCanvas: UIView {
         context.textMatrix = .identity
         context.translateBy(x: 0, y: bounds.height)
         context.scaleBy(x: 1, y: -1)
+        if let highlight {
+            let lines = CTFrameGetLines(frame) as! [CTLine]
+            var origins = [CGPoint](repeating: .zero, count: lines.count)
+            CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
+            context.setFillColor(UIColor.systemYellow.withAlphaComponent(0.3).cgColor)
+            for (index, line) in lines.enumerated() {
+                let range = CTLineGetStringRange(line)
+                let intersection = NSIntersectionRange(highlight, NSRange(location: range.location, length: range.length))
+                guard intersection.length > 0 else { continue }
+                var ascent: CGFloat = 0, descent: CGFloat = 0
+                _ = CTLineGetTypographicBounds(line, &ascent, &descent, nil)
+                let start = CTLineGetOffsetForStringIndex(line, intersection.location, nil)
+                let end = CTLineGetOffsetForStringIndex(line, NSMaxRange(intersection), nil)
+                context.fill(CGRect(x: origins[index].x + min(start, end), y: origins[index].y - descent,
+                                    width: abs(end - start), height: ascent + descent))
+            }
+        }
         CTFrameDraw(frame, context)
     }
 }

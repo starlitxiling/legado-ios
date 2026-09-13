@@ -109,7 +109,8 @@ public final class JavaHost {
             }
             const methods = ['get','put','getString','getStringList','getElement','getElements','setContent',
                 'timeFormat','log','toast','md5Encode','base64Decode','toNumChapter','aesBase64DecodeToString',
-                'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','readFile','downloadFile','cacheFile'];
+                'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','readFile','downloadFile','cacheFile',
+                'webViewGetSource','webViewGetOverrideUrl','getVerificationCode','startBrowser','startBrowserAwait','getWebViewUA'];
             methods.forEach(function(name) {
                 java[name] = function() {
                     const args = Array.prototype.slice.call(arguments);
@@ -155,6 +156,9 @@ public final class JavaHost {
     }
 
     private func call(_ method: String, _ arguments: [Any]) throws -> Any? {
+        if ["webView", "webViewGetSource", "webViewGetOverrideUrl", "getVerificationCode", "startBrowser", "startBrowserAwait", "getWebViewUA"].contains(method) {
+            return try network.callWebView(method, arguments)
+        }
         if method.hasPrefix("cookie.") || method.hasPrefix("cache.") ||
             ["ajax", "ajaxAll", "ajaxTestAll", "connect", "post", "head", "getCookie", "downloadFile", "cacheFile"].contains(method) ||
             (method == "get" && arguments.count >= 2) {

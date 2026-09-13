@@ -29,7 +29,7 @@ public struct BackupImporter {
         guard !localDeviceID.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw ImportError.missingDeviceID
         }
-        let order = ["bookshelf.json", "bookmark.json", "bookGroup.json", "bookSource.json", "replaceRule.json", "readRecord.json"]
+        let order = ["bookshelf.json", "bookmark.json", "bookGroup.json", "bookSource.json", "replaceRule.json", "httpTTS.json", "readRecord.json"]
         var report = BackupImportReport()
         report.skippedFiles = archive.files.keys.filter { !order.contains($0) }.sorted()
         let timestamp = now()
@@ -68,6 +68,10 @@ public struct BackupImporter {
                     if values.contains(where: { $0.previewText != nil }) {
                         report.discardedFields[name] = ["previewText"]
                     }
+                case "httpTTS.json":
+                    let values = try decoder.decode([HttpTTS].self, from: data)
+                    try await HttpTTSRepository(database: database).upsert(values)
+                    count = values.count
                 default:
                     let rows = try decoder.decode([ReadRecord].self, from: data).map { value -> ReadRecordRow in
                         var row = try Self.row(value, defaults: ReadRecordRow())

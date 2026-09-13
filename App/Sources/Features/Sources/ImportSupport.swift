@@ -5,6 +5,7 @@ struct ManagementImportPreview {
     let newCount: Int
     let overwriteCount: Int
     let unsupportedCount: Int
+    var jsSourceCount: Int = 0
     var importableCount: Int { newCount + overwriteCount }
 }
 

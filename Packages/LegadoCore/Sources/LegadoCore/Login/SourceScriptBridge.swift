@@ -5,6 +5,7 @@ final class SourceScriptBridge {
     let repository: SourceStateRepository
     let source: BookSource
     let secrets: any SourceSecretStore
+    private let api = JsSourceApi()
     var key: String { source.bookSourceUrl ?? "" }
     var secretKey: String { "source-login:" + key }
     init(source: BookSource, database: AppDatabase, secrets: any SourceSecretStore) {
@@ -25,7 +26,7 @@ final class SourceScriptBridge {
             try repository.setValue(source: key, key: name, value: nil)
         } else { try repository.setValue(source: key, key: name, value: value) }
     }
-    func install(in context: JSContext, javaAliases: Bool = false) throws {
+    func install(in context: JSContext, engine: JsEngine? = nil, javaAliases: Bool = false) throws {
         _ = try read("loginInfo")
         let get: @convention(block) (String) -> String? = { name in
             do { return try self.read(name) }
@@ -37,38 +38,16 @@ final class SourceScriptBridge {
         }
         context.setObject(get, forKeyedSubscript: "__sourceRead" as NSString)
         context.setObject(put, forKeyedSubscript: "__sourceWrite" as NSString)
-        context.setObject(key, forKeyedSubscript: "__sourceKey" as NSString)
-        context.setObject(source.bookSourceName ?? key, forKeyedSubscript: "__sourceName" as NSString)
-        var loginCode = source.loginUrl?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-        if loginCode.lowercased().hasPrefix("@js:") { loginCode = String(loginCode.dropFirst(4)) }
-        if loginCode.lowercased().hasPrefix("<js>"), loginCode.lowercased().hasSuffix("</js>") { loginCode = String(loginCode.dropFirst(4).dropLast(5)) }
-        if loginCode.hasPrefix("http://") || loginCode.hasPrefix("https://") { loginCode = "" }
-        context.setObject(loginCode, forKeyedSubscript: "__sourceLoginCode" as NSString)
-        context.evaluateScript(Self.script)
+        context.setObject(try WebBookContext.object(source), forKeyedSubscript: "__sourceFields" as NSString)
+        context.evaluateScript("var source=Object.assign({},__sourceFields,source || {});")
+        api.installMethods(in: context, engine: engine, refreshExplore: {
+            let source = self.source, repository = self.repository
+            try HostAsyncBridge.wait { try await ExploreKinds.clearCache(source: source, stateRepository: repository) }
+        })
         if javaAliases { context.evaluateScript("Object.keys(__sourceMethods).forEach(function(k){java[k]=source[k];});") }
         if let exception = context.exception { throw JsEngineError.exception(exception.toString()) }
     }
     private static func raise(_ error: Error) {
         if let context = JSContext.current() { context.exception = JSValue(newErrorFromMessage: String(describing: error), in: context) }
     }
-    private static let script = """
-    var __sourceMethods = {
-      getVariable:function(){return __sourceRead('variable') || '';},
-      setVariable:function(v){__sourceWrite('variable',v == null ? null : String(v));},
-      getLoginHeader:function(){return __sourceRead('loginHeader');},
-      putLoginHeader:function(v){var h=JSON.parse(String(v));__sourceWrite('loginHeader',String(v));Object.keys(h).forEach(function(k){if(k.toLowerCase()==='cookie')cookie.replaceCookie(__sourceKey,String(h[k]));});},
-      removeLoginHeader:function(){__sourceWrite('loginHeader',null);cookie.removeCookie(__sourceKey);},
-      getLoginInfo:function(){return __sourceRead('loginInfo');},
-      getLoginInfoMap:function(){var v=JSON.parse(__sourceRead('loginInfo') || '{}');Object.defineProperty(v,'get',{value:function(k){return Object.prototype.hasOwnProperty.call(this,k)?this[k]:null;}});return v;},
-      putLoginInfo:function(v){return __sourceWrite('loginInfo',String(v));},
-      removeLoginInfo:function(){__sourceWrite('loginInfo',null);},
-      put:function(k,v){__sourceWrite('v_'+k,String(v));return String(v);},
-      get:function(k){return __sourceRead('v_'+k) || '';},
-      getKey:function(){return __sourceKey;},getTag:function(){return __sourceName;},
-      login:function(){return eval(__sourceLoginCode+'\\nif(typeof login !== "function")throw "Function login not implements";login();');}
-    };
-    __sourceMethods.putVariable=__sourceMethods.setVariable;
-    var source=Object.assign(source || {},__sourceMethods);
-    var sourceApi=source;
-    """
 }

@@ -19,9 +19,18 @@ final class AppContainer {
     let replaceRules: ReplaceRuleRepository
     let searchCache: SearchCacheRepository
     let cookies: CookieRepository
+    let headlessWebView: HeadlessWebViewScheduler
+    let browserInteraction: BrowserInteraction
 
     init(database: AppDatabase, httpClient: BoundedURLSessionHttpClient = .init()) {
         self.database = database
+        let browserInteraction = BrowserInteraction()
+        self.browserInteraction = browserInteraction
+        let headlessWebView = HeadlessWebViewScheduler(loader: HeadlessWebView(), maximumConcurrentLoads: 2,
+            isForeground: { await MainActor.run { HeadlessWebView.keyWindow != nil } })
+        self.headlessWebView = headlessWebView
+        WebViewServices.shared.install(loader: headlessWebView, interaction: browserInteraction,
+            userAgent: { try await HeadlessWebView.defaultUserAgent() })
         databaseLifecycle = DatabaseLifecycleCoordinator(suspend: { database.suspend() },
                                                          resume: { database.resume() })
         let sourceSecrets = SourceLoginKeychainStore()

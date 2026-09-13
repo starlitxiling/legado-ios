@@ -209,7 +209,12 @@ public final class AnalyzeRule {
         if mode == .js { return try selector.evaluate(rule, content: content, operation: .string, context: self) }
         let content = JsEngine.nativeValue(content) ?? NSNull()
         if mode == .webJS {
-            let value = try selector.evaluate(rule, content: content, operation: .string, context: self)
+            let value: Any?
+            if engines[.webJS] == nil, let js = engines[.js] as? JsEngine {
+                value = try js.evaluateWebRule(rule, content: content, context: self)
+            } else {
+                value = try selector.evaluate(rule, content: content, operation: .string, context: self)
+            }
             guard let text = value as? String else { return nil }
             let json = try? JSONSerialization.jsonObject(with: Data(text.utf8), options: .fragmentsAllowed)
             switch operation {

@@ -1,6 +1,6 @@
 import Foundation
 
-public struct SourceSessionHttpClient: HttpClient, SourceScriptClient {
+public struct SourceSessionHttpClient: HttpClient, SourceScriptClient, WebViewCookieSession {
     private let source: BookSource
     private let database: AppDatabase
     private let client: any HttpClient
@@ -36,9 +36,13 @@ public struct SourceSessionHttpClient: HttpClient, SourceScriptClient {
         try await send(request)
     }
 
+    public func saveWebViewCookies(url: String, cookie: String) async throws -> String {
+        try await CookieRepository(database: database).mergeWebViewCookie(url: url, cookie: cookie)
+    }
+
     func configureSourceBindings(_ engine: JsEngine) {
         let bridge = SourceScriptBridge(source: source, database: database, secrets: secrets)
-        engine.sourceBindingInstaller = { try bridge.install(in: $0) }
+        engine.sourceBindingInstaller = { [weak engine] in try bridge.install(in: $0, engine: engine) }
     }
 
     func loginHeaders(url: String, headers: [String: String]) throws -> [String: String] {

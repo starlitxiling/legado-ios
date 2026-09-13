@@ -23,7 +23,7 @@ public enum LocalBook {
     }
 
     public static func parse(url: URL, rules: [TxtTocRule] = TxtTocRule.builtIn) throws -> (book: Book, chapters: [BookChapter], cover: Data?) {
-        guard url.isFileURL, ["txt", "epub"].contains(url.pathExtension.lowercased()) else { throw LocalBookError.unsupportedFile }
+        guard url.isFileURL, ["txt", "epub", "mobi", "azw3", "pdf"].contains(url.pathExtension.lowercased()) else { throw LocalBookError.unsupportedFile }
         var book = Book()
         let identity = nameAuthor(url.lastPathComponent)
         book.name = identity.name; book.author = identity.author
@@ -35,6 +35,16 @@ public enum LocalBook {
             let parser = try EpubParserCache.shared.parser(for: url)
             chapters = try parser.chapters(bookURL: url.absoluteString)
             cover = parser.cover
+            if !parser.title.isEmpty { book.name = parser.title }
+            if !parser.author.isEmpty { book.author = parser.author }
+        } else if ["mobi", "azw3"].contains(url.pathExtension.lowercased()) {
+            let parser = try MobiParserCache.shared.parser(for: url)
+            chapters = parser.chapters(bookURL: url.absoluteString); cover = parser.cover
+            if !parser.title.isEmpty { book.name = parser.title }
+            if !parser.author.isEmpty { book.author = parser.author }
+        } else if url.pathExtension.lowercased() == "pdf" {
+            let parser = try PdfFile(url: url)
+            chapters = parser.chapters(bookURL: url.absoluteString); cover = nil
             if !parser.title.isEmpty { book.name = parser.title }
             if !parser.author.isEmpty { book.author = parser.author }
         } else {
@@ -53,6 +63,8 @@ public enum LocalBook {
         switch url.pathExtension.lowercased() {
         case "txt": return try TextFileParser(url: url).chapters(bookURL: url.absoluteString, rules: rules)
         case "epub": return try EpubParserCache.shared.parser(for: url).chapters(bookURL: url.absoluteString)
+        case "mobi", "azw3": return try MobiParserCache.shared.parser(for: url).chapters(bookURL: url.absoluteString)
+        case "pdf": return try PdfFile(url: url).chapters(bookURL: url.absoluteString)
         default: throw LocalBookError.unsupportedFile
         }
     }
@@ -62,6 +74,8 @@ public enum LocalBook {
         switch url.pathExtension.lowercased() {
         case "txt": return try TextFileParser(url: url).content(chapter: chapter)
         case "epub": return try EpubParserCache.shared.parser(for: url).content(chapter: chapter)
+        case "mobi", "azw3": return try MobiParserCache.shared.parser(for: url).content(chapter: chapter)
+        case "pdf": return try PdfFile(url: url).content(chapter: chapter)
         default: throw LocalBookError.unsupportedFile
         }
     }

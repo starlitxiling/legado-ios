@@ -27,6 +27,19 @@ final class ReaderViewModel {
     private(set) var prefetchErrorMessage: String?
     private(set) var settings: ReaderSettings
     private(set) var characterOffset = 0
+    private(set) var readAloudRange: NSRange?
+
+    func followReadAloud(chapter: Int, range: NSRange, offset: Int? = nil) {
+        guard chapter == chapterIndex, let pagination, !isLoading else { return }
+        readAloudRange = range
+        let position = min(max(0, offset ?? range.location), max(0, pagination.text.length - 1))
+        guard characterOffset != position else { return }
+        characterOffset = position
+        pageIndex = pagination.pageIndex(at: position)
+        Task { await saveProgress() }
+    }
+
+    func clearReadAloudHighlight() { readAloudRange = nil }
     private var size = CGSize(width: 320, height: 480)
     private var layoutInput: ReaderLayoutInput?
     private var entity: Book?

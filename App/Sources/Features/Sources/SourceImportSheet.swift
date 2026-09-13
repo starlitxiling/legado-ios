@@ -35,8 +35,8 @@ struct SourceImportSheet: View {
                             Toggle("保留本地启用状态", isOn: keepEnable)
                         }
                         if title == "书源" {
-                            LabeledContent("不支持 mainJs", value: "\(preview.unsupportedCount) 条")
-                            Text("不支持的书源将跳过。相同地址仅保留最后一条。")
+                            LabeledContent("JS 书源", value: "\(preview.jsSourceCount) 条")
+                            Text("相同地址仅保留最后一条。")
                                 .font(.footnote).foregroundStyle(.secondary)
                         }
                         Button("确认导入") {
