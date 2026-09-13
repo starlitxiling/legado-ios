@@ -1,0 +1,4 @@
+var config = {bookSourceUrl: 'https://example.invalid/source', bookSourceName: 'synthetic'};
+function search() { return []; }
+function getChapters() { return []; }
+function getContent() { return 'synthetic'; }
