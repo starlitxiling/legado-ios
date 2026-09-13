@@ -21,6 +21,8 @@ final class AppContainer {
     let cookies: CookieRepository
     let headlessWebView: HeadlessWebViewScheduler
     let browserInteraction: BrowserInteraction
+    let downloads: DownloadCenterModel
+    let backgroundRefresh: BookshelfBackgroundRefresh
 
     init(database: AppDatabase, httpClient: BoundedURLSessionHttpClient = .init()) {
         self.database = database
@@ -46,6 +48,8 @@ final class AppContainer {
         replaceRules = ReplaceRuleRepository(database: database)
         searchCache = SearchCacheRepository(database: database)
         cookies = CookieRepository(database: database)
+        downloads = DownloadCenterModel(database: database, client: self.httpClient)
+        backgroundRefresh = BookshelfBackgroundRefresh(database: database, client: self.httpClient)
     }
 
     static func live() throws -> AppContainer {
@@ -53,7 +57,9 @@ final class AppContainer {
                                                   in: .userDomainMask, appropriateFor: nil, create: true)
         let directory = support.appendingPathComponent("Legado", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        return AppContainer(database: try .file(at: directory.appendingPathComponent("legado.sqlite").path))
+        let container = AppContainer(database: try .file(at: directory.appendingPathComponent("legado.sqlite").path))
+        container.backgroundRefresh.register()
+        return container
     }
 
     static func inMemory() throws -> AppContainer {

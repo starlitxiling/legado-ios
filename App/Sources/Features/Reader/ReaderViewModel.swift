@@ -18,7 +18,17 @@ final class ReaderViewModel {
     private(set) var book: BookRow?
     private(set) var chapters: [BookChapterRow] = []
     private(set) var bookmarks: [BookmarkRow] = []
+    private(set) var highlights: [BookHighlight] = []
+    private(set) var cachedChapterIndices: Set<Int> = []
     private(set) var pagination: ReaderPagination?
+    private(set) var nextChapterPagination: ReaderPagination?
+    private var previewGeneration = UUID()
+
+    var nextPagePreview: (pagination: ReaderPagination, index: Int, currentChapter: Bool)? {
+        guard let pagination else { return nil }
+        if pagination.pages.indices.contains(pageIndex + 1) { return (pagination, pageIndex + 1, true) }
+        return nextChapterPagination.map { ($0, 0, false) }
+    }
     private(set) var chapterIndex = 0
     private(set) var pageIndex = 0
     private(set) var chapterTitle = ""
@@ -76,6 +86,7 @@ final class ReaderViewModel {
     var chapterPosition: Int { chapters.firstIndex(where: { $0.index == chapterIndex }) ?? 0 }
 
     private func beginRequest() -> UUID {
+        previewGeneration = UUID(); nextChapterPagination = nil
         generation = UUID(); layoutGeneration = UUID()
         downloadTask?.cancel(); prefetchTask?.cancel(); layoutTask?.cancel()
         return generation
@@ -87,6 +98,7 @@ final class ReaderViewModel {
         failedRequest = nil
         isLoading = true; errorMessage = nil
         pagination = nil; layoutInput = nil; book = nil; chapters = []; bookmarks = []
+        highlights = []; cachedChapterIndices = []
         do {
             guard let book = try await BookshelfRepository(database: database).get(bookUrl: bookURL) else { throw ReaderError.missingBook }
             let chapters = try await ChapterRepository(database: database).list(bookUrl: bookURL)
@@ -133,6 +145,7 @@ final class ReaderViewModel {
                     let result = try await render(input: input, debounce: true)
                     guard token == generation, layoutToken == layoutGeneration else { continue }
                     try Task.checkCancellation()
+                    if chapterIndex != request.index { highlights = [] }
                     layoutInput = input; chapterIndex = request.index; chapterTitle = result.title
                     pagination = result.pagination
                     pageIndex = result.pagination.pageIndex(at: request.offset)
@@ -209,6 +222,7 @@ final class ReaderViewModel {
     }
 
     func reflow(size: CGSize? = nil, settings: ReaderSettings? = nil) async {
+        previewGeneration = UUID(); nextChapterPagination = nil; prefetchTask?.cancel()
         if let size { self.size = size }
         if let settings { self.settings = settings.normalized }
         let token = generation, layoutToken = UUID()
@@ -219,6 +233,7 @@ final class ReaderViewModel {
             guard token == generation, layoutToken == layoutGeneration else { return }
             pagination = result.pagination; pageIndex = result.pagination.pageIndex(at: characterOffset)
             chapterTitle = result.title
+            prefetchNextChapter()
             await saveProgress()
         } catch is CancellationError {
         } catch {
@@ -246,15 +261,25 @@ final class ReaderViewModel {
 
     private func prefetchNextChapter() {
         prefetchTask?.cancel(); prefetchErrorMessage = nil
+        let previewToken = UUID(); previewGeneration = previewToken; nextChapterPagination = nil
         guard let entity, chapterPosition + 1 < chapters.count else { return }
         let position = chapterPosition + 1
         let row = chapters[position], nextURL = position + 1 < chapters.count ? chapters[position + 1].url : nil
         let cache = cache, source = source, client = client, token = generation
+        let database = database, size = size, settings = settings
         prefetchTask = Task { [weak self] in
             do {
                 try Task.checkCancellation()
                 let chapter = try ReaderEntityBridge.decode(BookChapter.self, row: row)
-                _ = try await cache.content(book: entity, chapter: chapter, nextURL: nextURL, source: source, client: client)
+                let cached = try await cache.content(book: entity, chapter: chapter, nextURL: nextURL, source: source, client: client)
+                let rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
+                let input = ReaderLayoutInput(book: entity, chapter: chapter, rawContent: cached.rawContent, rules: rules)
+                let layout = Task.detached {
+                    try ReaderLayout.build(input: input, size: size, settings: settings, didStart: {})
+                }
+                let result = try await withTaskCancellationHandler { try await layout.value } onCancel: { layout.cancel() }
+                guard !Task.isCancelled, self?.generation == token, self?.previewGeneration == previewToken else { return }
+                self?.nextChapterPagination = result.pagination
             } catch {
                 guard !Task.isCancelled, self?.generation == token else { return }
                 self?.prefetchErrorMessage = error.localizedDescription
@@ -263,6 +288,80 @@ final class ReaderViewModel {
     }
 
     func waitForPrefetch() async { await prefetchTask?.value }
+
+    func refreshCacheStatus() async {
+        guard let entity else { return }
+        var indices: Set<Int> = []
+        for row in chapters {
+            guard let chapter = try? ReaderEntityBridge.decode(BookChapter.self, row: row) else { continue }
+            if await cache.hasContent(book: entity, chapter: chapter) { indices.insert(row.index) }
+        }
+        guard book?.bookUrl == entity.bookUrl else { return }
+        cachedChapterIndices = indices
+    }
+
+    var supportsReviews: Bool { source?.ruleReview?.enabled == true }
+
+    func reviews(paragraph: Int) async throws -> [ReaderReviewItem] {
+        guard let entity, let source, let input = layoutInput else { return [] }
+        let review = BookReview(source: source, client: client)
+        let summary = try await review.summary(book: entity, chapter: input.chapter)
+        return try await review.details(book: entity, chapter: input.chapter, paragraphIndex: paragraph,
+            paragraphData: summary.keys[paragraph] ?? String(paragraph))
+    }
+
+    func refreshHighlights() async {
+        guard let book else { return }
+        let index = chapterIndex
+        do {
+            let result = try await BookHighlightRepository(database: database).list(bookURL: book.bookUrl, chapterIndex: index)
+            guard self.book?.bookUrl == book.bookUrl, chapterIndex == index else { return }
+            highlights = result
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func addHighlight(range: NSRange, note: String) async {
+        guard let book, let pagination, range.location >= 0, range.length > 0,
+              range.location <= pagination.text.length, range.length <= pagination.text.length - range.location else { return }
+        var value = BookHighlight()
+        value.time = max(now(), (highlights.map(\.time).max() ?? 0) + 1)
+        value.bookUrl = book.bookUrl; value.bookName = book.name; value.bookAuthor = book.author
+        value.chapterIndex = chapterIndex; value.chapterUrl = chapters.first(where: { $0.index == chapterIndex })?.url ?? ""
+        value.chapterName = chapterTitle; value.chapterPos = range.location; value.chapterPosEnd = NSMaxRange(range)
+        value.layoutTitleLength = settings.titleMode == 2 ? 0 : (chapterTitle as NSString).length + 1
+        value.bookText = pagination.text.attributedSubstring(from: range).string; value.note = note
+        do { try await BookHighlightRepository(database: database).upsert(value); await refreshHighlights() }
+        catch { errorMessage = error.localizedDescription }
+    }
+
+    func deleteHighlight(_ value: BookHighlight) async {
+        do { try await BookHighlightRepository(database: database).delete(value); await refreshHighlights() }
+        catch { errorMessage = error.localizedDescription }
+    }
+
+    func addBookmark() async {
+        guard let book, let pagination else { return }
+        var value = BookmarkRow()
+        value.time = max(now(), (bookmarks.map(\.time).max() ?? 0) + 1)
+        value.bookName = book.name; value.bookAuthor = book.author
+        value.chapterIndex = chapterIndex; value.chapterPos = characterOffset; value.chapterName = chapterTitle
+        if pagination.pages.indices.contains(pageIndex) { value.bookText = pagination.pages[pageIndex].text.string }
+        do {
+            try await BookmarkRepository(database: database).upsert(value)
+            bookmarks = try await BookmarkRepository(database: database).list(bookName: book.name, bookAuthor: book.author)
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func deleteBookmark(_ value: BookmarkRow) async {
+        do { try await BookmarkRepository(database: database).delete(value); bookmarks.removeAll { $0.time == value.time } }
+        catch { errorMessage = error.localizedDescription }
+    }
+
+    func openBookmark(_ value: BookmarkRow) async {
+        guard chapters.contains(where: { $0.index == value.chapterIndex }) else { return }
+        let token = beginRequest()
+        await openChapter(ChapterRequest(index: value.chapterIndex, offset: value.chapterPos), token: token)
+    }
 
     func close() async {
         _ = beginRequest(); isLoading = false

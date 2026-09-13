@@ -4,9 +4,15 @@ import LegadoCore
 struct ReplaceRulesView: View {
     @State private var model: ReplaceRulesViewModel
     @State private var importEntry: ManagementImportEntry?
+    @State private var editingRule: ReplaceRuleRow?
+    @State private var showEditor = false
+    @State private var shareText = ""
+    @State private var showShare = false
+    private let repository: ReplaceRuleRepository
 
     init(repository: ReplaceRuleRepository, httpClient: any ResponseLimitedHttpClient) {
         _model = State(initialValue: ReplaceRulesViewModel(repository: repository, httpClient: httpClient))
+        self.repository = repository
     }
 
     var body: some View {
@@ -29,6 +35,7 @@ struct ReplaceRulesView: View {
                     }
                 }
                 .disabled(model.isBusy)
+                .contextMenu { Button("编辑") { editingRule = rule; showEditor = true } }
                 .swipeActions {
                     Button("删除", role: .destructive) { Task { await model.delete(rule) } }
                         .disabled(model.isBusy)
@@ -58,6 +65,11 @@ struct ReplaceRulesView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button("从 URL 导入") { importEntry = .url }
+                    Button("新建规则") { editingRule = nil; showEditor = true }
+                    Button("导出 JSON") {
+                        do { shareText = try ReplaceRuleEditModel.export(model.filteredRules); showShare = true }
+                        catch { model.errorMessage = error.localizedDescription }
+                    }
                     Button("从文件导入") { importEntry = .file }
                     Button("从剪贴板导入") { importEntry = .clipboard }
                 } label: { Label("导入", systemImage: "square.and.arrow.down") }
@@ -75,5 +87,9 @@ struct ReplaceRulesView: View {
                               }, cancel: { model.cancelImport() })
         }
         .task { await model.load() }
+        .sheet(isPresented: $showEditor) {
+            NavigationStack { ReplaceRuleEditView(rule: editingRule, repository: repository, onSave: { await model.load() }) }
+        }
+        .sheet(isPresented: $showShare) { NavigationStack { SourceJSONShareView(text: shareText) } }
     }
 }

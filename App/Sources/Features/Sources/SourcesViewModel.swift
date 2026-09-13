@@ -12,6 +12,9 @@ final class SourcesViewModel {
     var keyword = ""
     var selectedGroup: String?
     var keepEnable = false
+    var sort: SourceSort = .custom
+    var ascending = true
+    var selectedURLs: Set<String> = []
 
     private let repository: BookSourceRepository
     private let httpClient: any ResponseLimitedHttpClient
@@ -28,11 +31,60 @@ final class SourcesViewModel {
     var groups: [String] { Set(sources.flatMap { ManagementImport.groups($0.bookSourceGroup) }).sorted() }
     var filteredSources: [BookSourceRow] {
         let query = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
-        return sources.filter { source in
+        return SourceManagement.sorted(sources.filter { source in
             (selectedGroup == nil || ManagementImport.groups(source.bookSourceGroup).contains(selectedGroup!)) &&
             (query.isEmpty || [source.bookSourceName, source.bookSourceUrl, source.bookSourceGroup ?? ""]
                 .contains { $0.localizedCaseInsensitiveContains(query) })
+        }, by: sort, ascending: ascending)
+    }
+
+    func batchEnabled(_ enabled: Bool) async {
+        let selected = selectedURLs
+        await perform {
+            try await self.repository.editSources { SourceManagement.setEnabled($0, selected: selected, enabled: enabled) }
+            self.sources = try await self.repository.list()
         }
+    }
+
+    func move(selected: Set<String>, toTop: Bool) async {
+        await perform {
+            try await self.repository.editSources { try SourceManagement.move($0, selected: selected, toTop: toTop) }
+            self.sources = try await self.repository.list()
+        }
+    }
+
+    func batchExploreEnabled(_ enabled: Bool) async {
+        let selected = selectedURLs
+        await perform {
+            try await self.repository.editSources { SourceManagement.setExploreEnabled($0, selected: selected, enabled: enabled) }
+            self.sources = try await self.repository.list()
+        }
+    }
+
+    func changeGroup(_ group: String, removing: Bool) async {
+        let selected = selectedURLs
+        let changes = SourceManagement.groups(group)
+        await perform {
+            try await self.repository.editSources { rows in
+                rows.map { row in
+                    guard selected.contains(row.bookSourceUrl) else { return row }
+                    var value = row
+                    var groups = SourceManagement.groups(value.bookSourceGroup)
+                    if removing { groups.removeAll { changes.contains($0) } }
+                    else { groups += changes.filter { !groups.contains($0) } }
+                    value.bookSourceGroup = groups.joined(separator: ",")
+                    return value
+                }
+            }
+            self.sources = try await self.repository.list()
+        }
+    }
+
+    func exportText(selected: Set<String>? = nil) throws -> String {
+        let values = filteredSources.filter { selected == nil || selected!.contains($0.bookSourceUrl) }
+        return try SourceExporter.bookSources(values.map {
+            try JSONDecoder().decode(BookSource.self, from: JSONEncoder().encode($0))
+        })
     }
 
     func load() async {

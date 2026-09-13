@@ -2,8 +2,8 @@ import GRDB
 
 public typealias BookshelfRepository = Repository<BookRow>
 
-public enum BookshelfSort: Sendable {
-    case lastRead, latestUpdate, manual, name
+public enum BookshelfSort: Int, Sendable, Hashable {
+    case lastRead = 0, latestUpdate = 1, name = 2, manual = 3, combined = 4, author = 5
 
     var sql: String {
         switch self {
@@ -11,6 +11,8 @@ public enum BookshelfSort: Sendable {
         case .latestUpdate: return "latestChapterTime DESC, bookUrl"
         case .manual: return "\"order\", bookUrl"
         case .name: return "name, author, bookUrl"
+        case .combined: return "max(latestChapterTime, durChapterTime) DESC, bookUrl"
+        case .author: return "author, name, bookUrl"
         }
     }
 }

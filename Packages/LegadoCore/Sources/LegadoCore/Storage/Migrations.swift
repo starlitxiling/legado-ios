@@ -200,6 +200,8 @@ enum Migrations {
         }
         SourceLoginMigration.register(in: &migrator)
         HttpTTSMigration.register(in: &migrator)
+        DictRuleMigration.register(in: &migrator)
+        ReaderMigration.register(in: &migrator)
         return migrator
 
     }

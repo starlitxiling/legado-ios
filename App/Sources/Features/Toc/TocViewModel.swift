@@ -7,6 +7,7 @@ import LegadoCore
 final class TocViewModel {
     private(set) var book: Book
     private(set) var chapters: [BookChapterRow] = []
+    private(set) var cachedChapterIndices: Set<Int> = []
     private(set) var isLoading = false
     private(set) var errorMessage: String?
     var isReversed = false
@@ -35,6 +36,7 @@ final class TocViewModel {
         do {
             chapters = try await chapterRepository.list(bookUrl: book.bookUrl ?? "")
             if chapters.isEmpty { await refresh() }
+            refreshCacheStatus()
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -51,8 +53,19 @@ final class TocViewModel {
             updated = try await SourceChangeTransaction.save(book: updated, previous: book, chapters: rows, database: database)
             chapters = rows
             book = updated
+            refreshCacheStatus()
         } catch {
             if !Task.isCancelled { errorMessage = error.localizedDescription }
         }
+    }
+
+    private func refreshCacheStatus() {
+        let directory = URL.applicationSupportDirectory.appendingPathComponent("Legado/ReaderCache", isDirectory: true)
+        cachedChapterIndices = Set(chapters.compactMap { row in
+            guard let data = try? JSONEncoder().encode(row),
+                  let chapter = try? JSONDecoder().decode(BookChapter.self, from: data),
+                  ReaderCacheStatus.hasContent(book: book, chapter: chapter, directory: directory) else { return nil }
+            return row.index
+        })
     }
 }

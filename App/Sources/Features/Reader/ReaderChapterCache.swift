@@ -20,6 +20,15 @@ actor ReaderChapterCache {
 
     var pendingConsumerCount: Int { pending.values.reduce(0) { $0 + $1.consumers.count } }
 
+    private func fileURL(book: Book, chapter: BookChapter) throws -> URL {
+        try ReaderCacheStatus.fileURL(book: book, chapter: chapter, directory: directory)
+    }
+
+    func hasContent(book: Book, chapter: BookChapter) -> Bool {
+        ReaderCacheStatus.hasContent(book: book, chapter: chapter, directory: directory)
+            || BookHelp.hasContent(directory: directory, book: book, chapter: chapter)
+    }
+
     func cancelPending() {
         let downloads = pending.values
         pending.removeAll()
@@ -32,12 +41,13 @@ actor ReaderChapterCache {
     func content(book: Book, chapter: BookChapter, nextURL: String?, source: BookSource?,
                  client: any HttpClient) async throws -> CachedReaderChapter {
         try Task.checkCancellation()
-        var identity = [book.bookUrl ?? "", book.origin ?? "", chapter.url ?? "", String(chapter.index)]
-        if LocalBook.isLocal(book) { identity.append(chapter.variable ?? "") }
-        let key = SHA256.hash(data: try JSONEncoder().encode(identity)).map { String(format: "%02x", $0) }.joined()
-        let url = directory.appendingPathComponent(key).appendingPathExtension("json")
+        let url = try fileURL(book: book, chapter: chapter)
+        let key = url.deletingPathExtension().lastPathComponent
         if let data = try? Data(contentsOf: url), let cached = try? JSONDecoder().decode(CachedReaderChapter.self, from: data) {
             return cached
+        }
+        if let content = try BookHelp.content(directory: directory, book: book, chapter: chapter) {
+            return CachedReaderChapter(rawContent: content)
         }
         let source = source ?? (LocalBook.isLocal(book) ? BookSource() : nil)
         guard let source else { throw ReaderError.missingSource }

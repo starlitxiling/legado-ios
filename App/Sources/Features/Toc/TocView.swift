@@ -24,6 +24,9 @@ struct TocView: View {
                     Button { onSelectChapter(chapter.index) } label: {
                         HStack {
                             Text(chapter.title)
+                            if model.cachedChapterIndices.contains(chapter.index) {
+                                Image(systemName: "circle.fill").font(.system(size: 5)).accessibilityLabel("已缓存")
+                            }
                             Spacer()
                             if chapter.isVip { Text("VIP").font(.caption).foregroundStyle(.orange) }
                             if chapter.index == model.currentChapterIndex {
@@ -36,6 +39,9 @@ struct TocView: View {
                 }
             }
             .refreshable { await model.refresh() }
+            .safeAreaInset(edge: .bottom) {
+                Text("已缓存 \(model.cachedChapterIndices.count) / \(model.chapters.count) 章").font(.caption).padding()
+            }
             .toolbar {
                 Button(model.isReversed ? "正序" : "倒序") { model.isReversed.toggle() }
                 Button("定位当前章") {

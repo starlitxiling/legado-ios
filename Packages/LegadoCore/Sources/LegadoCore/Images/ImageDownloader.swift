@@ -15,7 +15,7 @@ public actor ImageDownloader {
     }
 
     public func load(url: String, source: BookSource? = nil, book: Book? = nil,
-                     isCover: Bool = true) async throws -> Data {
+                     isCover: Bool = true, cacheFile: URL? = nil) async throws -> Data {
         try Task.checkCancellation()
         let source = source ?? BookSource()
         let scope: String
@@ -25,7 +25,7 @@ public actor ImageDownloader {
             let name = (book.name ?? "").replacingOccurrences(of: #"[\\/:*?"<>|.]"#, with: "", options: .regularExpression)
             scope = String(decoding: Array(name.utf16.prefix(9)), as: UTF16.self) + Self.md5(book.bookUrl ?? "")
         } else { scope = "content/" + Self.md5(source.bookSourceUrl ?? "") }
-        let path = directory.appendingPathComponent(scope, isDirectory: true)
+        let path = cacheFile ?? directory.appendingPathComponent(scope, isDirectory: true)
             .appendingPathComponent(Self.md5(url) + "." + Self.suffix(url))
         if let data = try? Data(contentsOf: path), !data.isEmpty { return data }
         let context = WebBookContext(source: source, client: client, book: book, cookies: cookies)

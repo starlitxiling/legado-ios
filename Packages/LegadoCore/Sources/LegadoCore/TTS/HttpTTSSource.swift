@@ -26,7 +26,9 @@ public actor HttpTTSSource {
         self.maximumCacheBytes = max(0, maximumCacheBytes); self.maximumCacheAge = max(0, maximumCacheAge); self.now = now
     }
     private func location(text: String, speed: Int) throws -> URL {
-        let encoded = try JSONEncoder().encode(source)
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let encoded = try encoder.encode(source)
         let key = SHA256.hash(data: encoded + Data("\u{0}\(speed)\u{0}\(text)".utf8)).map { String(format: "%02x", $0) }.joined()
         return directory.appendingPathComponent(key + ".audio")
     }

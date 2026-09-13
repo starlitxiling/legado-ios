@@ -1,6 +1,7 @@
 import Foundation
 import CoreText
 import CoreGraphics
+import LegadoCore
 
 struct ReaderPage {
     /// 章节排版文本中的 UTF-16 范围，包含标题与段落分隔符。
@@ -35,6 +36,7 @@ struct Paginator {
     func paginate(title: String, paragraphs: [String], size: CGSize,
                   settings: ReaderSettings, imageBaseURL: String? = nil) throws -> ReaderPagination {
         let settings = settings.normalized
+        let title = settings.titleMode == 2 ? "" : title
         let contentSize = CGSize(width: size.width - settings.paddingLeft - settings.paddingRight,
                                  height: size.height - settings.paddingTop - settings.paddingBottom)
         guard contentSize.width.isFinite, contentSize.height.isFinite,
@@ -60,6 +62,7 @@ struct Paginator {
         }
         let suffix = raw.substring(from: start)
         if matches.isEmpty || !suffix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { string += suffix }
+        let fontName = settings.textFont.isEmpty ? fontName : settings.textFont
         let font = CTFontCreateWithName(fontName as CFString, settings.textSize, nil)
         func paragraphStyle(indent: CGFloat, multiplier: CGFloat) -> CTParagraphStyle {
             var indent = indent
@@ -89,8 +92,9 @@ struct Paginator {
             NSAttributedString.Key(kCTParagraphStyleAttributeName as String): paragraphStyle(indent: 0, multiplier: settings.lineSpacingMultiplier)
         ])
         if !title.isEmpty {
-            attributed.addAttribute(NSAttributedString.Key(kCTParagraphStyleAttributeName as String),
-                value: paragraphStyle(indent: 0, multiplier: 1),
+            attributed.addAttributes(ReaderTitleStyle(mode: settings.titleMode, sizeOffset: settings.titleSize,
+                topSpacing: settings.titleTopSpacing, bottomSpacing: settings.titleBottomSpacing)
+                .attributes(fontName: fontName, bodySize: settings.textSize),
                 range: NSRange(location: 0, length: (title as NSString).length))
         }
         let text = NSAttributedString(attributedString: attributed)
@@ -106,7 +110,11 @@ struct Paginator {
                 continue
             }
             let boundary = images.first(where: { $0.offset > offset })?.offset ?? text.length
-            let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: offset, length: boundary - offset), path, nil)
+            // CoreText 不为首个段落应用 paragraphSpacingBefore，首页单独保留标题上边距。
+            let pagePath = offset == 0 && !title.isEmpty
+                ? CGPath(rect: CGRect(x: 0, y: 0, width: contentSize.width,
+                    height: max(1, contentSize.height - settings.titleTopSpacing)), transform: nil) : path
+            let frame = CTFramesetterCreateFrame(framesetter, CFRange(location: offset, length: boundary - offset), pagePath, nil)
             let visible = CTFrameGetVisibleStringRange(frame)
             guard visible.length > 0 else { throw PaginationError.noVisibleCharacters }
             let range = NSRange(location: offset, length: visible.length)

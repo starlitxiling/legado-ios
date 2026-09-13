@@ -21,9 +21,10 @@ final class StorageTests: XCTestCase {
                 XCTAssertTrue(tables.contains(table), table)
             }
             let indexes = try String.fetchAll(db, sql: "SELECT name FROM sqlite_master WHERE type = 'index' AND name NOT LIKE 'sqlite_%'")
-            XCTAssertEqual(Set(indexes), Set(["index_books_name_author", "index_chapters_bookUrl", "index_chapters_bookUrl_index", "index_book_sources_bookSourceUrl", "index_searchBooks_bookUrl", "index_searchBooks_origin", "index_replace_rules_id", "index_cookies_url", "index_readRecord_snapshot", "index_bookmarks_bookName_bookAuthor"]))
+            XCTAssertEqual(Set(indexes), Set(["index_books_name_author", "index_chapters_bookUrl", "index_chapters_bookUrl_index", "index_book_sources_bookSourceUrl", "index_searchBooks_bookUrl", "index_searchBooks_origin", "index_replace_rules_id", "index_cookies_url", "index_readRecord_snapshot", "index_bookmarks_bookName_bookAuthor", "index_highlights_bookUrl"]))
             let migrations = try String.fetchAll(db, sql: "SELECT identifier FROM grdb_migrations")
             XCTAssertTrue(migrations.contains("v1"))
+            XCTAssertTrue(migrations.contains("v5"))
             XCTAssertTrue(migrations.contains("v2-source-login"))
             XCTAssertEqual(try Int.fetchOne(db, sql: "PRAGMA foreign_keys"), 1)
             XCTAssertTrue(try db.columns(in: "books").contains { $0.name == "readConfig" })

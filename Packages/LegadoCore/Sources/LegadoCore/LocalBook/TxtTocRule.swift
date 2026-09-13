@@ -18,6 +18,16 @@ public struct TxtTocRule: Codable, FetchableRecord, PersistableRecord, Equatable
     }
 
     public func validate() throws { _ = try NSRegularExpression(pattern: rule, options: [.anchorsMatchLines]) }
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        id = try values.decodeIfPresent(Int64.self, forKey: .id) ?? GsonDecoding.time(from: decoder)
+        name = try values.decodeIfPresent(String.self, forKey: .name) ?? ""
+        rule = try values.decodeIfPresent(String.self, forKey: .rule) ?? ""
+        replacement = try values.decodeIfPresent(String.self, forKey: .replacement) ?? ""
+        example = try values.decodeIfPresent(String.self, forKey: .example)
+        serialNumber = try values.decodeIfPresent(Int.self, forKey: .serialNumber) ?? -1
+        enable = try values.decodeIfPresent(Bool.self, forKey: .enable) ?? true
+    }
     public static let builtIn: [TxtTocRule] = [
         .init(id: -1, name: "目录(去空白)", rule: #"(?<=[　\s])(?:序章|楔子|正文(?!完|结)|终章|后记|尾声|番外|第\s{0,4}[\d〇零一二两三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟]+?\s{0,4}(?:章|节(?!课)|卷|集(?![合和]))).{0,30}$"#, example: "第一章 假装第一章前面有空白但我不要", serialNumber: 0, enable: true),
         .init(id: -2, name: "目录", rule: #"^[ 　\t]{0,4}(?:序章|楔子|正文(?!完|结)|终章|后记|尾声|番外|第\s{0,4}[\d〇零一二两三四五六七八九十百千万壹贰叁肆伍陆柒捌玖拾佰仟]+?\s{0,4}(?:章|节(?!课)|卷|集(?![合和])|部(?![分赛游])|篇(?!张))).{0,30}$"#, example: "第一章 标准的粤语就是这样", serialNumber: 1, enable: true),

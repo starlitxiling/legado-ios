@@ -29,6 +29,8 @@ struct SettingsView: View {
             }
             .disabled(model.isTesting)
             Section {
+                NavigationLink("TXT 目录规则") { TxtTocRulesView(database: container.database) }
+                NavigationLink("字典规则") { DictRulesView(database: container.database) }
                 NavigationLink("备份与恢复") {
                     BackupView(container: container, settings: model, model: $backupModel)
                 }

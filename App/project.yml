@@ -26,7 +26,8 @@ targets:
       path: Info.plist
       properties:
         CFBundleDisplayName: 阅读
-        UIBackgroundModes: [audio]
+        UIBackgroundModes: [audio, fetch]
+        BGTaskSchedulerPermittedIdentifiers: [io.legado.ios.refresh]
         UILaunchScreen: {}
         UIApplicationSceneManifest:
           UIApplicationSupportsMultipleScenes: false

@@ -14,4 +14,15 @@ public struct TxtTocRuleRepository: Sendable {
         try rule.validate()
         try await database.writer.write { db in try rule.save(db) }
     }
+
+    public func save(_ rules: [TxtTocRule]) async throws {
+        for rule in rules { try rule.validate() }
+        try await database.writer.write { db in
+            for rule in rules { try rule.save(db) }
+        }
+    }
+
+    public func delete(id: Int64) async throws {
+        _ = try await database.writer.write { db in try TxtTocRule.deleteOne(db, key: id) }
+    }
 }

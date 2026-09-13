@@ -6,8 +6,12 @@ import LegadoCore
 struct LocalImportView: View {
     @State private var model: LocalImportViewModel
     @State private var showsPicker = false
+    private let database: AppDatabase
 
-    init(database: AppDatabase) { _model = State(initialValue: LocalImportViewModel(database: database)) }
+    init(database: AppDatabase) {
+        self.database = database
+        _model = State(initialValue: LocalImportViewModel(database: database))
+    }
 
     var body: some View {
         List {
@@ -25,7 +29,7 @@ struct LocalImportView: View {
                 }
             } footer: { Text("文件会复制到应用内，之后无需保留原始文件。") }
             Section {
-                NavigationLink("TXT 目录规则") { TxtTocRulesView(model: model) }
+                NavigationLink("TXT 目录规则") { TxtTocRulesView(database: database) }
             }
         }
         .navigationTitle("导入本地书")
@@ -54,47 +58,5 @@ private struct LocalDocumentPicker: UIViewControllerRepresentable {
         init(selected: @escaping ([URL]) -> Void) { self.selected = selected }
         func documentPicker(_ controller: UIDocumentPickerViewController, didPickDocumentsAt urls: [URL]) { selected(urls) }
         func documentPickerWasCancelled(_ controller: UIDocumentPickerViewController) { selected([]) }
-    }
-}
-
-private struct TxtTocRulesView: View {
-    @Bindable var model: LocalImportViewModel
-    var body: some View {
-        List {
-            if let error = model.ruleError { Text(error).foregroundStyle(.red) }
-            Section {
-                ForEach(model.rules) { rule in
-                    NavigationLink {
-                        TxtTocRuleEditor(model: model, rule: rule)
-                    } label: {
-                        VStack(alignment: .leading) {
-                            Text(rule.name)
-                            Text(rule.enable ? "已启用" : "已停用").font(.caption).foregroundStyle(.secondary)
-                        }
-                    }
-                }
-            } footer: { Text("规则修改用于后续导入的 TXT 书籍。") }
-        }
-        .navigationTitle("TXT 目录规则")
-        .task { await model.loadRules() }
-    }
-}
-
-private struct TxtTocRuleEditor: View {
-    @Bindable var model: LocalImportViewModel
-    @State var rule: TxtTocRule
-    @Environment(\.dismiss) private var dismiss
-    var body: some View {
-        Form {
-            TextField("名称", text: $rule.name)
-            Toggle("启用", isOn: $rule.enable)
-            Section("正则表达式") { TextEditor(text: $rule.rule).frame(minHeight: 140).autocorrectionDisabled() }
-            if let example = rule.example { Section("示例") { Text(example) } }
-            if let error = model.ruleError { Text(error).foregroundStyle(.red) }
-            Button("保存") {
-                Task { await model.saveRule(rule); if model.ruleError == nil { dismiss() } }
-            }
-        }
-        .navigationTitle("编辑目录规则")
     }
 }
