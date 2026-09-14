@@ -115,5 +115,5 @@ Codex 任务的硬规则以 `~/.claude/skills/codex-subagent/SKILL.md` 为单一
   #   —— 待 Xcode 工程建立后补充实际 scheme 与 destination
   ```
 
-- **Kotlin 规格所在**：`master` 分支 `app/src/main/java/io/legado/app/model/analyzeRule/`（`RuleAnalyzer.kt` / `AnalyzeRule.kt` / `AnalyzeByJSoup.kt` / `AnalyzeUrl.kt` 等），JS 宿主方法在 `help/JsExtensions.kt`、`help/JsEncodeUtils.kt`，实体字段规格在 `data/entities/`。读取用 `git show master:<path>`，**引用时必须记录当时 master 的 commit hash**（本文件撰写时 master 为 `cb664b84d`）。一致性语料每条用例同样记录其期望值取自的 commit。
+- **Kotlin 规格所在**：`master` 分支 `app/src/main/java/io/legado/app/model/analyzeRule/`（`RuleAnalyzer.kt` / `AnalyzeRule.kt` / `AnalyzeByJSoup.kt` / `AnalyzeUrl.kt` 等），JS 宿主方法在 `help/JsExtensions.kt`、`help/JsEncodeUtils.kt`，实体字段规格在 `data/entities/`。读取用 `git show master:<path>`，**引用时必须记录当时 master 的 commit hash**（本文件撰写时 master 为 `2bdd3c58b`）。一致性语料每条用例同样记录其期望值取自的 commit。
 - **语料合规**：仓库只提交合成 fixture 与聚合统计，不提交第三方站点抓取内容与整套书源合集（PLAN.md §7）。

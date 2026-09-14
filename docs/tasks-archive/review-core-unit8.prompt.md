@@ -13,7 +13,7 @@
 <task>
 目标：独立复审 LegadoCore 单元 8（HtmlFormatter 正文 / 简介 / 保图格式化）是否逐正则、逐分支对齐 Kotlin。
 工作目录：/Users/wujie/Work/legado-ios/.claude/worktrees/ios（分支 ios）
-背景与入口：新文件（未跟踪）Packages/LegadoCore/Sources/LegadoCore/Format/HtmlFormatter.swift、Tests/LegadoCoreTests/HtmlFormatterTests.swift；ConformanceRunner.swift 的 format 分派。Kotlin 只读：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/utils/HtmlFormatter.kt、NetworkUtils.kt:175 附近（相对 URL 补全）、StringExtensions.kt:38、constant/AppPattern.kt、model/analyzeRule/AnalyzeUrl.kt:817（参数拆分正则），commit cb664b84d。实现者报告 117 测试全绿、8 条 format 黄金用例全过，并列出了正则方言处理：块标签 \d 改 [0-9]、缩进正则 \s 改 ASCII 空白集合、不启用多行模式、图片大小写用 ASCII 字符对、data 正则加首尾锚点模拟 matches。
+背景与入口：新文件（未跟踪）Packages/LegadoCore/Sources/LegadoCore/Format/HtmlFormatter.swift、Tests/LegadoCoreTests/HtmlFormatterTests.swift；ConformanceRunner.swift 的 format 分派。Kotlin 只读：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/utils/HtmlFormatter.kt、NetworkUtils.kt:175 附近（相对 URL 补全）、StringExtensions.kt:38、constant/AppPattern.kt、model/analyzeRule/AnalyzeUrl.kt:817（参数拆分正则），commit 2bdd3c58b。实现者报告 117 测试全绿、8 条 format 黄金用例全过，并列出了正则方言处理：块标签 \d 改 [0-9]、缩进正则 \s 改 ASCII 空白集合、不启用多行模式、图片大小写用 ASCII 字符对、data 正则加首尾锚点模拟 matches。
 审查角度：① 每个 Kotlin 正则与 Swift 对应物逐个对照（含 Kotlin Regex 默认 flags、\s 在 Java 中的实际集合 [ \t\n\x0B\f\r]、. 是否匹配换行、^$ 的行为、贪婪 / 懒惰、替换串中 $1 与 \\ 转义）；② 替换顺序与连续替换的依赖（前一步输出作为后一步输入）；③ formatKeepImg 的四个图片分支优先级、属性提取、相对 URL 补全（NetworkUtils.getAbsoluteURL 的规则：协议相对、根相对、相对路径、已绝对、data:）、尾部参数 ,{...} 的保留；④ 空白 / 实体 / 注释清理对全角空格、NBSP、零宽字符的处理是否与 Kotlin 一致；⑤ null / 空串 / 仅空白输入的边界；⑥ 测试是否迁就实现（自建缩进期望曾失败后被修正，请核对修正方向是否符合 Kotlin）。
 约束：只读，不修改文件，不 commit，不编译。
 完成标准：finding 列表（文件绝对路径:行号、置信 0-100、具体输入下 Swift 与 Kotlin 行为差异、建议），< 60 不列；没有就写 clean 并列出对照过的正则清单。

@@ -6,7 +6,7 @@
 
 ## 实现方案
 
-六个单元，每个单元 Codex 实现、Codex 独立上下文复审、按 Kotlin 返修后提交（commit `22c9f65de`、`f2b41b1dd`、`8e701accb`）：
+六个单元，每个单元 Codex 实现、Codex 独立上下文复审、按 Kotlin 返修后提交（commit `e0bca04ae`、`a9b1d2503`、`236484452`）：
 
 | 单元 | 内容 | 复审 finding |
 | --- | --- | --- |

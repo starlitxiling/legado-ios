@@ -20,4 +20,4 @@
 - 替换规则用 `list(groupName:)` 做分隔符规范化后的整组匹配；`listUngrouped()` 查询 NULL、空白及“未分组”。只有分隔符的字段不属于 Kotlin 定义的未分组。
 - MVP 不含 Kotlin 的书籍备忘表，因此没有备忘迁移逻辑。
 
-依据：Kotlin `cb664b84d` 的 `BookDao.kt:220`、`BookChapterDao.kt:37`、`ReplaceRuleDao.kt:19`、`ReplaceRuleDao.kt:38` 和 `SearchBookDao.kt:6`。
+依据：Kotlin `2bdd3c58b` 的 `BookDao.kt:220`、`BookChapterDao.kt:37`、`ReplaceRuleDao.kt:19`、`ReplaceRuleDao.kt:38` 和 `SearchBookDao.kt:6`。

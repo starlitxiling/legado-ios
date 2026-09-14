@@ -13,7 +13,7 @@
 <task>
 目标：阶段 2 单元 U1 —— 在 LegadoCore 建立网络层：HttpClient protocol、URLSession 生产实现、测试用回放实现、StrResponse 模型、响应字符集解码、Cookie 存储，并把已有的 UrlOptions 映射为真实请求。
 工作目录：/Users/wujie/Work/legado-ios/.claude/worktrees/ios（可写：Packages/LegadoCore/Sources/LegadoCore/Network/（新目录）、Tests/LegadoCoreTests/ 新文件、docs/spec/network-compat.md（新）；不得改 Package.swift（另一任务在改）、AnalyzeRule/、JsEngine/、AnalyzeByJSoup/ 等既有目录与既有测试；不加第三方依赖；不 commit）
-背景与入口（Kotlin 为规格，只读，commit cb664b84d）：
+背景与入口（Kotlin 为规格，只读，commit 2bdd3c58b）：
 - /Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/help/http/HttpHelper.kt（okHttpClient 构建、超时、重定向、Cronet 开关）、help/http/StrResponse.kt、help/http/OkHttpUtils.kt（text() 的字符集判定：响应头 charset → HTML meta → 默认；GBK 等解码）、help/http/EncodingDetect.kt（若被用到）、help/http/CookieManager.kt 与 help/http/CookieStore.kt（按域名的 cookie 字符串合并、getCookie / setCookie / replaceCookie / removeCookie / getKey 语义）、model/analyzeRule/AnalyzeUrl.kt 的 getStrResponse / getResponse 段（:400-620 附近：method、headers、body 编码为表单或 JSON、charset、retry 循环、followRedirects、timeout 派生、serverID、webView 分支只需留桩）、model/analyzeRule/AnalyzeUrlNetworkOptions.kt。
 - 已有 Swift：Sources/LegadoCore/AnalyzeUrl/UrlOptions.swift（选项解析与 timeout 派生已实现，直接复用其模型）。
 - 计划文档 docs/1-阶段2数据与网络/PLAN.md §3：HttpClient protocol + URLSessionHttpClient + ReplayHttpClient；async/await；Cookie 存储用 actor；dnsIp / resolveIp / 代理 / Cronet 选项解析保留、执行忽略并写进 docs/spec/network-compat.md。

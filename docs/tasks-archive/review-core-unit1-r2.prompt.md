@@ -13,7 +13,7 @@
 <task>
 目标：对 RuleAnalyzer 返修后的实现做收窄复审：核对上一轮 7 条 finding 是否消除、修复是否引入新偏差，并对照刚补精确的规格 §3。
 工作目录：/Users/wujie/Work/legado-ios/.claude/worktrees/ios（分支 ios）
-背景与入口：代码 Packages/LegadoCore/Sources/LegadoCore/RuleAnalyzer.swift（216 行）与 Tests/LegadoCoreTests/RuleAnalyzerTests.swift（229 行，22 条测试，实现者报告全绿）。规格 docs/spec/rule-engine.md §3（已按 Kotlin 补精确，commit 603a5d508，第 71-118 行）。Kotlin 只读 /Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/RuleAnalyzer.kt（commit cb664b84d）。上一轮 7 条：① 顶层引号不保护分隔符；② innerRule 单标记未闭合返回空串不抛错；③ 回调空串后从组尾再前进标记长度；④ consumeToAny / 两种平衡组失败恢复游标；⑤ splitRule 终点不强制串尾；⑥ UTF-16 偏移；⑦ trim 无跳过不改起点。另请特别核对两处规格补写后的细节：引号保护在 chompRuleBalanced 与 chompCodeBalanced 内都生效（Kotlin :105-108、:141-144）；splitRule 直接追加尾段时游标停在尾段起点、吞括号后的无候选分支保留闭括号后的位置（:199、:234-236、:293-296）。
+背景与入口：代码 Packages/LegadoCore/Sources/LegadoCore/RuleAnalyzer.swift（216 行）与 Tests/LegadoCoreTests/RuleAnalyzerTests.swift（229 行，22 条测试，实现者报告全绿）。规格 docs/spec/rule-engine.md §3（已按 Kotlin 补精确，commit dffad6c7c，第 71-118 行）。Kotlin 只读 /Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/RuleAnalyzer.kt（commit 2bdd3c58b）。上一轮 7 条：① 顶层引号不保护分隔符；② innerRule 单标记未闭合返回空串不抛错；③ 回调空串后从组尾再前进标记长度；④ consumeToAny / 两种平衡组失败恢复游标；⑤ splitRule 终点不强制串尾；⑥ UTF-16 偏移；⑦ trim 无跳过不改起点。另请特别核对两处规格补写后的细节：引号保护在 chompRuleBalanced 与 chompCodeBalanced 内都生效（Kotlin :105-108、:141-144）；splitRule 直接追加尾段时游标停在尾段起点、吞括号后的无候选分支保留闭括号后的位置（:199、:234-236、:293-296）。
 约束：只读，不修改文件，不 commit，沙箱只读不要尝试编译。
 完成标准：逐条给出 7 条状态；列出置信 ≥60 的新问题（文件绝对路径:行号、置信、具体输入下 Swift 与 Kotlin 的行为差异、建议）；没有就写 clean 并列出对照过的方法与输入。
 汇报格式：中文 markdown ≤ 40 行。

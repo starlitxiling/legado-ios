@@ -13,7 +13,7 @@
 <task>
 目标：阶段 2 单元 U3 —— 在 LegadoCore 建立 MVP 所需实体的 Codable 模型与书源 / 替换规则 JSON 导入解析，对齐 Kotlin 的 Gson 宽松反序列化语义。
 工作目录：/Users/wujie/Work/legado-ios/.claude/worktrees/ios（可写：Packages/LegadoCore/Sources/LegadoCore/Entities/、Sources/LegadoCore/Import/（新目录）、Tests/LegadoCoreTests/ 新文件、Tests/Conformance/fixtures/import/（新，合成 JSON）；不得改 Package.swift（另一任务在改）与既有目录、既有测试；不加依赖；不 commit）
-背景与入口（Kotlin 为规格，只读，commit cb664b84d）：
+背景与入口（Kotlin 为规格，只读，commit 2bdd3c58b）：
 - 实体：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/data/entities/BookSource.kt（357 行，字段与默认值）、data/entities/rule/{SearchRule,ExploreRule,BookInfoRule,TocRule,ContentRule,ReviewRule}.kt、BaseSource.kt（header / loginUrl / jsLib 等共有字段）、ReplaceRule.kt、Book.kt、BookChapter.kt、SearchBook.kt、BookGroup.kt、Cookie.kt、ReadRecord.kt、Bookmark.kt。只做 MVP 需要的字段，Room 注解、Parcelable、UI 相关方法忽略；每个实体字段的默认值必须与 Kotlin 一致。
 - 反序列化容错：utils/GsonExtensions.kt（:49-54 为 6 个 Rule 类注册的 jsonDeserializer：既接受对象也接受 JSON 字符串；StringJsonDeserializer :140、IntJsonDeserializer :159 的弱类型规则：数字 / 布尔 / 字符串互转、null 处理）、rule/SearchRule.kt:29-35。
 - 导入入口：ui/association/BookSourceImport.kt:88 parseBookSourceJson（source 数组 / 单对象 / url 数组）、ImportBookSourceViewModel.kt:277-290（非 JSON 文本判为纯 JS 书源 JsSourceConfig.extract——本单元只识别并返回「不支持」标记）；ReplaceRule 导入同理（ui/replace 下的导入逻辑）。

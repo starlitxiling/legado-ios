@@ -4,7 +4,7 @@ macOS SwiftPM 命令行工具，使用系统 CoreGraphics、Foundation XMLParser
 
 在本目录执行 `bash check.sh`，离线运行 XCTest 并从固定测试素材生成 App 的 12 张备用图标。直接调用 `.build/debug/IconRender <res目录> <输出目录>` 可以渲染另一份 Android 资源。
 
-测试素材来自 Android 提交 `cb664b84d` 的 `app/src/main/res`，保留原始 XML；仅包含六套 adaptive-icon、所引用的九份 drawable 和两份颜色资源。测试输出与构建缓存均位于本目录 `.build/`。
+测试素材来自 Android 提交 `2bdd3c58b` 的 `app/src/main/res`，保留原始 XML；仅包含六套 adaptive-icon、所引用的九份 drawable 和两份颜色资源。测试输出与构建缓存均位于本目录 `.build/`。
 
 支持 SVG 路径 M、L、H、V、C、S、Q、T、A、Z 及相对形式和隐式重复；椭圆弧按最多 90 度一段近似为三次贝塞尔。支持 VectorDrawable 的 viewport、填充与描边、透明度、分组变换、裁剪和颜色引用；不支持渐变、trimPath 或其他 drawable 类型。遇到不支持的 XML 元素会报错。
 

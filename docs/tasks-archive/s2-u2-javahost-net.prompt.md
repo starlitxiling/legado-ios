@@ -13,7 +13,7 @@
 <task>
 目标：阶段 2 单元 U2 —— 把 JavaHost 的网络类方法从桩变成真实实现，建立在 U1 网络层之上，并实现注入对象 cookie / cache 的真实行为；失败语义对齐 Kotlin。
 工作目录：/Users/wujie/Work/legado-ios/.claude/worktrees/ios（可写：Packages/LegadoCore/Sources/LegadoCore/JsEngine/（现有 JavaHost.swift、JsEngine.swift 及新文件）、Sources/LegadoCore/Network/ 下**只允许新增**文件（如 CacheManager.swift），Tests/LegadoCoreTests/ 新文件，docs/spec/js-host-compat.md（更新第 ② 类差异的状态）；不得改 Package.swift、Network/ 既有文件、Entities/、Import/、Storage/（其他任务在返修）、AnalyzeRule/ 与既有测试；不 commit）
-背景与入口（Kotlin 为规格，只读，commit cb664b84d）：
+背景与入口（Kotlin 为规格，只读，commit 2bdd3c58b）：
 - /Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/help/JsExtensions.kt 网络段（ajax :187 附近、ajaxAll、connect、get / head / post、getCookie、downloadFile / cacheFile 的签名、返回类型 StrResponse / String、失败时返回错误信息字符串而不抛出的规则、并发与 rate limit 调用）、help/CacheManager.kt（put / get / getInt / getLong / getDouble / getFloat / delete、过期、内存 + 文件 + DB 三层里本单元先做内存 + 文件缓存）、help/http/CookieStore.kt 通过 cookie 注入对象暴露给 JS 的方法、model/analyzeRule/AnalyzeUrl.kt 的 getStrResponse / getResponse（U2 在 JS 里调用 AnalyzeUrl 走同一条请求路径，含 ,{...} 选项）。
 - 已有 Swift：Network/（HttpClient、URLSessionHttpClient、ReplayHttpClient、StrResponse、ResponseDecoder、CookieStore actor、UrlRequestBuilder 含 enabledCookieJar 两阶段与 retry）；JsEngine/JavaHost.swift 里现有桩与已实现的离线方法；docs/spec/js-host-compat.md 第 ② 类记录的「桩异常不等价网络失败」。
 - 宿主 API 优先级表 docs/0-iOS适配规划/宿主API优先级.md：一级 / 二级里的网络相关方法全部实现。

@@ -4,7 +4,7 @@
 
 ## 1. 当前位置
 
-- 阶段 2 轮次 1，在 `ios` 分支直接开发（orphan 分支不开 round worktree）。起点 `bbe6a94c3`；U1 / U3 / U5 在 `22c9f65de`，U2 在 `f2b41b1dd`，均已推送。
+- 阶段 2 轮次 1，在 `ios` 分支直接开发（orphan 分支不开 round worktree）。起点 `e09bceb7c`；U1 / U3 / U5 在 `e0bca04ae`，U2 在 `a9b1d2503`，均已推送。
 - 目标已由人类升级为「一直做到 iOS 应用可构建」（阶段 2 → 3 → 4 部分 → 5）。
 - WebDAV 测试凭据在 `.env.local`（gitignored），只读使用。
 

@@ -1,6 +1,6 @@
 # 实体与表兼容性
 
-规格固定为 Kotlin `cb664b84d`，AppDatabase 版本 111，共 26 张实体表及 BookSourcePart 视图。下面覆盖 data/entities 下全部 Kotlin 文件；辅助模型不因位于该目录而单独建表。Swift 使用自己的迁移序列，新增迁移名为 `v7_entities`。
+规格固定为 Kotlin `2bdd3c58b`，AppDatabase 版本 111，共 26 张实体表及 BookSourcePart 视图。下面覆盖 data/entities 下全部 Kotlin 文件；辅助模型不因位于该目录而单独建表。Swift 使用自己的迁移序列，新增迁移名为 `v7_entities`。
 
 | Kotlin 实体或文件 | Swift 已有 | 缺失与本单元补齐理由 |
 | --- | --- | --- |

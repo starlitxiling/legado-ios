@@ -6,7 +6,7 @@
 
 ## 实现方案
 
-六个单元，每个单元 Codex 实现、Codex 独立上下文复审、返修后合并提交（commit `bd4b545b4`）：
+六个单元，每个单元 Codex 实现、Codex 独立上下文复审、返修后合并提交（commit `45adff6f5`）：
 
 | 单元 | 内容 | 复审 finding |
 | --- | --- | --- |
@@ -20,7 +20,7 @@
 **验证**：
 
 - macOS 侧：LegadoCore 276 + `tools/appcore-check` 57 = 333 项测试 0 失败（ViewModel 与纯逻辑经软链编译）。
-- iOS 侧（本机安装 iOS 26.5 平台组件后由主会话代跑）：`xcodebuild build`（generic/platform=iOS，无签名）通过；`tools/build-ipa.sh` 产出 `dist/Legado-1.0-bd4b545b4.ipa`（3.5 MB）；iOS 模拟器上 `xcodebuild test` 通过；应用安装到模拟器后启动成功，进程存活，截图显示书架空态与四个 Tab。
+- iOS 侧（本机安装 iOS 26.5 平台组件后由主会话代跑）：`xcodebuild build`（generic/platform=iOS，无签名）通过；`tools/build-ipa.sh` 产出 `dist/Legado-1.0-45adff6f5.ipa`（3.5 MB）；iOS 模拟器上 `xcodebuild test` 通过；应用安装到模拟器后启动成功，进程存活，截图显示书架空态与四个 Tab。
 
 ## 局限性
 

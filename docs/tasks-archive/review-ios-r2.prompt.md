@@ -16,7 +16,7 @@
 背景与入口：
 - 上一轮 finding 与修正：规格 docs/spec/rule-engine.md 的 6 条（%% 元素列表语义、前缀兜底保留模式、空规则与 CSS 前缀剥离后为空、零步长、超时公式钳制、变量查找空串过滤范围）已由另一 Codex 会话修正，报告称改在规格第 49、149、182、196、205-212、245-250、324、346、356、364 行；CLAUDE.md 接手条款矛盾已改（「改进回路」小节）；.gitignore 嵌套 Package 问题决定在 Package 建立时按目录加 .gitignore，本次不改。
 - 新产物：Tests/Conformance/fixtures/golden/（README.md + 6 个 JSON，42 条用例，期望值须逐字来自 Kotlin 测试断言，测试在 /Users/wujie/Work/legado-ios/app/src/test/ 下，只读）；tools/corpus/（analyze_sources.py、test_analyze_sources.py、README.md、.gitignore）；docs/0-iOS适配规划/宿主API优先级.md（统计结果，仓库内不得出现书源 URL、站名或完整书源）。
-- Kotlin 源码（只读）：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/ 等，commit cb664b84d。
+- Kotlin 源码（只读）：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/ 等，commit 2bdd3c58b。
 - Python 脚本须符合 /Users/wujie/.claude/playbooks/python.md（先读它）。
 审查角度：① 6 条规格修正是否与源码一致、有没有改坏相邻段落；② 黄金用例抽 6 条回 Kotlin 测试核对期望值逐字一致、schema 与 README 自洽；③ analyze_sources.py 的统计口径是否与 README / 优先级文档一致，跑 python3 -B -m unittest discover -s tools/corpus -p 'test_*.py' 看是否通过，检查是否有泄漏 URL / 站名（grep -E "https?://" 与常见站名）；④ CLAUDE.md、PLAN.md、PROGRESS.md、DEVTREE.md 之间事实一致性。
 约束：只读，不修改文件，不 commit，不全库扫描，不联网。

@@ -15,7 +15,7 @@
 工作目录：/Users/wujie/Work/legado-ios/.claude/worktrees/ios（可写：Packages/LegadoCore/Sources/LegadoCore/Format/（新目录）、Sources/LegadoCore/Conformance/ConformanceRunner.swift（加 format 分派，编辑前重新读取、局部修改）、Tests/LegadoCoreTests/ 新文件；不得改其他既有源码与测试；不加依赖；不 commit）
 背景与入口：
 - 用例：Tests/Conformance/fixtures/golden/HtmlFormatterTest.json（8 条，期望值来自 Kotlin 测试 app/src/test/java/io/legado/app/utils/HtmlFormatterTest.kt 的断言，README 有 schema）。先读用例判断需要实现的入口与参数（format / formatKeepImg / 是否带 baseUrl / 缩进参数等）。
-- Kotlin 只读（本单元规格文档没有覆盖，直接以 Kotlin 为规格，报告里给出每条语义的行号）：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/utils/HtmlFormatter.kt、以及它引用的 constant/AppPattern.kt（imgPattern 等正则）、utils/StringExtensions 里用到的扩展；commit cb664b84d。注意 Kotlin 正则到 NSRegularExpression / Swift Regex 的方言差异（\s 的 Unicode 范围、行首行尾、贪婪），逐个正则核对并写进报告。
+- Kotlin 只读（本单元规格文档没有覆盖，直接以 Kotlin 为规格，报告里给出每条语义的行号）：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/utils/HtmlFormatter.kt、以及它引用的 constant/AppPattern.kt（imgPattern 等正则）、utils/StringExtensions 里用到的扩展；commit 2bdd3c58b。注意 Kotlin 正则到 NSRegularExpression / Swift Regex 的方言差异（\s 的 Unicode 范围、行首行尾、贪婪），逐个正则核对并写进报告。
 - 已有代码：ConformanceRunner（按 kind 分派）。
 产出：Format/HtmlFormatter.swift；Tests/LegadoCoreTests/HtmlFormatterTests.swift（TDD 先红后绿，每个测试注明 Kotlin 行号；8 条黄金用例逐条断言）；ConformanceRunner 分派。
 约束：Swift 6.0 工具链、语言模式 5、iOS 17 / macOS 14；不 commit。

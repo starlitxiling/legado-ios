@@ -13,7 +13,7 @@
 <task>
 目标：按跨模型 review 给出的 6 条 finding 修正规则引擎规格文档 docs/spec/rule-engine.md，使其与 Kotlin 源码一致；只改这 6 处及其直接关联的示例，不重写其他段落。
 工作目录：/Users/wujie/Work/legado-ios/.claude/worktrees/ios（只能修改 docs/spec/rule-engine.md；不 commit）
-背景与入口：Kotlin 源码在主 checkout（只读）/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/ 与 AnalyzeUrlNetworkOptions.kt 同目录，commit cb664b84d（与规格标注的 6e08e1699 在这些文件上一致）。规格文档每条语义都要附 Kotlin 的 文件.kt:行号。
+背景与入口：Kotlin 源码在主 checkout（只读）/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/ 与 AnalyzeUrlNetworkOptions.kt 同目录，commit 2bdd3c58b（与规格标注的 652cd3849 在这些文件上一致）。规格文档每条语义都要附 Kotlin 的 文件.kt:行号。
 待修正 finding（每条先回源码核实，核实不成立就在报告里说明并不改）：
 1. 规格第 204 行附近与第 344 行示例：元素列表的 %% 不会跳过空的首项。证据 AnalyzeByJSoup.kt:141、:169 无条件保存元素列表，:177 用第一个列表长度；字符串列表才在 :100 排除空结果。要求分开定义元素入口与字符串入口的 %% 语义，并修正示例（内容 <b>1</b> 的元素规则 tag.a%%tag.b 返回空列表）。
 2. 规格第 49 行前缀识别表：兜底分支写成 Default 是错的。证据 AnalyzeRule.kt:626 创建 WebJs 段，:695 兜底只保留规则文本、不改模式。改为「保留传入模式」。

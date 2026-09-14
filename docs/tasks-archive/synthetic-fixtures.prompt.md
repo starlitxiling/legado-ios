@@ -16,7 +16,7 @@
 背景与入口：
 - 规格：docs/spec/rule-engine.md（368 行，每条语义附 Kotlin 行号；标「未确定，需实测」的条目不要出用例）。
 - 黄金用例 schema 与已覆盖范围：Tests/Conformance/fixtures/golden/README.md 与 6 个 JSON（42 条，kind 为 jsoup-default / url-options / format / replace / js / review）。合成用例沿用同一 schema，额外加两个字段：derivedFrom（规格章节与行号，如 \"rule-engine.md §5.4 L182\"）与 verification（固定值 \"spec-derived, not run on Android\"）。
-- Kotlin 源码（只读，用于规格有歧义时回源核对）：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/，commit cb664b84d。
+- Kotlin 源码（只读，用于规格有歧义时回源核对）：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/，commit 2bdd3c58b。
 - 本机没有 Android 环境，期望值无法实测；因此每条用例必须能从规格的明确条文推出，推不出的不要写。
 覆盖要求（每类至少给出正常 + 边界各 1 条，总量 60 到 100 条）：
 ① Default 私有语法：class / tag / id / text / children 选择器首词，末段关键字 text / textNodes / ownText / html / all / 属性名，旧式索引（.0、.-1、.0:2 独立索引）、新式索引（[0:3]、[0:3:0] 零步长、[-1,3:-2:-10]、! 排除），嵌套 @ 链；② 组合：&& / || / %% 在字符串列表与元素列表两种入口下的差异（含 %% 空首项）；③ ## 替换（含 ### 只替换首个匹配）与 $1 回填；④ {{ }} 内插与 @get / @put；⑤ @CSS: 与 @@ 前缀；⑥ XPath（/ 开头与 @XPath:）基础路径与属性取值；⑦ JSONPath（$. 与 @Json:）含数组取值与 || 组合；⑧ 正则模式 :regex 分组；⑨ AnalyzeUrl 的 ,{...} 选项解析（method / charset / headers / body / retry / timeout 派生公式 / webView 真值判断 \"0\" 为真 / 宽松 JSON 解析）与 {{page}} 占位；⑩ 空规则与空文档的边界。

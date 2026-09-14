@@ -8,7 +8,7 @@
 
 沿用 ../golden/README.md 的对象结构及 string / stringList 期望类型，仅增加顶层 derivedFrom（规格章节与一开始计数的行号）和 verification（固定为 `spec-derived, not run on Android`）。id 改用 `synthetic-<类别>-<三位序号>`；kind 仍取黄金 schema 中的类型，不以文件类别替代 kind。
 
-source 指向用于解释规则的 Kotlin 实现，而非原测试断言；source.commit 固定 cb664b84d。derivedFrom 指向当前 docs/spec/rule-engine.md，该文档第 4 行标注的来源版本是 6e08e1699。已检查相关七个 Kotlin 文件与 cb664b84d 无差异；这不代表整仓版本相同。source 不构成 Android 实测凭证。
+source 指向用于解释规则的 Kotlin 实现，而非原测试断言；source.commit 固定 2bdd3c58b。derivedFrom 指向当前 docs/spec/rule-engine.md，该文档第 4 行标注的来源版本是 652cd3849。已检查相关七个 Kotlin 文件与 2bdd3c58b 无差异；这不代表整仓版本相同。source 不构成 Android 实测凭证。
 
 requiresAndroid 只表示入口宿主依赖。AnalyzeRule 与 AnalyzeUrl 保守标 true；直接调用 AnalyzeByJSoup 的空规则用例为 false，但仍需要 JVM/jsoup 依赖。所有期望值都是未实测的规格推导值。
 

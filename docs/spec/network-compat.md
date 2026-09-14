@@ -1,6 +1,6 @@
 # 网络兼容性（阶段 2 U1）
 
-规格基线为 Kotlin `cb664b84d`；网络请求经 `HttpClient` 注入。
+规格基线为 Kotlin `2bdd3c58b`；网络请求经 `HttpClient` 注入。
 
 - `URLSessionHttpClient` 使用临时会话，关闭系统 Cookie 与缓存，每请求设置空闲超时及资源总超时。
 - `timeout` 为毫秒，映射时换算为秒；总超时复用 `UrlOptions.callTimeout` 派生规则。
@@ -21,7 +21,7 @@
 - enabledCookieJar 默认 false：准备请求时 `AnalyzeUrl.kt:765` 按存储值、临时头的顺序合并，临时值覆盖同名存储值。
 - 开启 CookieJar 后，`HttpHelper.kt:84-98` 的网络拦截器移除内部标记，再调用 `CookieManager.loadRequest`；
   `CookieManager.kt:62/101-105` 按请求值、存储值的顺序合并，存储值最终覆盖同名临时值。响应随后回写，再处理下一跳。
-  这两阶段顺序以 Kotlin `cb664b84d` 为准；关闭 CookieJar 时不执行第二次合并，也不回写响应 Cookie。
+  这两阶段顺序以 Kotlin `2bdd3c58b` 为准；关闭 CookieJar 时不执行第二次合并，也不回写响应 Cookie。
 - Cookie 同名后值覆盖前值；空值忽略，字符串 null 保留；set 整体覆盖，replace 合并，remove 删除。
 - 不提供 Cookie 数据库持久化、会话与持久 Cookie 分层、4096 字节随机淘汰；App WebView 同步见下文。
 - 响应 Cookie 通过 Foundation 解析；未实现完整过期清理、路径作用域。
@@ -45,7 +45,7 @@
 
 ## WebView（阶段 4 B4）
 
-- Kotlin 基线为 `cb664b84d`。`BackstageWebView.kt:348-360` 的 `sourceRegex` 实际在 `onLoadResource` 中返回匹配的资源 URL，响应正文即 URL 字符串；该版本没有通过 `shouldInterceptRequest` 返回资源正文。`overrideUrlRegex` 在 `:331-344` 拦截跳转并返回目标 URL，两者均为全串正则匹配。
+- Kotlin 基线为 `2bdd3c58b`。`BackstageWebView.kt:348-360` 的 `sourceRegex` 实际在 `onLoadResource` 中返回匹配的资源 URL，响应正文即 URL 字符串；该版本没有通过 `shouldInterceptRequest` 返回资源正文。`overrideUrlRegex` 在 `:331-344` 拦截跳转并返回目标 URL，两者均为全串正则匹配。
 - LegadoCore 仅定义请求、异步加载及用户交互协议；AppContainer 安装服务，引擎创建时取服务快照。默认调度上限为 2，FIFO 排队计入总超时，默认 60 秒，取消后先释放加载器再释放槽位。实现必须响应任务取消；不响应取消的自定义加载器不能获得硬超时保证。
 - 仅前台允许运行。WKWebView 作为 key window 的零尺寸子视图，退到非活跃状态即取消，完成、失败及取消均拆除视图与消息处理器。同步 JavaScript 宿主和 `@webjs:` 在主线程明确报错，调用方必须在后台执行规则。
 - AnalyzeUrl 的 GET 加载 URL；POST 先用原 HTTP 客户端获得 HTML，再以响应 URL 为基址加载。关闭重定向且返回 3xx 时直接返回 HTTP 响应。传入 header、Cookie、webJs、延时、sourceRegex；`webJs` 优先于 jsStr。
@@ -59,7 +59,7 @@
 
 ## B17：局域网 WebSocket
 
-- 对照 Android `cb664b84d` 的 `web/WebSocketServer.kt`、`web/socket/BookSourceDebugWebSocket.kt`、`RssSourceDebugWebSocket.kt`、`BookSearchWebSocket.kt` 与 `api/controller/BookSourceController.kt`。在 B14 的同一个 NWListener 端口升级，原 HTTP API 保持原处理路径。
+- 对照 Android `2bdd3c58b` 的 `web/WebSocketServer.kt`、`web/socket/BookSourceDebugWebSocket.kt`、`RssSourceDebugWebSocket.kt`、`BookSearchWebSocket.kt` 与 `api/controller/BookSourceController.kt`。在 B14 的同一个 NWListener 端口升级，原 HTTP API 保持原处理路径。
 - `/bookSourceDebug` 的首消息是 `{"tag":"书源 URL","key":"关键字或调试链接"}`；`/rssSourceDebug` 是 `{"tag":"订阅源 URL"}`；`/searchBook` 是 `{"key":"关键字"}`。同一连接的后续业务消息忽略，文本与二进制消息均按 JSON 解析。
 - 调试回复为纯文本日志，过滤状态 10、20、30、40；状态 -1、1000 后发送正常关闭帧，原因「调试结束」。搜索每次回复累计 SearchBook JSON 数组，结束原因 `Search finish`。缺少参数回复「不能为空」，源不存在回复「书源不存在」或「订阅源不存在」。非法 JSON 使用 1008，内部调试失败使用 1011。
 - 令牌值及是否必需复用 HTTP 配置。浏览器通过 `Sec-WebSocket-Protocol: legado, legado.token.<去填充的 base64url UTF-8 令牌>` 鉴权，响应只选择 `legado`。关闭令牌要求时仍需 `legado` 子协议。与 Android 一致，WebSocket 不使用 HTTP 的 `x-legado-token` 请求头。未通过鉴权返回 HTTP 403，未知 socket 路径返回 404。

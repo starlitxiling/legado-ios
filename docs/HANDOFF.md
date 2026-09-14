@@ -4,7 +4,7 @@
 
 ## 1. 一句话现状
 
-Android 阅读器 Legado 的 iOS 纯 Swift 重写已完成规划 → 引擎 → 数据网络 → MVP 界面 → **全部功能对齐**四个阶段，代码全部在本仓库 orphan 分支 `ios`（最新 `1c0fd55df`，已推送 `origin/ios`）。合并态验证：LegadoCore 539 项、appcore-check 232 项、icon-render 7 项测试 0 失败，`xcodebuild`（iOS 真机目标）构建通过，未签名安装包可由 `tools/build-ipa.sh` 产出。**尚未做任何真机 / 模拟器交互验证**（人类指示「先都做了，不急真机测试」）。
+Android 阅读器 Legado 的 iOS 纯 Swift 重写已完成规划 → 引擎 → 数据网络 → MVP 界面 → **全部功能对齐**四个阶段，代码全部在本仓库 orphan 分支 `ios`（以 `origin/ios` 的最新提交为准）。合并态验证：LegadoCore 539 项、appcore-check 232 项、icon-render 7 项测试 0 失败，`xcodebuild`（iOS 真机目标）构建通过，未签名安装包可由 `tools/build-ipa.sh` 产出。**尚未做任何真机 / 模拟器交互验证**（人类指示「先都做了，不急真机测试」）。
 
 ## 2. 分支与目录形态
 
@@ -13,6 +13,8 @@ Android 阅读器 Legado 的 iOS 纯 Swift 重写已完成规划 → 引擎 → 
 | `master` | 上游 Android 代码（Kotlin，作为**可执行规格**）+ 项目级 `CLAUDE.md`（工作模式）+ `.claude/agents/` 五个 Opus@high 定义 + `docs/0-iOS适配规划/` | 已推送 |
 | `ios` | orphan 分支，全部 iOS 代码与文档 | 已推送 |
 
+**历史已被重写过一次**（2026-09-14）：本工程此前 35 个提交的作者是一个错误的公司身份，已用 `git filter-branch` 统一改成 `starlitxiling <1754165401@qq.com>`，范围只限我们自己的提交（`master` 上 5 个 + `ios` 全部 30 个），上游 Legado 作者的 8444 个提交及其 hash 原样未动，与上游的共同历史仍在，将来照常能 fetch 上游更新。远端两个分支都已 force push。**因此：任何早于该时点的本地 clone 都与远端分叉了，直接重新 clone，不要 merge 或 rebase 旧副本。** 旧历史的备份 tag（`backup/master-*`、`backup/ios-*`）只存在于原机器本地，未推送。文档里引用的提交 hash 已同步更新为重写后的值。
+
 原机器用 worktree 布局：主 checkout 在 `master`，`ios` 分支 checkout 在 `.claude/worktrees/ios/`（该目录被 `.claude/.gitignore` 忽略）。新机器推荐同样布局：
 
 ```bash
@@ -20,7 +22,7 @@ git clone <origin> legado-ios && cd legado-ios          # master
 git worktree add .claude/worktrees/ios ios               # ios 分支
 ```
 
-Kotlin 规格固定按 commit `cb664b84d` 读（所有复审与返修的行号引用都指它）；路径前缀 `app/src/main/java/io/legado/app/`。`ios` 分支上任何任务书里出现的绝对路径 `/Users/wujie/Work/legado-ios/...` 都要换成新机器的路径。
+Kotlin 规格固定按 commit `2bdd3c58b` 读（所有复审与返修的行号引用都指它）；路径前缀 `app/src/main/java/io/legado/app/`。`ios` 分支上任何任务书里出现的绝对路径 `/Users/wujie/Work/legado-ios/...` 都要换成新机器的路径。
 
 ## 3. 环境准备（新机器）
 

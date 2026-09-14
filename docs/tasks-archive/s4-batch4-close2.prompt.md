@@ -1,7 +1,7 @@
 # 任务：阶段 4 批次 4 收口 2——备用图标配置 + 合并态 appcore-check 全量
 
 ## 目标
-① B13b 实现了 launcherIcon 切换（App/Sources/Features/Settings/LauncherIconSettingsView.swift，键值 launcher1…launcher6，要求见 docs/spec/settings-compat.md:62 附近）。你要把 Android 仓库自身的 6 套启动图标（/Users/wujie/Work/legado-ios/app/src/main/res/mipmap-xxxhdpi/ 下 ic_launcher*.png 及 res/values/array_values.xml:4 的 launcher 名称映射；只读 Kotlin 侧，commit cb664b84d）复制到 App/Resources/AlternateIcons/<name>@2x.png 与 @3x.png（用 sips 缩放到 120×120 与 180×180；主图标不动），并在 `App/project.yml` 的 Legado target 加 `CFBundleIcons` / `CFBundleIcons~ipad` 的 `CFBundleAlternateIcons`（launcher1…launcher6 各 `CFBundleIconFiles`），XcodeGen 需把该目录作为资源收进 target（按 project.yml 现有 sources / resources 写法追加，不改其他键）。② B13b r3 之后 appcore-check 全量未在合并态跑过：跑一遍并回报真实数字；失败按「只修测试间干扰」处理，业务失败原样报告。
+① B13b 实现了 launcherIcon 切换（App/Sources/Features/Settings/LauncherIconSettingsView.swift，键值 launcher1…launcher6，要求见 docs/spec/settings-compat.md:62 附近）。你要把 Android 仓库自身的 6 套启动图标（/Users/wujie/Work/legado-ios/app/src/main/res/mipmap-xxxhdpi/ 下 ic_launcher*.png 及 res/values/array_values.xml:4 的 launcher 名称映射；只读 Kotlin 侧，commit 2bdd3c58b）复制到 App/Resources/AlternateIcons/<name>@2x.png 与 @3x.png（用 sips 缩放到 120×120 与 180×180；主图标不动），并在 `App/project.yml` 的 Legado target 加 `CFBundleIcons` / `CFBundleIcons~ipad` 的 `CFBundleAlternateIcons`（launcher1…launcher6 各 `CFBundleIconFiles`），XcodeGen 需把该目录作为资源收进 target（按 project.yml 现有 sources / resources 写法追加，不改其他键）。② B13b r3 之后 appcore-check 全量未在合并态跑过：跑一遍并回报真实数字；失败按「只修测试间干扰」处理，业务失败原样报告。
 
 ## 范围
 - 允许改：`App/project.yml`（只加上述键与资源目录）、新增 `App/Resources/AlternateIcons/`、测试干扰修复。

@@ -13,7 +13,7 @@
 <task>
 目标：独立复审 100 条按规格推导的合成一致性用例，找出期望值推导错误、与规格或 Kotlin 源码矛盾、或 schema 不合规的用例。
 工作目录：/Users/wujie/Work/legado-ios/.claude/worktrees/ios（分支 ios）
-背景与入口：用例在 Tests/Conformance/fixtures/synthetic/（10 个 JSON + README.md，schema 见 README 与 Tests/Conformance/fixtures/golden/README.md）。推导依据是 docs/spec/rule-engine.md（368 行，每条语义附 Kotlin 行号）；Kotlin 源码只读：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/（commit cb664b84d）。这些用例由另一 Codex 会话生成，你要以怀疑态度独立推导。
+背景与入口：用例在 Tests/Conformance/fixtures/synthetic/（10 个 JSON + README.md，schema 见 README 与 Tests/Conformance/fixtures/golden/README.md）。推导依据是 docs/spec/rule-engine.md（368 行，每条语义附 Kotlin 行号）；Kotlin 源码只读：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/（commit 2bdd3c58b）。这些用例由另一 Codex 会话生成，你要以怀疑态度独立推导。
 审查方法：按类别抽样，每个 JSON 至少抽 3 条（synthetic-default 与 synthetic-url 各抽 6 条），共不少于 36 条；每条先按规格推导期望值，再回 Kotlin 源码核对，最后与用例的 expect 比对。特别检查：旧式索引 .0:2 是独立索引而非区间；新式索引负数、步长、! 排除；%% 在字符串入口与元素入口的差异；## 与 ### 语义；{{}} 与 @get/@put 顺序；URL 选项 timeout 派生、webView 真值、宽松 JSON；空规则与空文档。
 约束：只读，不修改文件，不 commit，不联网。
 完成标准：finding 列表，每条含 用例 id、文件绝对路径:行号、置信 0-100、你的推导（附规格行号与 Kotlin 行号）、建议的正确期望值；低于 60 不列。没有 ≥60 的问题就第一段写 clean 并列出抽查的 id 清单。

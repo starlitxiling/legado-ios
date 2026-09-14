@@ -14,7 +14,7 @@
 目标：阶段 1 单元 2 —— 在 LegadoCore 里实现 AnalyzeUrl 的「URL 选项解析与派生」纯逻辑部分，并建立一致性用例运行器，让 swift test 直接消费 golden 与 synthetic 里 kind 为 url-options 的用例。
 工作目录：/Users/wujie/Work/legado-ios/.claude/worktrees/ios（只能写入 Packages/LegadoCore/ 下的新文件与 Tests/LegadoCoreTests/；**不要改 RuleAnalyzer.swift 与 RuleAnalyzerTests.swift**（另一任务正在复审它们）；可以改 Package.swift 但本单元不需要新依赖；不 commit）
 背景与入口：
-- 规格 docs/spec/rule-engine.md §10「AnalyzeUrl 的 URL 语法与选项」（含 17 个选项键的类型、默认值、语义，宽松 JSON 解析，timeout 派生 max(60000, min(2147483647, 2×timeout))，webView 真值判断（\"0\" 为真、\"false\" 为假）等）。规格有歧义时允许读 Kotlin：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt（UrlOption 类与 :248-315 的选项解析）、AnalyzeUrlNetworkOptions.kt（commit cb664b84d），Kotlin 为准并在报告里指出规格行号。
+- 规格 docs/spec/rule-engine.md §10「AnalyzeUrl 的 URL 语法与选项」（含 17 个选项键的类型、默认值、语义，宽松 JSON 解析，timeout 派生 max(60000, min(2147483647, 2×timeout))，webView 真值判断（\"0\" 为真、\"false\" 为假）等）。规格有歧义时允许读 Kotlin：/Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeUrl.kt（UrlOption 类与 :248-315 的选项解析）、AnalyzeUrlNetworkOptions.kt（commit 2bdd3c58b），Kotlin 为准并在报告里指出规格行号。
 - 用例：Tests/Conformance/fixtures/golden/AnalyzeUrlNetworkOptionsTest.json（7 条）与 Tests/Conformance/fixtures/synthetic/synthetic-url.json（18 条）；schema 见两个目录的 README.md。先读用例再设计 API，API 要能直接满足用例里的 input / expect 形态。
 - 已有：Sources/LegadoCore/Conformance/ConformanceCase.swift（Codable 模型）。本单元只做选项解析与派生，不发网络请求、不执行 JS（含 <js> 段与 {{}} 的用例若无法离线求值，运行器标 skipped 并计数，不得假绿）。
 产出：

@@ -1,6 +1,6 @@
 # 备份恢复与 WebDAV
 
-规格基线为 Kotlin `cb664b84d` 的 Restore、ReadRecordMerge、WebDav 与 AppWebDav。
+规格基线为 Kotlin `2bdd3c58b` 的 Restore、ReadRecordMerge、WebDav 与 AppWebDav。
 
 ## 支持与跳过
 

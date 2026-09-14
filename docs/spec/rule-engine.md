@@ -1,7 +1,7 @@
 # Legado 书源规则引擎规格（语言无关）
 
 > 来源：Legado Android 版 `app/src/main/java/io/legado/app/model/analyzeRule/` 与 `constant/AppPattern.kt`，
-> commit **`6e08e1699`**。所有 `（文件.kt:行号）` 均指该 commit 下的源码行。
+> commit **`652cd3849`**。所有 `（文件.kt:行号）` 均指该 commit 下的源码行。
 > 本文是 iOS 纯 Swift 重写的唯一真源；Swift 实现者只读本文。示例均按源码推导，标注「未确定，需实测」者尚未在真机验证。
 > 第三方依赖语义（jsoup 1.23.2 CSS 选择器、JsoupXpath 2.5.3、Jayway JsonPath 3.0.0、Rhino JS）不在本文定义范围内，本文只定义引擎如何调用它们。
 

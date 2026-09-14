@@ -13,7 +13,7 @@
 <task>
 目标：把规则引擎规格 §3（RuleAnalyzer 切分算法）中 5 处不够精确、已导致 Swift 实现偏离 Kotlin 的条文补写精确，使实现者只读规格就能得到与 Kotlin 逐字节一致的行为。
 工作目录：/Users/wujie/Work/legado-ios/.claude/worktrees/ios（只能修改 docs/spec/rule-engine.md；不 commit）
-背景与入口：Kotlin 源码只读 /Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/RuleAnalyzer.kt（377 行，commit cb664b84d）。规格顶部 commit 标注保持不变。要补精确的 5 处（行号为当前规格行号）：
+背景与入口：Kotlin 源码只读 /Users/wujie/Work/legado-ios/app/src/main/java/io/legado/app/model/analyzeRule/RuleAnalyzer.kt（377 行，commit 2bdd3c58b）。规格顶部 commit 标注保持不变。要补精确的 5 处（行号为当前规格行号）：
 1. 第 71、78、80 行：游标与位置的编码语义。Kotlin 按 UTF-16 char 索引（RuleAnalyzer.kt:37、57、79）；补一句「所有位置、步长、长度均按 UTF-16 code unit 计，补充平面字符占 2」，并加一个 emoji 示例。
 2. 第 79、81、82 行：consumeToAny / chompRuleBalanced / chompCodeBalanced 失败时游标恢复到调用前（Kotlin :51、:93、:133），成功时游标停在何处；逐方法写清返回值与游标后置条件。
 3. 第 90、99、101 行：splitRule 各分支结束时的游标位置（有分隔符：停在最后一个分隔符之后的段末，Kotlin :169、:194、:199；无分隔符：保持调用前位置），以及「无分隔符不检查未闭合括号」的确切条件。

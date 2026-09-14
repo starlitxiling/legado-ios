@@ -48,7 +48,7 @@
             "minimum": 1
           },
           "commit": {
-            "const": "cb664b84d"
+            "const": "2bdd3c58b"
           }
         }
       },

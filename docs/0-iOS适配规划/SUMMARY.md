@@ -8,7 +8,7 @@
 
 **路线拍板**（`PLAN.md` §7）：纯 Swift 重写 + 一致性测试集，Kotlin 端只当可执行规格；自签侧载分发；最低 iOS 17，Universal；iOS 代码放本仓库 orphan 分支 `ios`。否掉 KMP 共享内核的硬理由是 jsoup / JsoupXpath / Rhino / OkHttp 在 Kotlin/Native 上全部不可用，且 KMP 侧没有 XPath 库。
 
-**阶段 0 产物**（全部在 `ios` 分支，commit `ad042b55d`、`e568619f6`）：
+**阶段 0 产物**（全部在 `ios` 分支，commit `b03045a43`、`b426e2f3e`）：
 
 | 产物 | 内容 | 核验 |
 | --- | --- | --- |

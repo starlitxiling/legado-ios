@@ -2,7 +2,7 @@
 
 本目录的 HTML 与书源 JSON 全部为自造数据，使用保留域名 `example.invalid`，不依赖外部站点。
 
-期望值参照 Kotlin 提交 `cb664b84d` 的 `model/webBook/BookList.kt`、`BookInfo.kt`、`BookChapterList.kt`、`BookContent.kt` 与 `help/book/ContentProcessor.kt` 推导；未执行 Android 基线程序。
+期望值参照 Kotlin 提交 `2bdd3c58b` 的 `model/webBook/BookList.kt`、`BookInfo.kt`、`BookChapterList.kt`、`BookContent.kt` 与 `help/book/ContentProcessor.kt` 推导；未执行 Android 基线程序。
 
 搜索页包含一部书，详情页提供目录入口，目录的第二页覆盖同 URL 的旧章节信息。三页正文组成一章，第三页链接回首页，用来验证分页终止。正文源规则去除“广告”，用户替换规则把“海风”换为“晚风”。
 
