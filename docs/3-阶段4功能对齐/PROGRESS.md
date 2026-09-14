@@ -39,4 +39,4 @@
 
 ## 4. 下一步与未决
 
-- 阶段 4 全部完成：B1–B17 已合并推送；最终 LegadoCore 539 + appcore-check 232 + icon-render 7，xcodebuild 通过。下一步：真机自签冒烟（人类决定时机）、Opus 交叉复审、customHosts / 备份加密。
+- **交接：换机器接手先读 `docs/HANDOFF.md`。** 阶段 4 全部完成：B1–B17 已合并推送；最终 LegadoCore 539 + appcore-check 232 + icon-render 7，xcodebuild 通过。下一步：真机自签冒烟（人类决定时机）、Opus 交叉复审、customHosts / 备份加密。
