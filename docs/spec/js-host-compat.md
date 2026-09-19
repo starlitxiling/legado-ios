@@ -92,3 +92,9 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 - 非对称对象当前支持 RSA（PKCS1、NoPadding、OAEP SHA 系列），签名支持 SHA1/224/256/384/512 with RSA；未实现其他 JCA 算法、Java InputStream 与 Cipher/Provider 反射对象，遇到不支持的算法明确报错。PKCS#8/X.509 与原始 PKCS#1 RSA 密钥可导入；导出使用 PKCS#8/X.509。
 - [CryptoJS 4.2.0 官方源码](https://github.com/brix/crypto-js/tree/4.2.0) 及 MIT 许可证随 SwiftPM 资源打包，无运行时下载。源码 SHA-256：`ee02257ffbaf0a9b481c7039b0f3bb20c360c9674fe4be8b38ae709b2ea59bbe`。
 - 固定 AES/DES/3DES 向量及 RSA 密文/签名使用 OpenSSL 验证，测试密钥公开提交于 Tests/Fixtures/crypto；这些测试不等同于已运行 Android/Rhino 对拍。
+
+
+## 时间（轮次 5 / P3d）
+
+- timeFormat 默认 `yyyy/MM/dd HH:mm`，使用引擎注入的本地时区；第二参数支持自定义格式（按计划新增的重载，固定 Kotlin 只有单参数版本）。timeFormatUTC(time, format, sh) 的 sh 按 SimpleTimeZone 的毫秒偏移计算，包括不足一秒的偏移。
+- 格式依据 [Java SimpleDateFormat](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/text/SimpleDateFormat.html)：对 S 毫秒最小宽度、u 星期编号、X/Z 时区宽度和引号单独处理；其余字段使用 Foundation 日历格式器，文字月份/纪元等本地化名称仍取平台 locale 数据。非法格式和越界数字显式抛错。

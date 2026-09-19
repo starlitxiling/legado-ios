@@ -62,3 +62,10 @@
 - CryptoJS 4.2.0 原版源码与 MIT 许可证作为 SwiftPM 资源打包，按上下文首次访问懒加载；随机数来自 Security，测试覆盖书源库初始化、口令 AES 往返与随机请求大小限制。
 - 自查移除旧重复摘要/AES实现及方法名，修复 Hutool Base64 密文中的加号/斜杠解码、无 IV 解密以及验签异常被吞的问题。更新旧 CryptoJS 缺失断言。
 - Core 595/0、AppCore 238/0、CLI 7/0；generic iOS 构建通过，资源成功打包。算法范围及 Java 平台对象边界记录于 js-host-compat.md，未宣称 Android 实机对拍或本轮真机验收。
+
+
+## P3d
+
+- 先复现 4 项时间测试的 12 处失败，补齐 timeFormat 自定义格式与 timeFormatUTC；第三参数严格按 Android 的毫秒偏移单位处理。
+- 覆盖日夜时区、负时间戳、小于一秒的偏移、Java 的 S/u/X/Z 与连续字段/引号语义；无效格式、非有限时间、Int32 偏移越界均报错。模式按字段格式化，避免拼接转义字符串造成相邻字面量歧义。
+- Core 全量 599/0；本地化文字字段使用 Foundation 数据，未运行 Android 对拍。AppCore/CLI/iOS 在接下来的批次 1 合并门禁重跑。

@@ -139,7 +139,7 @@ public final class JavaHost {
                 return result;
             }
             const methods = ['get','put','getString','getStringList','getElement','getElements','setContent',
-                'timeFormat','log','toast','longToast','logType','randomUUID','androidId',
+                'timeFormat','timeFormatUTC','log','toast','longToast','logType','randomUUID','androidId',
                 'getReadBookConfig','getReadBookConfigMap','getThemeMode','getThemeConfig','getThemeConfigMap',
                 'base64DecodeToByteArray','hexDecodeToByteArray','hexEncodeToString','strToBytes','bytesToStr','decodeURI','htmlFormat','toURL','base64Decode','base64Encode','hexDecodeToString','toNumChapter',
                 'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','readFile','downloadFile','cacheFile',
@@ -284,14 +284,12 @@ public final class JavaHost {
         case "decodeURI": return try JavaHostEncoding.decodeURI(string(0), charset: value(1).map { ruleText($0) } ?? "UTF-8")
         case "htmlFormat": return HtmlFormatter.formatKeepImg(string(0), redirectUrl: (value(1) as? String).flatMap(URL.init(string:)))
         case "toURL": return try JavaHostEncoding.url(string(0), base: value(1) as? String)
-        case "timeFormat":
-            let time = (value(0) as? NSNumber)?.doubleValue ?? (value(0) as? String).flatMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
-            guard let time, time.isFinite else { throw JsEngineError.exception("timeFormat 需要毫秒数") }
-            let formatter = DateFormatter()
-            formatter.locale = Locale(identifier: "en_US_POSIX")
-            formatter.timeZone = timeZone
-            formatter.dateFormat = "yyyy/MM/dd HH:mm"
-            return formatter.string(from: Date(timeIntervalSince1970: time / 1000))
+        case "timeFormat", "timeFormatUTC":
+            if method == "timeFormatUTC", arguments.count < 3 {
+                throw JsEngineError.exception("timeFormatUTC requires time, format and offset milliseconds")
+            }
+            return try JavaHostTime.format(value(0), pattern: value(1) as? String ?? "yyyy/MM/dd HH:mm", timeZone: timeZone,
+                offset: method == "timeFormatUTC" ? value(2) : nil)
         case "base64Encode":
             let flags = (value(1) as? NSNumber)?.intValue ?? 2
             var encoded = Data(string(0).utf8).base64EncodedString()
