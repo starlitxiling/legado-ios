@@ -8,7 +8,7 @@
 | --- | --- | --- |
 | java 方法返回原生 JS 字符串和数组，不模拟 Java 对象 | `java.md5Encode('abc').length()` 抛 TypeError；应使用 `.length`。`java.getElements('tag.p').size()` 不可用，应使用 `.length` | 依赖 Java String/List 方法的旧书源需要适配；普通 JS 规则的数值最终输出仍按 Double 转换，模板才去掉整数小数部分 |
 | 不执行 Rhino 的 let/const 归一化 | `{ let x=1; } x` 在 JSC 抛 ReferenceError；`{ const x=1; } x` 同样不可读 | Kotlin 的归一化器对满足条件的块外读取恢复可见性；依赖这类旧作用域行为的脚本会失败 |
-| 默认不注入 CryptoJS | `typeof CryptoJS` 返回 `undefined`；`CryptoJS.MD5('abc')` 抛 ReferenceError | 依赖 CryptoJS 的书源不能直接执行；宿主可用 `libraryInitializer` 注入库，系统 AES/MD5 方法不等于 CryptoJS 全局对象 |
+| 内置 CryptoJS 4.2.0 | 首次访问时加载，早于书源库初始化可用；随机字节来自 Security | 保留原版库 API，书源仍可显式覆盖全局对象 |
 
 原文依据：`modules/rhino/src/main/java/com/script/rhino/RhinoContext.kt:143-258`、
 `app/src/main/java/io/legado/app/model/analyzeRule/AnalyzeRule.kt:914-922`。
@@ -82,3 +82,13 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 - UTF-8/UTF-16/ASCII 解码替换坏字节；其他字符集的有效输入由系统转换器处理，损坏序列会显式报错，未模拟所有 JVM 字符集的替换粒度。
 - toURL 提供 host/origin/pathname/searchParams；Foundation 会对原始 URL 中非法空格进行百分号编码，未保留 Java URL 的非规范原始空格。
 - java.decodeURI 为计划要求的扩展，使用表单规则（加号为空格），支持可选字符集；JS 原生 decodeURI 不变。
+
+
+## 加密（轮次 5 / P3c）
+
+- 新增摘要、HMAC、对称加密、RSA、签名及旧 AES/DES/3DES 方法。字节结果使用 Uint8Array，密钥对象提供 getEncoded/getAlgorithm/getFormat；setIv/setKey/setPrivateKey/setPublicKey 可链式调用。
+- 对照固定 Kotlin `2bdd3c58b` 保留旧 API 的特殊行为：aesEncodeToString 实际解密；aesEncodeArgsBase64Str 的 key/iv 是原始字符串；aesDecodeArgsBase64Str 解码 key/iv；3DES ArgsBase64 只解码 key。
+- 对称算法覆盖 AES、DES、DESede，ECB/CBC/CTR/CFB/CFB8/OFB 及 PKCS5/PKCS7/NoPadding/ZeroPadding。解密字符串按 Hutool 的十六进制或 Base64 规则读取。非 ECB 解密必须有 IV；加密未传 IV 时使用安全随机数，调用方应传入明确 IV 以便后续解密。
+- 非对称对象当前支持 RSA（PKCS1、NoPadding、OAEP SHA 系列），签名支持 SHA1/224/256/384/512 with RSA；未实现其他 JCA 算法、Java InputStream 与 Cipher/Provider 反射对象，遇到不支持的算法明确报错。PKCS#8/X.509 与原始 PKCS#1 RSA 密钥可导入；导出使用 PKCS#8/X.509。
+- [CryptoJS 4.2.0 官方源码](https://github.com/brix/crypto-js/tree/4.2.0) 及 MIT 许可证随 SwiftPM 资源打包，无运行时下载。源码 SHA-256：`ee02257ffbaf0a9b481c7039b0f3bb20c360c9674fe4be8b38ae709b2ea59bbe`。
+- 固定 AES/DES/3DES 向量及 RSA 密文/签名使用 OpenSSL 验证，测试密钥公开提交于 Tests/Fixtures/crypto；这些测试不等同于已运行 Android/Rhino 对拍。

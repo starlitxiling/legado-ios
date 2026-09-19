@@ -14,7 +14,8 @@ let package = Package(
         .target(name: "LegadoCore", dependencies: [.product(name: "SwiftSoup", package: "SwiftSoup"),
                                                   .product(name: "Kanna", package: "Kanna"),
                                                   .product(name: "GRDB", package: "GRDB.swift")],
-                exclude: ["Resources"],
+                exclude: ["Resources/public_suffix_list.dat", "Resources/PUBLIC_SUFFIX_LIST_LICENSE.md"],
+                resources: [.copy("Resources/crypto-js.js"), .copy("Resources/CRYPTO_JS_LICENSE.txt")],
                 swiftSettings: [.swiftLanguageMode(.v5)]),
         .testTarget(name: "LegadoCoreTests", dependencies: ["LegadoCore"],
                     swiftSettings: [.swiftLanguageMode(.v5)])

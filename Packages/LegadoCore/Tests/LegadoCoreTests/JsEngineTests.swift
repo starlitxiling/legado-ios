@@ -146,7 +146,7 @@ final class JsEngineTests: XCTestCase {
         XCTAssertEqual(try engine.evaluateScript("let x=3; x") as? Double, 3)
         XCTAssertNil(try engine.evaluateScript("undefined"))
         XCTAssertNil(try engine.evaluateScript("null"))
-        XCTAssertEqual(try engine.evaluateScript("typeof CryptoJS") as? String, "undefined")
+        XCTAssertEqual(try engine.evaluateScript("typeof CryptoJS") as? String, "object")
         XCTAssertThrowsError(try engine.evaluateScript("throw new Error('boom')"))
         XCTAssertEqual(try engine.evaluateScript("1+1") as? Double, 2)
         do { _ = try engine.evaluateScript("let duplicate=1; let duplicate=2; duplicate") }

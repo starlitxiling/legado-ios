@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 2026-09-19：按已确认 PLAN.md 执行，P0/P1/P2/P3a/P3b 已验收，当前批次 1 / P3c。
+- 2026-09-19：按已确认 PLAN.md 执行，P0/P1/P2/P3a/P3b/P3c 已验收，当前批次 1 / P3d。
 - 起始提交：`30d180ecf`；P0 已拆为 ff6f50452、f82ddf72c、284834405 三笔本地提交。
 - 真机：已配对 iPhone 16，有线连接，Xcode 26.6 已识别。
 - 用户最新指示：全部由主会话亲自执行，不再启动子代理。已停止全部在途子代理，保留已完成产出。
@@ -22,7 +22,8 @@
 | P2 脚本上下文与 URL 变量宿主 | 完成 | 主会话 | ScriptContextTests / .build/round5/p2-*.log | Core 574/0、AppCore 236/0、CLI 7/0 |
 | P3a UI 与系统宿主 | 完成 | 主会话 | JavaHostPlatformTests / ScriptHostConfigurationTests | Core 580/0、AppCore 238/0、generic iOS 构建通过 |
 | P3b 字节桥与编解码 | 完成 | 主会话 | JavaHostEncodingTests / .build/round5/p3b-*.log | Core 586/0、AppCore 238/0、CLI 7/0 |
-| 批次 1：P3c-d / U0 / U9 | 待办 | 主会话 | 按 PLAN.md | P3b 后顺序执行 |
+| P3c 加密与 CryptoJS | 完成 | 主会话 | JavaHostCryptoTests / .build/round5/p3c-*.log | Core 595/0、AppCore 238/0、CLI 7/0、iOS 构建通过 |
+| 批次 1：P3d / U0 / U9 | 待办 | 主会话 | 按 PLAN.md | P3c 后顺序执行 |
 | 批次 2-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -31,4 +32,4 @@
 
 ## 下一步
 
-执行 P3c：摘要、HMAC、对称/非对称加密、签名与 CryptoJS。全程不推送；WebDAV 凭据只用于读取。
+执行 P3d 时间接口，再完成 U0/U9 及批次 1 门禁。全程不推送；WebDAV 凭据只用于读取。

@@ -53,3 +53,12 @@
 - HTML 复用既有 Kotlin formatter，包括其四个全角首缩进行为；URL searchParams 保留原始键、解码值、重复键取末值，并提供 get。
 - decodeURI 在固定 Kotlin JsExtensions 中不存在，本项依已确认计划实现为 encodeURI 的表单解码对应操作，不替换 JS 全局 decodeURI。
 - Core 586/0、AppCore 238/0、CLI 7/0，完整语料 134/142。少数字符集的损坏字节仍遵循 Foundation 的显式失败，见兼容文档。
+
+
+## P3c
+
+- 以固定 Kotlin JsEncodeUtils/crypto 包为规格，补齐 27 个摘要、HMAC、加密、签名入口；对称/非对称对象提供链式配置与字节桥。
+- 固定 AES/DES/3DES 密文、NIST AES 向量、OpenSSL RSA 密钥/密文/签名验证通过；新增 9 项测试覆盖旧接口特殊行为、四种构造重载、长消息分段、无效参数与密钥导入导出。
+- CryptoJS 4.2.0 原版源码与 MIT 许可证作为 SwiftPM 资源打包，按上下文首次访问懒加载；随机数来自 Security，测试覆盖书源库初始化、口令 AES 往返与随机请求大小限制。
+- 自查移除旧重复摘要/AES实现及方法名，修复 Hutool Base64 密文中的加号/斜杠解码、无 IV 解密以及验签异常被吞的问题。更新旧 CryptoJS 缺失断言。
+- Core 595/0、AppCore 238/0、CLI 7/0；generic iOS 构建通过，资源成功打包。算法范围及 Java 平台对象边界记录于 js-host-compat.md，未宣称 Android 实机对拍或本轮真机验收。

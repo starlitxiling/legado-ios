@@ -120,6 +120,7 @@ public final class JsEngine: SelectorEngine {
         let host = JavaHost(parser: parser, timeZone: timeZone, logger: logger, network: JavaHostNetwork(engine: networkEngine),
                             extraParams: url ? bindings["extraParams"] as? [String: String] ?? [:] : [:], platformServices: platformServices)
         host.install(in: context)
+        CryptoJSLibrary.install(in: context)
         var values: [String: Any] = ["result": NSNull(), "src": NSNull(), "baseUrl": baseUrl,
             "source": NSNull(), "book": NSNull(), "chapter": NSNull(), "chapters": NSNull(),
             "title": NSNull(), "nextChapterUrl": NSNull(), "rssArticle": NSNull(), "fromBookInfo": false, "isFromBookInfo": false]

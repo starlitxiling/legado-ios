@@ -1,7 +1,5 @@
 import Foundation
 import JavaScriptCore
-import CommonCrypto
-import CryptoKit
 import SwiftSoup
 import CoreFoundation
 
@@ -34,6 +32,7 @@ private final class JavaElement: NSObject, JavaElementExport {
 /// 规则与平台宿主；网络服务通过独立依赖对象注入。
 public final class JavaHost {
     private weak var parser: AnalyzeRule?
+    private let crypto = JavaHostCrypto()
     private let platformServices: JsPlatformServices
     private let extraParams: [String: String]
     private let timeZone: TimeZone
@@ -100,8 +99,29 @@ public final class JavaHost {
                     return Reflect.get(target, key);
                 }});
             }
+            function nativeArguments(args) {
+                return Array.prototype.map.call(args, function(value) {
+                    if (ArrayBuffer.isView(value)) return Array.from(new Uint8Array(value.buffer,value.byteOffset,value.byteLength));
+                    if (value instanceof ArrayBuffer) return Array.from(new Uint8Array(value));
+                    return value;
+                });
+            }
             function response(value) {
                 if (value && value.__legadoBytes) return new Uint8Array(value.__legadoBytes);
+                if (value && value.__legadoKeyBytes) return {
+                    getEncoded: () => new Uint8Array(value.__legadoKeyBytes),
+                    getAlgorithm: () => value.algorithm, getFormat: () => value.format
+                };
+                if (value && value.__legadoCrypto !== undefined) {
+                    const object = {};
+                    value.methods.forEach(function(name) {
+                        object[name] = function() {
+                            const result = response(invoke('crypto.'+name,[value.__legadoCrypto].concat(nativeArguments(arguments))));
+                            return name.startsWith('set') ? object : result;
+                        };
+                    });
+                    return object;
+                }
                 if (Array.isArray(value)) return value.map(response);
                 if (!value || !value.__strResponse) return value;
                 const headers = javaMap(value.headers, true);
@@ -121,16 +141,12 @@ public final class JavaHost {
             const methods = ['get','put','getString','getStringList','getElement','getElements','setContent',
                 'timeFormat','log','toast','longToast','logType','randomUUID','androidId',
                 'getReadBookConfig','getReadBookConfigMap','getThemeMode','getThemeConfig','getThemeConfigMap',
-                'base64DecodeToByteArray','hexDecodeToByteArray','hexEncodeToString','strToBytes','bytesToStr','decodeURI','htmlFormat','toURL','md5Encode','digestHex','base64Decode','base64Encode','hexDecodeToString','toNumChapter','aesBase64DecodeToString',
+                'base64DecodeToByteArray','hexDecodeToByteArray','hexEncodeToString','strToBytes','bytesToStr','decodeURI','htmlFormat','toURL','base64Decode','base64Encode','hexDecodeToString','toNumChapter',
                 'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','readFile','downloadFile','cacheFile',
-                'webViewGetSource','webViewGetOverrideUrl','getVerificationCode','startBrowser','startBrowserAwait','getWebViewUA'];
+                'webViewGetSource','webViewGetOverrideUrl','getVerificationCode','startBrowser','startBrowserAwait','getWebViewUA'].concat(\(JavaHostCrypto.methods.map { "'" + $0 + "'" }.joined(separator: ",")));
             methods.forEach(function(name) {
                 java[name] = function() {
-                    const args = Array.prototype.map.call(arguments, function(value) {
-                        if (ArrayBuffer.isView(value)) return Array.from(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
-                        if (value instanceof ArrayBuffer) return Array.from(new Uint8Array(value));
-                        return value;
-                    });
+                    const args = nativeArguments(arguments);
                     const headerIndex = name === 'post' ? 2 : (name === 'get' || name === 'head' ? 1 : -1);
                     if (headerIndex >= 0 && args[headerIndex] instanceof Map) args[headerIndex] = Object.fromEntries(args[headerIndex]);
                     if (name === 'put') {
@@ -189,6 +205,9 @@ public final class JavaHost {
     }
 
     private func call(_ method: String, _ arguments: [Any]) throws -> Any? {
+        if JavaHostCrypto.methods.contains(method) || method.hasPrefix("crypto.") {
+            return try crypto.call(method, arguments: arguments)
+        }
         if ["webView", "webViewGetSource", "webViewGetOverrideUrl", "getVerificationCode", "startBrowser", "startBrowserAwait", "getWebViewUA"].contains(method) {
             return try network.callWebView(method, arguments)
         }
@@ -273,23 +292,6 @@ public final class JavaHost {
             formatter.timeZone = timeZone
             formatter.dateFormat = "yyyy/MM/dd HH:mm"
             return formatter.string(from: Date(timeIntervalSince1970: time / 1000))
-        case "digestHex":
-            let data = Data(string(0).utf8)
-            let digest: [UInt8]
-            switch string(1).uppercased().replacingOccurrences(of: "-", with: "") {
-            case "MD5": digest = Array(Insecure.MD5.hash(data: data))
-            case "SHA1": digest = Array(Insecure.SHA1.hash(data: data))
-            case "SHA256": digest = Array(SHA256.hash(data: data))
-            case "SHA384": digest = Array(SHA384.hash(data: data))
-            case "SHA512": digest = Array(SHA512.hash(data: data))
-            default: throw JsEngineError.unimplemented("digestHex " + string(1))
-            }
-            return digest.map { String(format: "%02x", $0) }.joined()
-        case "md5Encode":
-            let data = Data(string(0).utf8)
-            var digest = [UInt8](repeating: 0, count: Int(CC_MD5_DIGEST_LENGTH))
-            data.withUnsafeBytes { _ = CC_MD5($0.baseAddress, CC_LONG(data.count), &digest) }
-            return digest.map { String(format: "%02x", $0) }.joined()
         case "base64Encode":
             let flags = (value(1) as? NSNumber)?.intValue ?? 2
             var encoded = Data(string(0).utf8).base64EncodedString()
@@ -328,37 +330,8 @@ public final class JavaHost {
                 return String(format: "%%%02X", byte)
             }.joined()
         case "toNumChapter": return value(0) is NSNull ? nil : chapterNumber(string(0))
-        case "aesBase64DecodeToString": return try decrypt(string(0), key: string(1), transformation: string(2), iv: string(3))
         default: throw JsEngineError.unimplemented("java.\(method)")
         }
-    }
-
-    private func decrypt(_ text: String, key: String, transformation: String, iv: String) throws -> String {
-        let parts = transformation.uppercased().split(separator: "/")
-        guard parts.count == 3, parts[0] == "AES", ["CBC", "ECB"].contains(parts[1]),
-              ["PKCS5PADDING", "PKCS7PADDING", "NOPADDING"].contains(parts[2]) else {
-            throw JsEngineError.unimplemented("AES transformation \(transformation)")
-        }
-        let keyData = Data(key.utf8), ivData = Data(iv.utf8)
-        guard [16, 24, 32].contains(keyData.count), parts[1] == "ECB" || ivData.count == 16,
-              let data = Data(base64Encoded: text, options: .ignoreUnknownCharacters) else {
-            throw JsEngineError.exception("AES 参数无效")
-        }
-        let options = (parts[1] == "ECB" ? CCOptions(kCCOptionECBMode) : 0) | (parts[2] == "NOPADDING" ? 0 : CCOptions(kCCOptionPKCS7Padding))
-        var output = [UInt8](repeating: 0, count: data.count + kCCBlockSizeAES128)
-        let capacity = output.count
-        var count = 0
-        let status = keyData.withUnsafeBytes { keyBytes in
-            ivData.withUnsafeBytes { ivBytes in
-                data.withUnsafeBytes { bytes in
-                    CCCrypt(CCOperation(kCCDecrypt), CCAlgorithm(kCCAlgorithmAES), options,
-                            keyBytes.baseAddress, keyData.count, parts[1] == "ECB" ? nil : ivBytes.baseAddress,
-                            bytes.baseAddress, data.count, &output, capacity, &count)
-                }
-            }
-        }
-        guard status == kCCSuccess else { throw JsEngineError.exception("AES 解密失败：\(status)") }
-        return String(decoding: output.prefix(count), as: UTF8.self)
     }
 
     private func chapterNumber(_ title: String) -> String {
