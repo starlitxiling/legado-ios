@@ -10,6 +10,7 @@ struct BookshelfView: View {
     @Environment(\.themeColors) private var themeColors
     @Environment(AppContainer.self) private var container
     @State private var model: BookshelfViewModel
+    @State private var showingAddURL = false
     @State private var selecting = false
     @State private var selected = Set<String>()
     @State private var actionError: String?
@@ -72,6 +73,7 @@ struct BookshelfView: View {
             }
             ToolbarItem(placement: .topBarLeading) {
                 Menu {
+                    Button("添加网址") { showingAddURL = true }
                     NavigationLink("编辑分组") { GroupEditView(repository: container.bookGroups) }
                     Picker("分组", selection: $model.selectedGroupID) {
                         Text("全部").tag(Int64(-1))
@@ -127,6 +129,9 @@ struct BookshelfView: View {
                 }
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("关闭") { bookSheet = nil } } }
             }
+        }
+        .sheet(isPresented: $showingAddURL, onDismiss: { Task { await refreshBooks() } }) {
+            AddBookURLView(database: container.database, client: container.httpClient, groupID: model.selectedGroupID)
         }
         .confirmationDialog("删除所选书籍？", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("删除 \(selected.count) 本书", role: .destructive) {

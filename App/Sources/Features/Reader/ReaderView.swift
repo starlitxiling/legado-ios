@@ -46,8 +46,14 @@ struct ReaderView: View {
         model.prepareLocalBook = { book in
             let preferences = AppPreferences.shared
             guard book.origin == "loc_book" || book.origin.hasPrefix("webDav::"),
-                  preferences.boolean("webDavBookAutoRestore") || book.origin.hasPrefix("webDav::"),
-                  let dav = try webDavClient() else { return book }
+                  preferences.boolean("webDavBookAutoRestore") || book.origin.hasPrefix("webDav::") else { return book }
+            let dav: WebDavClient
+            let remote = book.origin.hasPrefix("webDav::") ? String(book.origin.dropFirst("webDav::".count)) : ""
+            if UrlOptions.parse(remote).options.serverID != nil {
+                dav = try await WebDavClient.fromPath(remote, servers: ServerRepository(database: database), httpClient: client)
+            } else if let fallback = try webDavClient() {
+                dav = fallback
+            } else { return book }
             return try await WebDavLocalBookRestore(client: dav, directory: preferences.string("webDavDir"),
                 destination: URL.applicationSupportDirectory.appendingPathComponent("Legado/LocalBooks", isDirectory: true))
                 .restore(book, enabled: preferences.boolean("webDavBookAutoRestore"))

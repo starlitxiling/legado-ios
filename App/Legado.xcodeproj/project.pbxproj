@@ -157,6 +157,7 @@
 		E168B1ABCB2CAC0305157C43 /* NoAnimTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6140DF177C57981DD247331E /* NoAnimTransition.swift */; };
 		E4EF40E28A173038535D2A42 /* RssSourceListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5EB73C58AB1ED1D02BC82C19 /* RssSourceListView.swift */; };
 		E8568779FEC939D9B0791502 /* AppLaunchTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D829F575CCC788B5AD1C8C22 /* AppLaunchTests.swift */; };
+		E8B60D36F1036D59B8BB8186 /* AddBookURLView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF7C5D642D27AE41B6DCC81D /* AddBookURLView.swift */; };
 		EA6F39888DB51A4806B97884 /* SourceDebugModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7548523F2C93C6999407E633 /* SourceDebugModel.swift */; };
 		EE643600D0B6EB5B573217F4 /* CoverAdditionalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D5145440A99E0126AD37961 /* CoverAdditionalSettingsView.swift */; };
 		EF8E9F56B7365D27C66877AA /* AppPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE90190A4590FA1D29514069 /* AppPreferences.swift */; };
@@ -172,6 +173,7 @@
 		FD21082CEC7BE504D616C4C8 /* launcher5@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 006FDA39C103E53C5EEEA0BF /* launcher5@3x.png */; };
 		FD229AB0D68B480A28955672 /* RssSourceEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97CAF43B648B64E3641D6B14 /* RssSourceEditView.swift */; };
 		FF7FEA8BBED08517040732E0 /* ExploreViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E6EE02A6079CCB8003AF1BFA /* ExploreViewModel.swift */; };
+		FFE6478231ADA8516CEB3B71 /* AddBookURLModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B77239E722318D7708A8BC10 /* AddBookURLModel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -298,12 +300,14 @@
 		AC61729A8EAAC910A32FFA72 /* OtherSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OtherSettingsView.swift; sourceTree = "<group>"; };
 		AD5418C752C2620CD95B9D09 /* ScriptHostConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScriptHostConfiguration.swift; sourceTree = "<group>"; };
 		AEF559BFD22FB1622CC39901 /* BookInfoEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookInfoEditView.swift; sourceTree = "<group>"; };
+		AF7C5D642D27AE41B6DCC81D /* AddBookURLView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddBookURLView.swift; sourceTree = "<group>"; };
 		B0668024C7DA95501BFBD8A4 /* ReadAloudPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadAloudPreferences.swift; sourceTree = "<group>"; };
 		B2033C42C23EE40D313F06E9 /* BookshelfViewModelTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookshelfViewModelTests.swift; sourceTree = "<group>"; };
 		B227EC72654E6B87D62832F2 /* ThemeSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeSettingsView.swift; sourceTree = "<group>"; };
 		B6167DB41924D8CD9E8C531D /* ReaderPresentationState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderPresentationState.swift; sourceTree = "<group>"; };
 		B6F29A594559068C02ACC3BE /* launcher1@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "launcher1@2x.png"; sourceTree = "<group>"; };
 		B72790E03C55A9F5C40D600F /* SourcesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesView.swift; sourceTree = "<group>"; };
+		B77239E722318D7708A8BC10 /* AddBookURLModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddBookURLModel.swift; sourceTree = "<group>"; };
 		B96C49A23B17B5435344204C /* UploadRuleSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadRuleSettingsView.swift; sourceTree = "<group>"; };
 		BC055C977B07CF7E57AA5955 /* ImageRepositoryLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageRepositoryLoader.swift; sourceTree = "<group>"; };
 		BC285641BADB1C7E221D1EFC /* launcher5@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "launcher5@2x.png"; sourceTree = "<group>"; };
@@ -718,6 +722,8 @@
 		A538EDDFC03DC6C03117D84D /* Bookshelf */ = {
 			isa = PBXGroup;
 			children = (
+				B77239E722318D7708A8BC10 /* AddBookURLModel.swift */,
+				AF7C5D642D27AE41B6DCC81D /* AddBookURLView.swift */,
 				95DBCA872BF5E8741D72CE3C /* BookshelfBackgroundRefresh.swift */,
 				D606638D55F0402D1B18B54A /* BookshelfView.swift */,
 				E60A074AD55EACB85FDC970B /* BookshelfViewModel.swift */,
@@ -1032,6 +1038,8 @@
 			buildActionMask = 2147483647;
 			files = (
 				1E7BA2D8D1C3024F4D448B2A /* AVPlayerAudioPlayer.swift in Sources */,
+				FFE6478231ADA8516CEB3B71 /* AddBookURLModel.swift in Sources */,
+				E8B60D36F1036D59B8BB8186 /* AddBookURLView.swift in Sources */,
 				5DDF1A2EAA034E3250C0FA30 /* AppContainer.swift in Sources */,
 				EF8E9F56B7365D27C66877AA /* AppPreferences.swift in Sources */,
 				9C50FD856D8291E372914523 /* AppThemeModifier.swift in Sources */,

@@ -36,7 +36,8 @@
 - 会话池按代理完整配置（包含认证）、HTTPS 原域名及直连模式隔离，LRU 淘汰不取消在途请求。代理与显式 dnsIp 同时出现时报错；代理跳过全局主机映射。Cronet 不实现。
 - 普通 HTTP 与 WebDAV 共用分块限额传输，默认响应上限 256 MiB；指定备份上限在读取时执行。WebDAV 显式限制跳转在原来源内，普通请求跨站跳转清除认证、临时 Cookie 和 Host 后重载目标 Cookie。
 - WKWebView GET 和子资源仍由 WebKit 网络栈处理，未接入上述 DNS/代理配置；proxy 不作为页面请求头发出。POST 预取经过普通 HTTP 层。代理/DNS 回归均使用离线 URLProtocol，不声称完成真实代理握手或真机网络验证。
-- `serverID` 是 WebDAV 凭据选择标识，**保留字段，U6 接入**，不是普通 HTTP 服务器转发配置。
+- `serverID` 是 WebDAV 凭据选择标识，**按所选服务器查询凭据**，不是普通 HTTP 服务器转发配置。
+  远程本地书恢复识别 dav/davs 与 CustomUrl 后缀；所选服务器配置与目标 URL 必须同来源，跨来源明确拒绝，避免把已存凭据发给任意书籍 URL。此来源约束严于 Android。
   Kotlin `lib/webdav/WebDav.kt:48-50` 从 AnalyzeUrl 读取该值；`lib/webdav/Authorization.kt:25-30` 据此查询服务器配置中的用户名和密码。
 - U2 普通 HTTP 不使用 serverID；启用 webView 后交给注入的 WebView 服务，单独 webJs 在普通 HTTP 路径忽略。
 - 宿主 `get/head/post` 的 timeout 缺省为 30,000 ms，0 表示不设超时，负数抛参数错误（`JsExtensions.kt:579-657`）。
@@ -80,3 +81,8 @@
 - 分页占位使用 Kotlin `<(.*?)>`，支持空项、尾页回落与 ASCII trim；页码 0/负数仅在命中占位时抛错。
 - CustomUrl 可读取、修改、删除属性，空属性省略 JSON 后缀；非法初始 JSON 按 Kotlin 忽略，写入不可 JSON 编码的对象明确报错。
 - 离线用例覆盖映射优先级、IPv6、备用 IP、逻辑 URL、跨站凭据隔离、WebDAV 跳转边界、代理认证会话隔离及 32 项池上限；无限超时哨兵不进入可能溢出的计时转换。
+
+- `AnalyzeUrlExecutor.upload` 对齐 Kotlin `AnalyzeUrl.kt:731-750` / `OkHttpUtils.kt:157-190`：去掉查询串，JSON 表单中的 fileRequest 替换为上传文件，支持字节、本地文件 URL、文本及 JSON 值；默认 multipart/mixed，可指定 multipart/form-data。文件名/字段名按 OkHttp 转义 CR/LF/双引号，各 part 带长度，文本按 Content-Type 编码。
+- 上传消费代理/DNS/超时/跳转/retry；Android 此方法不调用 headers(headerMap) 或 setCookie，iOS 同样不把普通 URL header 复制进上传请求。返回原始响应与解码正文，不额外执行 bodyJs。当前 multipart 在内存组装，不提供大文件流式上传。
+- 添加网址以 origin 指定书源且匹配完整 URL 规则为首选，再查启用的同域书源，再查启用的模式列表；后备扫描只读取 URL/模式列，避免载入所有书源脚本。入口逐行反馈失败，已有书籍合并正分组，同名同作者换源在事务内保留阅读状态并写入新目录。
+- Core 667 项、AppCore 256 项和 generic iOS 构建通过（p6-final-*）；远程凭据、恢复下载及上传全部采用离线 Replay，未使用真实 WebDAV 写入。

@@ -142,3 +142,11 @@
 - 普通 HTTP 与 WebDAV 共用读取中限额，WebDAV 继续禁止跨来源跳转；跨站认证头/临时 Cookie/Host 清除并重载目标 Cookie。复审发现无限超时哨兵的计时溢出风险，已单独绕过超长计时转换。
 - CustomUrl 属性往返及 Kotlin 分页空项/尾页/页码越界已覆盖。新增离线协议测试验证 IPv6、配置优先级、备用 IP、会话复用/认证隔离/LRU、重定向边界；不使用真实代理或 DNS 网络。
 - Core 660/0、AppCore 254/0、generic iOS 构建通过，日志 p6-routing-*。AppCore 新类型缓存出现旧符号链接错误，清理后全量重建通过。此提交未宣称 P6 上传、origin/serverID 或整个批次完成。
+
+
+## P6-4/6 上传与 URL 消费（P6 完成）
+
+- 按实际 Android upload 调用链实现 multipart，默认 mixed，fileRequest 替换/文件映射、Data/文件URL/文本/JSON、字符集、引号换行转义、HTTP retry 和去查询串均有离线断言。上传不复制普通 source headers，遵循该 Kotlin 方法未调用 headers/setCookie 的实际行为。
+- 新增添加网址入口，sourceForBookURL 消费 origin 并执行模式/域名回退；模式扫描只取必要两列，不将 4198 个完整书源加载入内存。已有 URL 合并分组不请求网络；同名同作者迁移在事务中保存目录、进度和用户封面，两项 App 测试通过。
+- WebDavClient.fromPath 从 serverID 查询 ServerRepository；Reader 本地恢复选择该客户端，dav/davs 与 URL 参数正确去壳。恢复保持书籍身份且已有文件不重复请求，缺少/无效 ID 与跨配置来源均明确拒绝。保持比 Android 更严格的来源边界。
+- Core 667/0、AppCore 256/0、generic iOS 构建通过，日志 p6-final-*。UI 入口已编译；其视觉交互随 U1-U3 模拟器/真机检查。仍保留并明确记录 SNI、WebKit 路由及 customHosts 可解析域名等平台差异。

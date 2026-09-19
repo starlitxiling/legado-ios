@@ -90,7 +90,6 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
             address = ruleText(value)
         }
         url = address
-        if options.serverID != nil { engine.logger("AnalyzeUrl：serverID 保留供 U6 WebDAV 凭据选择，普通 HTTP 不使用") }
     }
 
     public func getStrResponse(jsStr: String? = nil, sourceRegex: String? = nil, useWebView: Bool = true,
@@ -172,6 +171,41 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
         if url.hasPrefix("data:"), let comma = url.firstIndex(of: ","), url[..<comma].hasSuffix(";base64"),
            let data = Data(base64Encoded: String(url[url.index(after: comma)...]), options: .ignoreUnknownCharacters) { return data }
         return try await getResponse().body
+    }
+
+    public func upload(fileName: String, file: Any, contentType: String) async throws -> Response {
+        try Task.checkCancellation()
+        let multipart = try MultipartBody(json: options.body, fileName: fileName, file: file,
+            contentType: contentType, type: options.type)
+        guard var address = URLComponents(string: url) else { throw UrlRequestBuilder.RequestError.invalidURL(url) }
+        address.query = nil
+        address.fragment = nil
+        guard let target = address.url else { throw UrlRequestBuilder.RequestError.invalidURL(url) }
+        var values: [String: Any] = ["method": "POST"]
+        if let timeout = options.timeout { values["timeout"] = timeout }
+        if let dnsIp = options.dnsIp { values["dnsIp"] = dnsIp }
+        if let redirects = options.followRedirects { values["followRedirects"] = redirects }
+        let networkOptions = try UrlOptions.fromJSON(String(decoding: JSONSerialization.data(withJSONObject: values), as: UTF8.self))
+        var requestHeaders = headers
+        for (key, value) in options.headers { requestHeaders.setHTTPHeader(key, value) }
+        let proxyHeader = requestHeaders.httpHeader("proxy").map { ["proxy": $0] } ?? [:]
+        let headerJSON = String(decoding: try JSONSerialization.data(withJSONObject: proxyHeader), as: UTF8.self)
+        var request = try UrlRequestBuilder.build(url: target.absoluteString, options: networkOptions, sourceHeaderJSON: headerJSON)
+        request.body = multipart.data
+        request.headers.setHTTPHeader("Content-Type", multipart.contentType)
+        if let callTimeout {
+            guard callTimeout >= 0 && callTimeout <= Int64(Int32.max) else { throw JsEngineError.exception("Invalid upload callTimeout") }
+            request.callTimeout = callTimeout == 0 ? .greatestFiniteMagnitude : Double(callTimeout) / 1000
+        }
+        var retries = max(0, options.retry)
+        while true {
+            try Task.checkCancellation()
+            let response = try await engine.httpClient.send(request)
+            if (200..<400).contains(response.status) || retries == 0 {
+                return Response(raw: response, body: try ResponseDecoder.decode(response.body, headers: response.headers))
+            }
+            retries -= 1
+        }
     }
 
     private func syntheticRaw() -> HttpResponse {

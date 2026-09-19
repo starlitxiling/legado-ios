@@ -3,6 +3,7 @@ import Foundation
 public enum WebDavError: Error, Equatable {
     case invalidURL, foreignOrigin, httpStatus(Int), invalidXML
     case responseTooLarge, responseLimitUnavailable
+    case missingServerID, invalidServer(Int64)
 }
 
 public struct WebDavClient: Sendable {
@@ -16,6 +17,29 @@ public struct WebDavClient: Sendable {
         let bytes = (username + ":" + password).unicodeScalars.map { UInt8(exactly: $0.value) ?? 63 }
         self.authorization = "Basic " + Data(bytes).base64EncodedString()
         self.httpClient = httpClient
+    }
+
+    public static func fromPath(_ path: String, servers: ServerRepository, httpClient: any HttpClient) async throws -> WebDavClient {
+        let parsed = UrlOptions.parse(path)
+        guard let id = parsed.options.serverID else { throw WebDavError.missingServerID }
+        guard let server = try await servers.get(id: id), let config = try server.webDavConfig() else {
+            throw WebDavError.invalidServer(id)
+        }
+        let target = try remoteURL(parsed.url)
+        let configured = try remoteURL(config.url)
+        func port(_ url: URL) -> Int { url.port ?? (url.scheme == "https" ? 443 : 80) }
+        guard target.scheme == configured.scheme, target.host?.lowercased() == configured.host?.lowercased(),
+              port(target) == port(configured) else { throw WebDavError.foreignOrigin }
+        return WebDavClient(baseURL: target, username: config.username, password: config.password, httpClient: httpClient)
+    }
+
+    public static func remoteURL(_ path: String) throws -> URL {
+        guard var components = URLComponents(string: CustomUrl(path).getUrl()) else { throw WebDavError.invalidURL }
+        if components.scheme == "dav" { components.scheme = "http" }
+        if components.scheme == "davs" { components.scheme = "https" }
+        guard ["http", "https"].contains(components.scheme), components.host != nil,
+              components.user == nil, components.password == nil, let url = components.url else { throw WebDavError.invalidURL }
+        return url
     }
 
     /// 接收未编码的相对路径；百分号是文件名字符，href 则应直接使用 WebDavFile.url。

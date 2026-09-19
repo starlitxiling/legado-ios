@@ -21,8 +21,7 @@ public struct WebDavLocalBookRestore: Sendable {
         guard enabled || !explicit.isEmpty else { return book }
         let remote: URL
         if !explicit.isEmpty {
-            guard let url = URL(string: explicit) else { throw WebDavError.invalidURL }
-            remote = url
+            remote = try WebDavClient.remoteURL(explicit)
         } else {
             let files = try await client.propfind(client.url(path: directory + "/books/"))
             guard let file = files.first(where: { !$0.isDirectory && $0.displayName == book.originName }) else { return book }
