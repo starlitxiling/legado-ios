@@ -63,8 +63,8 @@ actor ReaderChapterCache {
                 let task = Task {
                     let result: Result<CachedReaderChapter, Error>
                     do {
-                        let response = try await BookContent.load(source: source, book: book, chapter: chapter,
-                            client: client, nextChapterURL: nextURL, includeTitle: false)
+                        let response = try await WebBook(source: source, client: client).content(
+                            book: book, chapter: chapter, nextChapterUrl: nextURL, includeTitle: false)
                         try Task.checkCancellation()
                         result = .success(CachedReaderChapter(rawContent: response.rawContent))
                     } catch { result = .failure(error) }

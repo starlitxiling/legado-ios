@@ -4,6 +4,48 @@ import LegadoCore
 @testable import ReaderCheck
 
 final class ReaderTests: XCTestCase {
+    @MainActor
+    func testRestoredNetworkBookFetchesMissingDirectoryAndReadsSavedChapter() async throws {
+        let database = try AppDatabase.inMemory()
+        let client = ReplayHttpClient()
+        var book = BookRow()
+        book.bookUrl = "https://reader.test/restored"
+        book.tocUrl = "https://reader.test/toc"
+        book.origin = "https://reader.test"
+        book.durChapterIndex = 1
+        book.durChapterTitle = "Second"
+        book.totalChapterNum = 2
+        try await BookshelfRepository(database: database).insert(book)
+        var source = BookSourceRow()
+        source.bookSourceUrl = book.origin
+        source.ruleToc = #"{"chapterList":"tag.a","chapterName":"text","chapterUrl":"href"}"#
+        source.ruleContent = #"{"content":"@js:java.getString('tag.p@text') + ' ' + source.getKey()"}"#
+        try await BookSourceRepository(database: database).insert(source)
+        let tocURL = URL(string: book.tocUrl)!
+        await client.enqueue(url: tocURL, response: HttpResponse(status: 200,
+            body: Data("<a href='/intro'>Introduction</a><a href='/0'>First</a><a href='/1'>Second</a>".utf8), finalURL: tocURL))
+        let chapterURL = URL(string: "https://reader.test/1")!
+        await client.enqueue(url: chapterURL, response: HttpResponse(status: 200,
+            body: Data("<p>Restored chapter body</p>".utf8), finalURL: chapterURL))
+        let sessionClient = SourceLoginHttpClient(database: database, underlying: client)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let model = ReaderViewModel(database: database, client: sessionClient, cacheDirectory: directory, preDownloadCount: { 0 })
+        await model.load(bookURL: book.bookUrl)
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(model.chapterIndex, 2)
+        XCTAssertTrue(model.pagination?.text.string.contains("Restored chapter body https://reader.test") == true)
+        let chapters = try await ChapterRepository(database: database).list(bookUrl: book.bookUrl)
+        XCTAssertEqual(chapters.count, 3)
+        await model.close()
+        let restored = ReaderViewModel(database: database, client: sessionClient, cacheDirectory: directory, preDownloadCount: { 0 })
+        await restored.load(bookURL: book.bookUrl)
+        XCTAssertNil(restored.errorMessage)
+        let requests = await client.requests
+        XCTAssertEqual(requests.count, 2)
+        await restored.close()
+    }
+
     func testFixedFontPageBoundaryFixture() throws {
         var settings = ReaderSettings()
         settings.paddingLeft = 0; settings.paddingRight = 0

@@ -173,32 +173,34 @@ public final class AnalyzeRule {
     }
 
     private func evaluate(_ segments: [SourceRule], operation: RuleOperation, content replacementContent: Any? = nil) throws -> Any? {
-        guard let content = replacementContent is NSNull ? self.content : replacementContent ?? self.content, !segments.isEmpty else { return nil }
-        let previousSession = scriptSession
-        scriptSession = nil
-        defer { scriptSession = previousSession }
-        var result: Any? = content
-        for segment in segments {
-            for key in segment.putMap.keys.sorted() { put(key, value: try getString(segment.putMap[key])) }
-            let replacement = operation == .elements ? nil : try segment.makeUpRule(result, context: self)
-            guard let current = result, !(current is NSNull) else { continue }
-            let rule = replacement?.rule ?? segment.rule
-            let shouldEvaluate: Bool
-            switch operation {
-            case .string: shouldEvaluate = !rule.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || replacement?.pattern.isEmpty != false
-            case .stringList: shouldEvaluate = !rule.isEmpty
-            case .element, .elements: shouldEvaluate = true
+        return try autoreleasepool {
+            guard let content = replacementContent is NSNull ? self.content : replacementContent ?? self.content, !segments.isEmpty else { return nil }
+            let previousSession = scriptSession
+            scriptSession = nil
+            defer { scriptSession = previousSession }
+            var result: Any? = content
+            for segment in segments {
+                for key in segment.putMap.keys.sorted() { put(key, value: try getString(segment.putMap[key])) }
+                let replacement = operation == .elements ? nil : try segment.makeUpRule(result, context: self)
+                guard let current = result, !(current is NSNull) else { continue }
+                let rule = replacement?.rule ?? segment.rule
+                let shouldEvaluate: Bool
+                switch operation {
+                case .string: shouldEvaluate = !rule.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || replacement?.pattern.isEmpty != false
+                case .stringList: shouldEvaluate = !rule.isEmpty
+                case .element, .elements: shouldEvaluate = true
+                }
+                if shouldEvaluate {
+                    let value = try dispatch(rule, mode: segment.mode, content: current, operation: operation)
+                    result = value is NSNull ? nil : value
+                }
+                if let replacement, !replacement.pattern.isEmpty {
+                    if operation == .stringList, let list = JsEngine.nativeValue(result) as? [Any] { result = list.map { replacer.apply(ruleText($0), replacement: replacement) } }
+                    else if result != nil || operation != .string { result = replacer.apply(ruleText(result), replacement: replacement) }
+                }
             }
-            if shouldEvaluate {
-                let value = try dispatch(rule, mode: segment.mode, content: current, operation: operation)
-                result = value is NSNull ? nil : value
-            }
-            if let replacement, !replacement.pattern.isEmpty {
-                if operation == .stringList, let list = JsEngine.nativeValue(result) as? [Any] { result = list.map { replacer.apply(ruleText($0), replacement: replacement) } }
-                else if result != nil || operation != .string { result = replacer.apply(ruleText(result), replacement: replacement) }
-            }
+            return JsEngine.nativeValue(result)
         }
-        return JsEngine.nativeValue(result)
     }
 
     private func dispatch(_ rule: String, mode: RuleMode, content: Any, operation: RuleOperation) throws -> Any? {

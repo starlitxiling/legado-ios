@@ -58,14 +58,23 @@ final class MobiPdfTests: XCTestCase {
     }
 
     func testPDFPagesAndGrouping() throws {
-        let document = try XCTUnwrap(PDFDocument(data: Self.pdf()))
+        let source = try XCTUnwrap(PDFDocument(data: Self.pdf()))
+        let document = PDFDocument()
+        for index in 0..<source.pageCount {
+            document.insert(try XCTUnwrap(source.page(at: index)), at: index)
+        }
         let outline = PDFOutline(), bookmark = PDFOutline()
         bookmark.label = "全书"
         bookmark.destination = PDFDestination(page: try XCTUnwrap(document.page(at: 0)), at: .zero)
         outline.insertChild(bookmark, at: 0); document.outlineRoot = outline
         let url = try file("pdf", data: XCTUnwrap(document.dataRepresentation()))
+        let reopened = try XCTUnwrap(PDFDocument(url: url))
+        let reopenedOutline = try XCTUnwrap(reopened.outlineRoot?.child(at: 0))
+        let reopenedDestination = try XCTUnwrap(reopenedOutline.destination ?? (reopenedOutline.action as? PDFActionGoTo)?.destination)
+        XCTAssertNotNil(reopenedDestination.page)
         let parsed = try LocalBook.parse(url: url)
         XCTAssertEqual(parsed.chapters.count, 1)
+        XCTAssertEqual(parsed.chapters.map(\.title), ["分段_0"])
         guard parsed.chapters.count == 1 else { return }
         XCTAssertTrue(try LocalBook.content(book: parsed.book, chapter: parsed.chapters[0]).contains("First page text"))
         XCTAssertTrue(try LocalBook.content(book: parsed.book, chapter: parsed.chapters[0]).contains("Second page text"))
@@ -83,10 +92,11 @@ final class MobiPdfTests: XCTestCase {
     }
 
     func testPDFDefaultGroupingThroughLocalBook() throws {
-        for (pages, count) in [(1, 1), (10, 1), (11, 2)] {
+        for (pages, count) in [(1, 1), (10, 1), (11, 2), (20, 2), (21, 3)] {
             let url = try file("pdf", data: Self.pdf(pageCount: pages))
             let parsed = try LocalBook.parse(url: url)
             XCTAssertEqual(parsed.chapters.count, count, "\(pages) pages")
+            XCTAssertEqual(parsed.chapters.map(\.title), (0..<count).map { "分段_\($0)" })
             XCTAssertEqual(try LocalBook.chapterList(book: parsed.book).count, count)
             let last = try XCTUnwrap(parsed.chapters.last)
             let text = try LocalBook.content(book: parsed.book, chapter: last)

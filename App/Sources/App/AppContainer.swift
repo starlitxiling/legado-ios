@@ -71,9 +71,7 @@ final class AppContainer {
                                                   in: .userDomainMask, appropriateFor: nil, create: true)
         let directory = support.appendingPathComponent("Legado", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let container = AppContainer(database: try .file(at: directory.appendingPathComponent("legado.sqlite").path))
-        container.backgroundRefresh.register()
-        return container
+        return AppContainer(database: try .file(at: directory.appendingPathComponent("legado.sqlite").path))
     }
 
     static func inMemory() throws -> AppContainer {

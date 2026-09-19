@@ -1,10 +1,12 @@
 import Foundation
 import JavaScriptCore
 
-public enum JsEngineError: Error, CustomStringConvertible {
+public enum JsEngineError: Error, CustomStringConvertible, LocalizedError {
     case unavailable
     case exception(String)
     case unimplemented(String)
+
+    public var errorDescription: String? { description }
 
     public var description: String {
         switch self {
@@ -80,8 +82,10 @@ public final class JsEngine: SelectorEngine {
     }
 
     public func evaluateScript(_ script: String, bindings: [String: Any] = [:], javaMapBindings: Set<String> = [], context parser: AnalyzeRule? = nil) throws -> Any? {
-        let session = try makeSession(bindings: bindings, javaMapBindings: javaMapBindings, parser: parser)
-        return Self.nativeValue(try run(script, in: session))
+        return try autoreleasepool {
+            let session = try makeSession(bindings: bindings, javaMapBindings: javaMapBindings, parser: parser)
+            return Self.nativeValue(try run(script, in: session))
+        }
     }
 
     static func nativeValue(_ value: Any?) -> Any? {
@@ -93,6 +97,7 @@ public final class JsEngine: SelectorEngine {
 
     private func run(_ script: String, in session: JsSession) throws -> JSValue? {
         session.context.exception = nil
+        defer { session.context.exception = nil }
         let value = session.context.evaluateScript(script)
         try Task.checkCancellation()
         if let exception = session.context.exception { throw JsEngineError.exception(exception.toString()) }
@@ -102,6 +107,7 @@ public final class JsEngine: SelectorEngine {
 
     private func makeSession(bindings: [String: Any], javaMapBindings: Set<String> = [], parser: AnalyzeRule? = nil, url: Bool = false) throws -> JsSession {
         guard let context = JSContext() else { throw JsEngineError.unavailable }
+        defer { context.exception = nil }
         let networkEngine = networkCopy()
         networkEngine.baseUrl = bindings["baseUrl"] as? String ?? parser?.scriptBaseUrl ?? baseUrl
         let host = JavaHost(parser: parser, timeZone: timeZone, logger: logger, network: JavaHostNetwork(engine: networkEngine))
@@ -150,27 +156,31 @@ public final class JsEngine: SelectorEngine {
     }
 
     func evaluateURLScript(_ script: String, bindings: [String: Any], result: Any? = nil) throws -> Any? {
-        var values = bindings
-        values["result"] = result ?? NSNull()
-        if let extra = bindings["extraParams"] as? [String: String] {
-            for (key, value) in extra { values[key] = key == "page" ? Int32(value).map { $0 as Any } ?? value : value }
+        return try autoreleasepool {
+            var values = bindings
+            values["result"] = result ?? NSNull()
+            if let extra = bindings["extraParams"] as? [String: String] {
+                for (key, value) in extra { values[key] = key == "page" ? Int32(value).map { $0 as Any } ?? value : value }
+            }
+            return Self.nativeValue(try run(script, in: makeSession(bindings: values, url: true)))
         }
-        return Self.nativeValue(try run(script, in: makeSession(bindings: values, url: true)))
     }
 
     /// 规格 §10.2：URL 模板的 result 为 null，分页等值由调用方显式绑定。
     public func interpolateURL(_ rule: String, bindings: [String: Any]) throws -> String {
-        var values = bindings.filter { ["page", "key", "speakText", "speakSpeed", "book", "source", "infoMap"].contains($0.key) }
-        if let extra = bindings["extraParams"] as? [String: String] {
-            for (key, value) in extra { values[key] = key == "page" ? Int32(value).map { $0 as Any } ?? value : value }
-        }
-        values["infoMap"] = bindings["infoMap"] ?? NSNull()
-        let session = try makeSession(bindings: values, url: true)
-        let analyzer = RuleAnalyzer(rule, code: true)
-        return try analyzer.innerRule(start: "{{", end: "}}") { script in
-            let value = try self.run(script, in: session)
-            if let number = integralScriptNumber(value) { return String(format: "%.0f", number) }
-            return value.map { ruleText($0) } ?? ""
+        return try autoreleasepool {
+            var values = bindings.filter { ["page", "key", "speakText", "speakSpeed", "book", "source", "infoMap"].contains($0.key) }
+            if let extra = bindings["extraParams"] as? [String: String] {
+                for (key, value) in extra { values[key] = key == "page" ? Int32(value).map { $0 as Any } ?? value : value }
+            }
+            values["infoMap"] = bindings["infoMap"] ?? NSNull()
+            let session = try makeSession(bindings: values, url: true)
+            let analyzer = RuleAnalyzer(rule, code: true)
+            return try analyzer.innerRule(start: "{{", end: "}}") { script in
+                let value = try self.run(script, in: session)
+                if let number = integralScriptNumber(value) { return String(format: "%.0f", number) }
+                return value.map { ruleText($0) } ?? ""
+            }
         }
     }
 }

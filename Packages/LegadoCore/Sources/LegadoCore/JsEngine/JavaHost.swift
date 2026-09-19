@@ -1,6 +1,7 @@
 import Foundation
 import JavaScriptCore
 import CommonCrypto
+import CryptoKit
 import SwiftSoup
 import CoreFoundation
 
@@ -111,7 +112,7 @@ public final class JavaHost {
                 return result;
             }
             const methods = ['get','put','getString','getStringList','getElement','getElements','setContent',
-                'timeFormat','log','toast','md5Encode','base64Decode','base64Encode','hexDecodeToString','toNumChapter','aesBase64DecodeToString',
+                'timeFormat','log','toast','md5Encode','digestHex','base64Decode','base64Encode','hexDecodeToString','toNumChapter','aesBase64DecodeToString',
                 'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','readFile','downloadFile','cacheFile',
                 'webViewGetSource','webViewGetOverrideUrl','getVerificationCode','startBrowser','startBrowserAwait','getWebViewUA'];
             methods.forEach(function(name) {
@@ -207,12 +208,25 @@ public final class JavaHost {
         case "getElements": return try analyzer().getElements(string(0))
         case "log": logger(string(0)); return value(0)
         case "timeFormat":
-            guard let time = value(0) as? NSNumber, time.doubleValue.isFinite else { throw JsEngineError.exception("timeFormat 需要毫秒数") }
+            let time = (value(0) as? NSNumber)?.doubleValue ?? (value(0) as? String).flatMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
+            guard let time, time.isFinite else { throw JsEngineError.exception("timeFormat 需要毫秒数") }
             let formatter = DateFormatter()
             formatter.locale = Locale(identifier: "en_US_POSIX")
             formatter.timeZone = timeZone
             formatter.dateFormat = "yyyy/MM/dd HH:mm"
-            return formatter.string(from: Date(timeIntervalSince1970: time.doubleValue / 1000))
+            return formatter.string(from: Date(timeIntervalSince1970: time / 1000))
+        case "digestHex":
+            let data = Data(string(0).utf8)
+            let digest: [UInt8]
+            switch string(1).uppercased().replacingOccurrences(of: "-", with: "") {
+            case "MD5": digest = Array(Insecure.MD5.hash(data: data))
+            case "SHA1": digest = Array(Insecure.SHA1.hash(data: data))
+            case "SHA256": digest = Array(SHA256.hash(data: data))
+            case "SHA384": digest = Array(SHA384.hash(data: data))
+            case "SHA512": digest = Array(SHA512.hash(data: data))
+            default: throw JsEngineError.unimplemented("digestHex " + string(1))
+            }
+            return digest.map { String(format: "%02x", $0) }.joined()
         case "md5Encode":
             let data = Data(string(0).utf8)
             var digest = [UInt8](repeating: 0, count: Int(CC_MD5_DIGEST_LENGTH))

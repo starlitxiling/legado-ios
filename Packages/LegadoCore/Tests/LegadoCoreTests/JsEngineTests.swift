@@ -1,7 +1,52 @@
 import XCTest
+import JavaScriptCore
 @testable import LegadoCore
 
 final class JsEngineTests: XCTestCase {
+    func testAndroidTimeAndDigestCoercion() throws {
+        let engine = JsEngine(timeZone: TimeZone(secondsFromGMT: 0)!)
+        let parser = AnalyzeRule(content: #"{"created":"1000"}"#, engines: [.js: engine, .json: AnalyzeByJSonPath()])
+        XCTAssertEqual(try parser.getString("{{java.timeFormat(java.getString('$.created'))}}"), "1970/01/01 00:00")
+        XCTAssertThrowsError(try parser.getString("@js:java.timeFormat('invalid')"))
+        XCTAssertEqual(try parser.getString("@js:java.digestHex('abc','SHA-1')"), "a9993e364706816aba3e25717850c26c9cd0d89d")
+        XCTAssertEqual(try parser.getString("@js:java.digestHex('abc','SHA-256')"), "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+        XCTAssertThrowsError(try parser.getString("@js:java.digestHex('abc','unsupported')"))
+    }
+
+    func testRuleEvaluationReleasesContextBeforeReturning() throws {
+        let engine = JsEngine()
+        weak var lastContext: JSContext?
+        engine.libraryInitializer = { lastContext = $0 }
+        let parser = AnalyzeRule(content: "", engines: [.js: engine])
+        for _ in 0..<10 {
+            XCTAssertEqual(try parser.getString("@js:'chapter'"), "chapter")
+            XCTAssertNil(lastContext)
+        }
+    }
+
+    func testFailedEvaluationReleasesContextBeforeReturning() throws {
+        let engine = JsEngine()
+        weak var lastContext: JSContext?
+        engine.libraryInitializer = { lastContext = $0 }
+        let parser = AnalyzeRule(content: "", engines: [.js: engine])
+        XCTAssertThrowsError(try parser.getString("@js:throw new Error('failure')"))
+        XCTAssertNil(lastContext)
+        XCTAssertThrowsError(try engine.evaluateScript("throw new Error('failure')"))
+        XCTAssertNil(lastContext)
+    }
+
+    func testStandaloneEvaluationReleasesContextBeforeReturning() throws {
+        let engine = JsEngine()
+        weak var lastContext: JSContext?
+        engine.libraryInitializer = { lastContext = $0 }
+        XCTAssertEqual(try engine.evaluateScript("'text'") as? String, "text")
+        XCTAssertNil(lastContext)
+        XCTAssertEqual(try engine.interpolateURL("https://example.com/{{1}}", bindings: [:]), "https://example.com/1")
+        XCTAssertNil(lastContext)
+        XCTAssertEqual(try engine.evaluateURLScript("'url'", bindings: [:]) as? String, "url")
+        XCTAssertNil(lastContext)
+    }
+
     // cb664b84d AnalyzeRule.kt:368；模板格式化见 :801。
     func testReviewNumberFormatting() throws {
         let parser = AnalyzeRule(content: "", engines: [.js: JsEngine()])

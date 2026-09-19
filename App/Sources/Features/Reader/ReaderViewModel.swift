@@ -113,13 +113,15 @@ final class ReaderViewModel {
         highlights = []; cachedChapterIndices = []
         do {
             guard let stored = try await BookshelfRepository(database: database).get(bookUrl: bookURL) else { throw ReaderError.missingBook }
-            let book = try await prepareLocalBook(stored)
+            var book = try await prepareLocalBook(stored)
             if book.variable != stored.variable {
                 try await database.write { db in
                     try db.execute(sql: "UPDATE books SET variable = ? WHERE bookUrl = ? AND variable IS ?", arguments: [book.variable, stored.bookUrl, stored.variable])
                 }
             }
-            let entity = try ReaderEntityBridge.decode(Book.self, row: book)
+            var entity = try ReaderEntityBridge.decode(Book.self, row: book)
+            let sourceRow = try await BookSourceRepository(database: database).get(bookSourceUrl: book.origin)
+            let source = try sourceRow.map { try ReaderEntityBridge.decode(BookSource.self, row: $0) }
             let repository = ChapterRepository(database: database)
             var chapters = try await repository.list(bookUrl: bookURL)
             if chapters.isEmpty, LocalBook.isLocal(entity) {
@@ -129,9 +131,22 @@ final class ReaderViewModel {
                 try await repository.replaceAll(bookUrl: bookURL, chapters: restored)
                 chapters = restored
             }
+            if chapters.isEmpty, !LocalBook.isLocal(entity) {
+                guard let source else { throw ReaderError.missingSource }
+                let parsed = try await WebBook(source: source, client: client).chapterList(book: &entity)
+                let restored = try parsed.map { try ReaderEntityBridge.decode(BookChapterRow.self, row: $0) }
+                try Task.checkCancellation()
+                guard generation == token else { return }
+                try await BookshelfRepository(database: database).saveChapterUpdate(
+                    bookURL: bookURL, chapters: restored, checkedAt: entity.lastCheckTime)
+                guard let refreshed = try await BookshelfRepository(database: database).get(bookUrl: bookURL) else {
+                    throw ReaderError.missingBook
+                }
+                book = refreshed
+                entity = try ReaderEntityBridge.decode(Book.self, row: refreshed)
+                chapters = restored
+            }
             guard !chapters.isEmpty else { throw ReaderError.emptyChapters }
-            let sourceRow = try await BookSourceRepository(database: database).get(bookSourceUrl: book.origin)
-            let source = try sourceRow.map { try ReaderEntityBridge.decode(BookSource.self, row: $0) }
             let bookmarks = try await BookmarkRepository(database: database).list(bookName: book.name, bookAuthor: book.author)
             guard generation == token else { return }
             self.book = book; self.chapters = chapters; self.entity = entity; self.source = source; self.bookmarks = bookmarks

@@ -48,7 +48,7 @@ public final class PdfFile {
         } else {
             ranges = stride(from: 0, to: document.pageCount, by: pagesPerChapter).map { start in
                 let end = start + min(pagesPerChapter, document.pageCount - start)
-                return (end == start + 1 ? "第 \(start + 1) 页" : "第 \(start + 1)–\(end) 页", start, end)
+                return ("分段_\(start / pagesPerChapter)", start, end)
             }
         }
     }
