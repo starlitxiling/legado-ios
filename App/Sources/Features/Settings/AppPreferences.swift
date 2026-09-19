@@ -16,7 +16,7 @@ extension AppPreferences {
         for key in "backgroundImage backgroundImageNight welcomeImagePath welcomeImagePathDark coverFont userAgent customHosts jsSourceApiToken backupUri localPassword defaultCover defaultCoverDark readRecordCover readRecordCoverDark durThemeName durThemeNameNight".split(separator: " ") {
             values[String(key)] = .string("")
         }
-        let numbers: [String: Int32] = ["fontScale": 0, "backgroundImageBlurring": 0, "backgroundImageNightBlurring": 0,
+        let numbers: [String: Int32] = ["chineseConverterType": 0, "fontScale": 0, "backgroundImageBlurring": 0, "backgroundImageNightBlurring": 0,
             "coverTitleLargeSize": 100, "coverTitleSmallSize": 100, "coverAuthorLargeSize": 100, "coverAuthorSmallSize": 100,
             "welcomeShowTime": 500, "bitmapCacheSize": 50, "imageRetainNum": 0, "sourceEditMaxLine": .max]
         for (key, value) in numbers { values[key] = .int(value) }

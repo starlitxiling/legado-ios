@@ -7,6 +7,7 @@ struct ReaderLayoutInput {
     let rawContent: String
     let rules: [ReplaceRuleRow]
     var replaceEnableDefault = true
+    var chineseConverterType = 0
 }
 
 struct ReaderLayoutResult {
@@ -20,7 +21,7 @@ enum ReaderLayout {
         try Task.checkCancellation()
         didStart()
         let rules = try input.rules.map { try ReaderEntityBridge.decode(ReplaceRule.self, row: $0) }
-        let processor = ContentProcessor(rules: rules, paragraphIndent: settings.paragraphIndent)
+        let processor = ContentProcessor(rules: rules, paragraphIndent: settings.paragraphIndent, chineseConverterType: input.chineseConverterType)
         let useReplace = input.book.readConfig?.useReplaceRule ?? input.replaceEnableDefault
         let title = try processor.title(book: input.book, chapter: input.chapter, useReplace: useReplace)
         let content = try processor.getContent(book: input.book, chapter: input.chapter,

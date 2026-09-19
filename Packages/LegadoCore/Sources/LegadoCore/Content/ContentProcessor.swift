@@ -15,6 +15,7 @@ public struct ContentProcessor {
 
     public let rules: [ReplaceRule]
     private let clock: () -> TimeInterval
+    private let chineseConverterType: Int
     private let paragraphIndent: String
     private let onError: (ReplaceRule, Error) -> Void
     private let disableRule: (Int64) -> Void
@@ -32,18 +33,20 @@ public struct ContentProcessor {
     }
     private let disabled = DisabledRules()
     public init(rules: [ReplaceRule] = [], clock: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
-                paragraphIndent: String = "　　", onError: @escaping (ReplaceRule, Error) -> Void = { _, _ in },
+                paragraphIndent: String = "　　", chineseConverterType: Int = 0, onError: @escaping (ReplaceRule, Error) -> Void = { _, _ in },
                 disableRule: @escaping (Int64) -> Void = { _ in }) {
         self.rules = rules.enumerated().sorted { a, b in
             a.element.order == b.element.order ? a.offset < b.offset : a.element.order < b.element.order
         }.map(\.element)
+        self.chineseConverterType = chineseConverterType
         self.clock = clock
         self.paragraphIndent = paragraphIndent; self.onError = onError; self.disableRule = disableRule
     }
 
-    public func title(book: Book, chapter: BookChapter, useReplace: Bool = true) throws -> String {
+    public func title(book: Book, chapter: BookChapter, useReplace: Bool = true, chineseConvert: Bool = true) throws -> String {
         try Task.checkCancellation()
         var title = (chapter.title ?? "").replacingOccurrences(of: "\r", with: "").replacingOccurrences(of: "\n", with: "")
+        if chineseConvert { title = try ChineseConverter.convert(title, type: chineseConverterType) }
         if useReplace && book.readConfig?.useReplaceRule != false {
             for rule in rules where rule.scopeTitle && applies(rule, book: book) {
                 do {
@@ -76,10 +79,10 @@ public struct ContentProcessor {
                     text = (text as NSString).substring(from: NSMaxRange(match.range)); removed = true; break
                 }
                 if candidates.count == 1 && useReplace && book.readConfig?.useReplaceRule != false {
-                    candidates.append(try title(book: book, chapter: chapter, useReplace: useReplace))
+                    candidates.append(try title(book: book, chapter: chapter, useReplace: useReplace, chineseConvert: false))
                 }
             }
-            // 繁简转换与 ContentHelp.reSegment 在阅读排版单元接入。
+            text = try ChineseConverter.convert(text, type: chineseConverterType)
             if useReplace && book.readConfig?.useReplaceRule != false {
                 text = text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")
                 for rule in rules where rule.scopeContent && applies(rule, book: book) {

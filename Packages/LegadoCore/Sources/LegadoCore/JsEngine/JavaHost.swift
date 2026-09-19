@@ -139,7 +139,7 @@ public final class JavaHost {
                 return result;
             }
             const methods = ['get','put','getString','getStringList','getElement','getElements','getElementsRaw','cacheContent','reGetBook','refreshTocUrl','setContent',
-                'timeFormat','timeFormatUTC','log','toast','longToast','logType','randomUUID','androidId',
+                't2s','s2t','timeFormat','timeFormatUTC','log','toast','longToast','logType','randomUUID','androidId',
                 'getReadBookConfig','getReadBookConfigMap','getThemeMode','getThemeConfig','getThemeConfigMap',
                 'base64DecodeToByteArray','hexDecodeToByteArray','hexEncodeToString','strToBytes','bytesToStr','decodeURI','htmlFormat','toURL','base64Decode','base64Encode','hexDecodeToString','toNumChapter',
                 'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','readFile','downloadFile','cacheFile',
@@ -297,6 +297,8 @@ public final class JavaHost {
         case "hexDecodeToByteArray": return string(0).isEmpty ? nil : try JavaHostEncoding.hex(string(0))
         case "hexEncodeToString": return Data(string(0).utf8).map { String(format: "%02x", $0) }.joined()
         case "decodeURI": return try JavaHostEncoding.decodeURI(string(0), charset: value(1).map { ruleText($0) } ?? "UTF-8")
+        case "t2s": return try ChineseConverter.t2s(string(0))
+        case "s2t": return try ChineseConverter.s2t(string(0))
         case "htmlFormat": return HtmlFormatter.formatKeepImg(string(0), redirectUrl: (value(1) as? String).flatMap(URL.init(string:)))
         case "toURL": return try JavaHostEncoding.url(string(0), base: value(1) as? String)
         case "timeFormat", "timeFormatUTC":

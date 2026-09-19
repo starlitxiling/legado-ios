@@ -36,6 +36,9 @@ struct OtherSettingsView: View {
                 controls.number("下载线程", "threadCount", range: 1...128)
             }
             Section("阅读与清理") {
+                Picker("简繁转换", selection: controls.integer("chineseConverterType")) {
+                    Text("不转换").tag(0); Text("转为简体").tag(1); Text("转为繁体").tag(2)
+                }
                 controls.toggle("新书默认启用替换", "replaceEnableDefault")
                 controls.toggle("媒体键启动朗读", "readAloudByMediaButton")
                 controls.toggle("允许与其他音频混音", "ignoreAudioFocus")

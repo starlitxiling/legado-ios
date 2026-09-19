@@ -67,6 +67,7 @@ final class ReaderViewModel {
     private var prefetchTask: Task<Void, Never>?
     private let preDownloadCount: @Sendable () -> Int
     var replaceEnableDefault: () -> Bool = { true }
+    var chineseConverterType: () -> Int = { 0 }
     var prepareLocalBook: (BookRow) async throws -> BookRow = { $0 }
     var synchronizeWebDav: (BookRow, Bool) async throws -> BookProgress? = { _, _ in nil }
     var pendingWebDavProgress: BookProgress?
@@ -180,7 +181,7 @@ final class ReaderViewModel {
             }
             let input = ReaderLayoutInput(book: entity, chapter: try ReaderEntityBridge.decode(BookChapter.self, row: row),
                 rawContent: cached.rawContent, rules: rules,
-                replaceEnableDefault: replaceEnableDefault())
+                replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType())
             while token == generation {
                 let layoutToken = UUID(); layoutGeneration = layoutToken
                 do {
@@ -319,7 +320,7 @@ final class ReaderViewModel {
                 let cached = try await cache.content(book: entity, chapter: chapter, nextURL: nextURL, source: source, client: client)
                 let rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
                 let input = ReaderLayoutInput(book: entity, chapter: chapter, rawContent: cached.rawContent, rules: rules,
-                    replaceEnableDefault: replaceEnableDefault())
+                    replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType())
                 let layout = Task.detached {
                     try ReaderLayout.build(input: input, size: size, settings: settings, didStart: {})
                 }

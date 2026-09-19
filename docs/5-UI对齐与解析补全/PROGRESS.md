@@ -28,7 +28,7 @@
 | U9 通用组件 | 完成 | 主会话 | Shared/Components / assets/components*.png | 逻辑 3/0；iOS 图标与交互 2/0 |
 | 批次 1 门禁 | 完成 | 主会话 | .build/round5/batch1-*.log | Core 599/0、AppCore 247/0、CLI 7/0；iOS 构建/启动通过 |
 | 批次 2：P4 | 在途 | 主会话 | WebBook 四流程 | Core 634/0、AppCore 249/0、CLI 7/0、iOS 构建通过；真实门禁未达标 |
-| 批次 2：P5 | 在途 | 主会话 | 内容净化 | 对照 Kotlin，先补转换词表及测试 |
+| 批次 2：P5 | 在途 | 主会话 | 内容净化 | 简繁转换 Core 638/0、AppCore 250/0、iOS 构建通过；继续其余六项 |
 | 批次 2 其余及批次 3-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -37,6 +37,6 @@
 
 ## 下一步
 
-最近提交 0f6d5094a（P4 流程基础）；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；继续 P5/P6/U1-U3。全程不推送；WebDAV 凭据只用于读取。
+最近提交 935a151d4（P4 真书源回归）；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；继续 P5/P6/U1-U3。全程不推送；WebDAV 凭据只用于读取。
 
 P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。

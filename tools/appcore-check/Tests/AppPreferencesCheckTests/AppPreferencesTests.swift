@@ -55,7 +55,7 @@ final class AppPreferencesTests: XCTestCase {
         let expectedFalse = "transparentNavBar transparentNavBarNight coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome auto_refresh onlyUpdateRead defaultToRead showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore syncBookProgressPlus"
         for key in expectedTrue.split(separator: " ") { XCTAssertEqual(preferences.snapshot[String(key)], .boolean(true), String(key)) }
         for key in expectedFalse.split(separator: " ") { XCTAssertEqual(preferences.snapshot[String(key)], .boolean(false), String(key)) }
-        let integers: [String: Int32] = ["fontScale": 0, "backgroundImageBlurring": 0, "backgroundImageNightBlurring": 0,
+        let integers: [String: Int32] = ["chineseConverterType": 0, "fontScale": 0, "backgroundImageBlurring": 0, "backgroundImageNightBlurring": 0,
             "coverTitleLargeSize": 100, "coverTitleSmallSize": 100, "coverAuthorLargeSize": 100, "coverAuthorSmallSize": 100,
             "welcomeShowTime": 500, "bitmapCacheSize": 50, "imageRetainNum": 0, "sourceEditMaxLine": .max]
         for (key, value) in integers { XCTAssertEqual(preferences.snapshot[key], .int(value), key) }
@@ -100,7 +100,7 @@ final class AppPreferencesTests: XCTestCase {
         for key in "transparentNavBar transparentNavBarNight coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome useDefaultCover auto_refresh onlyUpdateRead defaultToRead showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore syncBookProgressPlus loadCoverOnlyWifi".split(separator: " ") { expected[String(key)] = .boolean(false) }
         for key in "backgroundImage backgroundImageNight welcomeImagePath welcomeImagePathDark coverFont userAgent customHosts jsSourceApiToken backupUri localPassword defaultCover defaultCoverDark readRecordCover readRecordCoverDark durThemeName durThemeNameNight".split(separator: " ") { expected[String(key)] = .string("") }
         for (key, value) in ["themeMode": "0", "language": "auto", "webDavDir": "legado", "defaultHomePage": "bookshelf", "launcherIcon": "ic_launcher"] { expected[key] = .string(value) }
-        for (key, value): (String, Int32) in ["fontScale": 0, "backgroundImageBlurring": 0, "backgroundImageNightBlurring": 0,
+        for (key, value): (String, Int32) in ["chineseConverterType": 0, "fontScale": 0, "backgroundImageBlurring": 0, "backgroundImageNightBlurring": 0,
             "coverTitleLargeSize": 100, "coverTitleSmallSize": 100, "coverAuthorLargeSize": 100, "coverAuthorSmallSize": 100,
             "welcomeShowTime": 500, "bitmapCacheSize": 50, "imageRetainNum": 0, "sourceEditMaxLine": .max,
             "preDownloadNum": 2, "threadCount": 32, "bookshelfSort": 0, "autoBackupIntervalDays": 1] { expected[key] = .int(value) }

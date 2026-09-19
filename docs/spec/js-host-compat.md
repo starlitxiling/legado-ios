@@ -106,3 +106,8 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 `java.cacheContent` 已支持批量正文回存（章节对象或唯一 URL），普通规则调用会报错。
 正文 webJs/sourceRegex 适用于所有类型，浏览器启动仍由 URL 的 webView 选项控制。
 完整流程与未完成队列层事项见 [webbook-compat.md](webbook-compat.md)。
+
+
+### 简繁转换
+
+`java.t2s(text)` / `java.s2t(text)` 使用内置 OpenCC ver.1.1.9 单字及词语表，按最长词优先匹配。来源、提交哈希、许可证及文件校验值见 Core 的 `Resources/OpenCC/PROVENANCE.md`。不应用区域词汇表；与 Android HanLP 词表版本之间可能存在用词差异。

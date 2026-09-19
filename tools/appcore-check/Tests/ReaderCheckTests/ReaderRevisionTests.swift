@@ -4,6 +4,28 @@ import LegadoCore
 
 @MainActor
 final class ReaderRevisionTests: XCTestCase {
+    func testChineseConversionReachesReaderLayoutAndPreservesRawCache() async throws {
+        let (database, book, directory) = try await fixture(count: 1)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let client = ReplayHttpClient()
+        let url = URL(string: "https://revision.test/0")!
+        await client.enqueue(url: url, response: .init(status: 200,
+            body: Data("<p>后来发展头发。</p>".utf8), finalURL: url))
+        let model = ReaderViewModel(database: database, client: client, cacheDirectory: directory, preDownloadCount: { 0 })
+        model.chineseConverterType = { 2 }
+        await model.load(bookURL: book.bookUrl)
+        XCTAssertNil(model.errorMessage)
+        XCTAssertTrue(model.pagination?.text.string.contains("後來發展頭髮。") == true)
+        await model.close()
+        let restored = ReaderViewModel(database: database, client: client, cacheDirectory: directory, preDownloadCount: { 0 })
+        await restored.load(bookURL: book.bookUrl)
+        XCTAssertNil(restored.errorMessage)
+        XCTAssertTrue(restored.pagination?.text.string.contains("后来发展头发。") == true)
+        let requests = await client.requests
+        XCTAssertEqual(requests.count, 1)
+        await restored.close()
+    }
+
     func testConfiguredPreDownloadCountControlsRequests() async throws {
         for count in [0, 2] {
             let (database, book, directory) = try await fixture(count: 4)

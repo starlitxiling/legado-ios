@@ -35,6 +35,7 @@ struct ReaderView: View {
             adaptSpecialStyle: UserDefaults.standard.object(forKey: "adaptSpecialStyle") as? Bool ?? true, preDownloadCount: {
                 UserDefaults.standard.object(forKey: "preDownloadNum") as? Int ?? 2
             })
+        model.chineseConverterType = { UserDefaults.standard.integer(forKey: "chineseConverterType") }
         model.replaceEnableDefault = { UserDefaults.standard.object(forKey: "replaceEnableDefault") as? Bool ?? true }
         @MainActor func webDavClient() throws -> WebDavClient? {
             let settings = SettingsViewModel(store: KeychainStore(), httpClient: client)
