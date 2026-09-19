@@ -52,7 +52,7 @@ struct RssSourceEditView: View {
             }
             if let error { Text(error).foregroundStyle(.red) }
         }
-        .navigationTitle("编辑 RSS 源")
+        .legadoNavigationTitle("编辑 RSS 源")
         .toolbar {
             Button("取消") { dismiss() }
             Button("保存") {

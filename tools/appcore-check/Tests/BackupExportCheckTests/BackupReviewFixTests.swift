@@ -31,7 +31,7 @@ final class BackupReviewFixTests: XCTestCase {
             defaults.set(17, forKey: "autoReadSpeed")
             defaults.set(true, forKey: "hideStatusBar")
             preferences.set("colorBackgroundNight", .int(Int32(bitPattern: 0xFFABCDEF)))
-            preferences.saveTheme(name: "当前主题", night: true)
+            try preferences.saveTheme(name: "当前主题", night: true)
             await model.createBackup(upload: false, now: Date(timeIntervalSince1970: 100))
             XCTAssertNil(model.errorMessage)
             let archive = try BackupArchive(data: Data(contentsOf: XCTUnwrap(model.exportedFile)))

@@ -27,7 +27,7 @@ struct SourceDebugView: View {
                 }.padding()
             }
         }
-        .navigationTitle("书源调试")
+        .legadoNavigationTitle("书源调试")
         .onDisappear { model.stop() }
     }
 }

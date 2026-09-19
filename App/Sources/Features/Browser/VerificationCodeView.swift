@@ -18,7 +18,7 @@ struct VerificationCodeView: View {
                     .padding()
                 if let error = model.errorMessage { Text(error).foregroundStyle(.red) }
             }
-            .navigationTitle("输入验证码")
+            .legadoNavigationTitle("输入验证码")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消", action: onCancel) }

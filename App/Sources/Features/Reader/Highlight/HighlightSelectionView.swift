@@ -21,7 +21,7 @@ struct HighlightSelectionView: View {
                 case .readAloud: readAloud(chapterRange); dismiss()
                 }
             }
-            .navigationTitle("选择正文")
+            .legadoNavigationTitle("选择正文")
             .toolbar { Button("完成") { dismiss() } }
             .alert("添加批注", isPresented: $showsNote) {
                 TextField("批注", text: $note)

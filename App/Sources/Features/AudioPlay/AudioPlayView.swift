@@ -52,7 +52,7 @@ struct AudioPlayView: View {
             }
             Spacer()
         }
-        .padding().navigationTitle("音频播放")
+        .padding().legadoNavigationTitle("音频播放")
         .task { await load() }
     }
 

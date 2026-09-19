@@ -21,7 +21,7 @@ struct UploadRuleSettingsView: View {
             Button("保存规则") { Task { await model.save() } }
             if let message = model.message { Text(message) }
         }
-        .navigationTitle("直链上传规则")
+        .legadoNavigationTitle("直链上传规则")
         .task { await model.load() }
         .fileImporter(isPresented: $importing, allowedContentTypes: [.json, .plainText]) { result in
             do {

@@ -53,7 +53,7 @@ struct MangaReaderView: View {
                 }
             } else if library.isLoading { ProgressView("正在加载目录") }
         }
-        .navigationTitle(model.flatMap { library.chapters.indices.contains($0.chapter) ? library.chapters[$0.chapter].title : nil } ?? "漫画")
+        .legadoNavigationTitle(model.flatMap { library.chapters.indices.contains($0.chapter) ? library.chapters[$0.chapter].title : nil } ?? "漫画")
         .toolbar {
             Menu("阅读设置") {
                 Toggle("横向翻页", isOn: $horizontal)

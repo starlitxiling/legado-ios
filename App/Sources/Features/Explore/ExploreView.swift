@@ -20,7 +20,7 @@ struct ExploreView: View {
                 Text("暂无启用发现的书源，请先导入书源").foregroundStyle(.secondary)
             }
         }
-        .navigationTitle("发现")
+        .legadoNavigationTitle("发现")
         .task { await model.load(repository: container.bookSources) }
         .refreshable { await model.load(repository: container.bookSources) }
         .overlay(alignment: .trailing) {
@@ -59,7 +59,7 @@ private struct ExploreCategoriesView: View {
                 }
             }
         }
-        .navigationTitle(source.bookSourceName ?? "发现分类")
+        .legadoNavigationTitle(source.bookSourceName ?? "发现分类")
         .task { await model.loadKinds(source: source, client: container.httpClient,
                                      stateRepository: SourceStateRepository(database: container.database)) }
         .refreshable { await reloadKinds() }

@@ -43,7 +43,7 @@ struct ReplaceRuleEditView: View {
             }
         }
         .textInputAutocapitalization(.never).autocorrectionDisabled()
-        .navigationTitle("替换规则编辑")
+        .legadoNavigationTitle("替换规则编辑")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) {

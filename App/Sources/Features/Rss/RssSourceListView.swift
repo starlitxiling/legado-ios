@@ -45,7 +45,7 @@ struct RssSourceListView: View {
             }
             if let error = model.error { Text(error).foregroundStyle(.red) }
         }
-        .navigationTitle("RSS")
+        .legadoNavigationTitle("RSS")
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 NavigationLink { RssFavoritesView(repository: model.repository, client: model.client) } label: { Image(systemName: "star") }
@@ -72,7 +72,7 @@ struct RssSourceListView: View {
                     TextEditor(text: $importText).frame(minHeight: 240)
                     if let error = model.error { Text(error).foregroundStyle(.red) }
                 }
-                .navigationTitle("导入 RSS 源")
+                .legadoNavigationTitle("导入 RSS 源")
                 .toolbar {
                     Button("取消") { importing = false }
                     Button(model.importing ? "导入中" : "导入") {

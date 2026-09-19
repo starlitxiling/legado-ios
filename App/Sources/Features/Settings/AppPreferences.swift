@@ -10,7 +10,7 @@ extension AppPreferences {
         for key in "coverShowName coverShowAuthor coverShowNameN coverShowAuthorN coverTitleAdaptive welcomeShowText welcomeShowIcon welcomeShowTextDark welcomeShowIconDark replaceEnableDefault autoClearExpired showAddToShelfAlert showMangaUi jsSourceApiTokenRequired".split(separator: " ") {
             values[String(key)] = .boolean(true)
         }
-        for key in "coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome useDefaultCover showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore".split(separator: " ") {
+        for key in "transparentNavBar transparentNavBarNight coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome useDefaultCover showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore".split(separator: " ") {
             values[String(key)] = .boolean(false)
         }
         for key in "backgroundImage backgroundImageNight welcomeImagePath welcomeImagePathDark coverFont userAgent customHosts jsSourceApiToken backupUri localPassword defaultCover defaultCoverDark readRecordCover readRecordCoverDark durThemeName durThemeNameNight".split(separator: " ") {
@@ -49,14 +49,14 @@ extension AppPreferences {
         return themes
     }
 
-    func saveTheme(name: String, night: Bool) {
+    func saveTheme(name: String, night: Bool) throws {
         let name = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !name.isEmpty else { return }
+        guard !name.isEmpty else { throw AppThemeConfiguration.InvalidName() }
         var saved = themes
         let theme = currentTheme(name: name, night: night)
         if let index = saved.firstIndex(where: { $0.themeName == name }) { saved[index] = theme }
         else { saved.append(theme) }
-        defaults.set(try? JSONEncoder().encode(saved), forKey: "Legado.themeConfig.json")
+        defaults.set(try JSONEncoder().encode(saved), forKey: "Legado.themeConfig.json")
         configurationRevision += 1
     }
 
@@ -85,7 +85,7 @@ extension AppPreferences {
         func color(_ key: String) -> String { String(format: "#%08X", UInt32(truncatingIfNeeded: integer(key + suffix))) }
         return AppThemeConfiguration(themeName: name, isNightTheme: night, primaryColor: color("colorPrimary"),
             accentColor: color("colorAccent"), backgroundColor: color("colorBackground"), bottomBackground: color("colorBottomBackground"),
-            backgroundImgPath: string("backgroundImage" + suffix), backgroundImgBlur: integer("backgroundImage" + suffix + "Blurring"))
+            transparentNavBar: boolean("transparentNavBar" + suffix), backgroundImgPath: string("backgroundImage" + suffix), backgroundImgBlur: integer("backgroundImage" + suffix + "Blurring"))
     }
 
     func applyTheme(_ theme: AppThemeConfiguration, systemIsNight: Bool = false) throws {
@@ -97,6 +97,7 @@ extension AppPreferences {
         }
         let suffix = theme.isNightTheme ? "Night" : ""
         for (key, color) in colors { set(key + suffix, .int(color)) }
+        set("transparentNavBar" + suffix, .boolean(theme.transparentNavBar))
         set("backgroundImage" + suffix, .string(theme.backgroundImgPath ?? ""))
         set("backgroundImage" + suffix + "Blurring", .int(Int32(clamping: theme.backgroundImgBlur)))
         set("durThemeName" + suffix, .string(theme.themeName))
@@ -161,13 +162,15 @@ struct AppThemeConfiguration: Codable, Equatable {
     }
 
     init(themeName: String, isNightTheme: Bool, primaryColor: String, accentColor: String, backgroundColor: String,
-         bottomBackground: String, backgroundImgPath: String? = nil, backgroundImgBlur: Int = 0) {
+         bottomBackground: String, transparentNavBar: Bool = false, backgroundImgPath: String? = nil, backgroundImgBlur: Int = 0) {
         self.themeName = themeName; self.isNightTheme = isNightTheme; self.primaryColor = primaryColor
         self.accentColor = accentColor; self.backgroundColor = backgroundColor; self.bottomBackground = bottomBackground
+        self.transparentNavBar = transparentNavBar
         self.backgroundImgPath = backgroundImgPath; self.backgroundImgBlur = backgroundImgBlur
     }
 
-    struct InvalidColor: Error {}
+    struct InvalidColor: LocalizedError { var errorDescription: String? { "Invalid theme color; use #RRGGBB or #AARRGGBB" } }
+    struct InvalidName: LocalizedError { var errorDescription: String? { "Theme name must not be empty" } }
     static func color(_ value: String) -> Int32? {
         let hex = value.hasPrefix("#") ? String(value.dropFirst()) : value
         guard [6, 8].contains(hex.count), let number = UInt32(hex, radix: 16) else { return nil }

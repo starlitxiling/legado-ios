@@ -8,6 +8,7 @@ import LegadoCore
     var book: Book? = nil
     var isCover = true
     var isReadRecord = false
+    @Environment(\.themeColors) private var themeColors
     @Environment(\.colorScheme) private var colorScheme
     @Environment(AppContainer.self) private var container
     @State private var model = RemoteImageViewModel()
@@ -35,7 +36,7 @@ import LegadoCore
                 ConfiguredCoverView(title: book.name ?? "", author: book.author ?? "", preferences: preferences)
             } else {
                 ZStack {
-                    RoundedRectangle(cornerRadius: 8).fill(Theme.accent.opacity(0.08))
+                    RoundedRectangle(cornerRadius: 8).fill(themeColors.accent.opacity(0.08))
                     if model.state == .loading { ProgressView() }
                     else {
                         Image(systemName: isCover ? "book.closed" : "photo")

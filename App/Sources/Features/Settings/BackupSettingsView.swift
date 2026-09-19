@@ -46,7 +46,7 @@ struct BackupSettingsView: View {
             }
             if let message { Text(message) }
         }
-        .navigationTitle("备份设置")
+        .legadoNavigationTitle("备份设置")
         .fileImporter(isPresented: $selectingDirectory, allowedContentTypes: [.folder]) { result in
             do {
                 let url = try result.get()

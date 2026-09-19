@@ -4,22 +4,16 @@ import UIKit
 @MainActor
 struct AppThemeModifier: ViewModifier {
     let preferences: AppPreferences
-    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.themeColors) private var colors
     @State private var showingWelcome = true
-    private var night: Bool {
-        preferences.string("themeMode") == "2" || (preferences.string("themeMode") == "0" && colorScheme == .dark)
-    }
+    private var night: Bool { colors.isNight }
     private var suffix: String { night ? "Night" : "" }
-    private var eink: Bool { preferences.string("themeMode") == "3" }
+    private var eink: Bool { colors.isEInk }
 
     func body(content: Content) -> some View {
         content
-            .tint(eink ? .black : Theme.color(preferences.integer("colorAccent" + suffix)))
-            .toolbarBackground(eink ? .white : Theme.color(preferences.integer("colorPrimary" + suffix)), for: .navigationBar)
-            .toolbarBackground(eink ? .white : Theme.color(preferences.integer("colorBottomBackground" + suffix)), for: .tabBar)
-            .toolbarBackground(.visible, for: .tabBar, .navigationBar)
             .background {
-                Theme.color(preferences.integer("colorBackground" + suffix)).ignoresSafeArea()
+                colors.background.ignoresSafeArea()
                 if !eink {
                     SettingsImage(path: preferences.string("backgroundImage" + suffix))
                         .blur(radius: Double(max(0, min(100, preferences.integer("backgroundImage" + suffix + "Blurring")))))
@@ -31,7 +25,7 @@ struct AppThemeModifier: ViewModifier {
             .overlay {
                 if showingWelcome, preferences.boolean("customWelcome") {
                     ZStack {
-                        Theme.color(preferences.integer("colorBackground" + suffix)).ignoresSafeArea()
+                        colors.background.ignoresSafeArea()
                         SettingsImage(path: preferences.string(night ? "welcomeImagePathDark" : "welcomeImagePath")).ignoresSafeArea()
                         VStack(spacing: 20) {
                             if preferences.boolean(night ? "welcomeShowIconDark" : "welcomeShowIcon") { Image(systemName: "book.closed").font(.system(size: 64)) }

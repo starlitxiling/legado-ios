@@ -20,7 +20,7 @@ struct ServerSettingsView: View {
             }
             if let error = model.errorMessage { Text(error).foregroundStyle(.red) }
         }
-        .navigationTitle("WebDAV 服务器")
+        .legadoNavigationTitle("WebDAV 服务器")
         .toolbar { Button("添加") { editing = nil; showEditor = true } }
         .task { await model.load() }
         .sheet(isPresented: $showEditor) { ServerEditor(value: editing ?? Server(), model: model) }
@@ -46,7 +46,7 @@ private struct ServerEditor: View {
                 TextField("排序", value: $value.sortNumber, format: .number)
                 if let error = errorMessage ?? model.errorMessage { Text(error).foregroundStyle(.red) }
             }
-            .navigationTitle("编辑服务器")
+            .legadoNavigationTitle("编辑服务器")
             .task {
                 do {
                     if let config = try value.webDavConfig() {

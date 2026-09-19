@@ -54,6 +54,6 @@ struct TocView: View {
                 if let index = model.currentChapterIndex { proxy.scrollTo(index, anchor: .center) }
             }
         }
-        .navigationTitle("目录")
+        .legadoNavigationTitle("目录")
     }
 }

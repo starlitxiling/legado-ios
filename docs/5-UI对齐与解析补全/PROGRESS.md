@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 2026-09-19：按已确认 PLAN.md 执行，P0/P1/P2/P3a-d 已验收，当前批次 1 / U0。
+- 2026-09-19：按已确认 PLAN.md 执行，P0/P1/P2/P3a-d 已验收，当前批次 1 / U9。
 - 起始提交：`30d180ecf`；P0 已拆为 ff6f50452、f82ddf72c、284834405 三笔本地提交。
 - 真机：已配对 iPhone 16，有线连接，Xcode 26.6 已识别。
 - 用户最新指示：全部由主会话亲自执行，不再启动子代理。已停止全部在途子代理，保留已完成产出。
@@ -24,7 +24,8 @@
 | P3b 字节桥与编解码 | 完成 | 主会话 | JavaHostEncodingTests / .build/round5/p3b-*.log | Core 586/0、AppCore 238/0、CLI 7/0 |
 | P3c 加密与 CryptoJS | 完成 | 主会话 | JavaHostCryptoTests / .build/round5/p3c-*.log | Core 595/0、AppCore 238/0、CLI 7/0、iOS 构建通过 |
 | P3d 时间 | 完成 | 主会话 | JavaHostTimeTests / .build/round5/p3d-*.log | Core 599/0 |
-| 批次 1：U0 / U9 | 在途 | 主会话 | 按 PLAN.md | 主题与通用组件 |
+| U0 主题基础 | 完成 | 主会话 | ThemeStoreTests / assets/theme-*.png | AppCore 244/0；iOS 构建与模拟器 5 项通过 |
+| U9 通用组件 | 在途 | 主会话 | Shared/Components | 逻辑 3/0，待 iOS/交互验证 |
 | 批次 2-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -33,4 +34,4 @@
 
 ## 下一步
 
-P3c 提交 2ed7b12c8；继续 U0/U9 及批次 1 门禁。全程不推送；WebDAV 凭据只用于读取。
+P3c 提交 2ed7b12c8、P3d 提交 d05d6a7fb；完成 U9 及批次 1 门禁，再进入批次 2。全程不推送；WebDAV 凭据只用于读取。

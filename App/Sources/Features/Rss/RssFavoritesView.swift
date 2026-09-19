@@ -25,7 +25,7 @@ struct RssFavoritesView: View {
             if stars.isEmpty { Text("暂无收藏").foregroundStyle(.secondary) }
             if let error { Text(error).foregroundStyle(.red) }
         }
-        .navigationTitle("RSS 收藏")
+        .legadoNavigationTitle("RSS 收藏")
         .task { await reload() }
         .refreshable { await reload() }
     }

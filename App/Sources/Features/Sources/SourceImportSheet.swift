@@ -79,7 +79,7 @@ struct SourceImportSheet: View {
                 }
             }
             .disabled(isBusy)
-            .navigationTitle("导入\(title)")
+            .legadoNavigationTitle("导入\(title)")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("取消") { cancel(); dismiss() }.disabled(isBusy)

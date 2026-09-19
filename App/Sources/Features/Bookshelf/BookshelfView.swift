@@ -7,6 +7,7 @@ struct BookshelfView: View {
         let book: BookRow
         let editing: Bool
     }
+    @Environment(\.themeColors) private var themeColors
     @Environment(AppContainer.self) private var container
     @State private var model: BookshelfViewModel
     @State private var selecting = false
@@ -50,7 +51,7 @@ struct BookshelfView: View {
                             bookSummary(book)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding()
-                                .background(Theme.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
+                                .background(themeColors.accent.opacity(0.08), in: RoundedRectangle(cornerRadius: 12))
                         }
                     }
                     .padding()
@@ -62,7 +63,7 @@ struct BookshelfView: View {
             }
             }
         }
-        .navigationTitle("书架")
+        .legadoNavigationTitle("书架")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
@@ -217,7 +218,7 @@ struct BookshelfView: View {
                     .frame(width: 60, height: 84)
                 Text(book.name.isEmpty ? "未命名书籍" : book.name).font(Theme.bookTitle)
                 Text(book.author.isEmpty ? "未知作者" : book.author)
-                if book.lastCheckCount > 0 { Text("新增 \(book.lastCheckCount) 章").foregroundStyle(Theme.accent) }
+                if book.lastCheckCount > 0 { Text("新增 \(book.lastCheckCount) 章").foregroundStyle(themeColors.accent) }
                 if book.type & 16 != 0 { Text("更新失败").foregroundStyle(.red) }
                 Text("已读 \(min(max(0, book.durChapterIndex), max(0, book.totalChapterNum))) / 共 \(max(0, book.totalChapterNum)) 章")
                 Text("来源：\(book.originName.isEmpty ? book.origin : book.originName)")

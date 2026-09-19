@@ -11,7 +11,7 @@ import LegadoCore
             TextEditor(text: $model.text).font(.system(.caption, design: .monospaced)).frame(minHeight: 280)
             Button("保存封面规则") { Task { await model.save() } }
             if let message = model.message { Text(message) }
-        }.navigationTitle("封面规则").task { await model.load() }
+        }.legadoNavigationTitle("封面规则").task { await model.load() }
     }
 }
 
@@ -33,7 +33,7 @@ import LegadoCore
                     }
                 }
             }
-        }.navigationTitle("阅读记录").task {
+        }.legadoNavigationTitle("阅读记录").task {
             do { records = try await container.readProgress.all().sorted { $0.lastRead > $1.lastRead } }
             catch { self.error = error.localizedDescription }
         }

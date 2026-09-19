@@ -39,6 +39,6 @@ import UIKit
                 Text("当前安装包未包含备用图标，暂不能切换。")
             }
             if let message = model.message { Text(message) }
-        }.navigationTitle("应用图标")
+        }.legadoNavigationTitle("应用图标")
     }
 }

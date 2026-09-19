@@ -66,7 +66,7 @@ struct BookDetailView: View {
             }
             .padding()
         }
-        .navigationTitle("书籍详情")
+        .legadoNavigationTitle("书籍详情")
         .task {
             if model.book == nil { await model.load() }
             else { await model.refreshShelfState() }

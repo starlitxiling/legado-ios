@@ -34,7 +34,7 @@ struct RuleSubSettingsView: View {
             if let message = model.message { Text(message) }
         }
         .disabled(model.isBusy)
-        .navigationTitle("规则订阅")
+        .legadoNavigationTitle("规则订阅")
         .toolbar { Button("添加") { editing = nil; showEditor = true } }
         .task { await model.load() }
         .sheet(isPresented: $showEditor) { RuleSubEditor(value: editing ?? RuleSub(), model: model) }
@@ -61,7 +61,7 @@ private struct RuleSubEditor: View {
                 Text("自动更新选项用于保存订阅配置；当前可通过列表按钮手动更新。").font(.caption)
                 if let error = model.errorMessage { Text(error).foregroundStyle(.red) }
             }
-            .navigationTitle("编辑订阅")
+            .legadoNavigationTitle("编辑订阅")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {

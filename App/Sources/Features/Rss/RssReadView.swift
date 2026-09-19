@@ -16,7 +16,7 @@ struct RssReadView: View {
                 RssWebView(content: content, source: model.source, client: client, error: $model.error)
             } else if model.error == nil { ProgressView() }
         }
-        .navigationTitle(model.article.title)
+        .legadoNavigationTitle(model.article.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             if !model.isStartPage {

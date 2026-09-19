@@ -40,8 +40,7 @@ enum ScriptHostBridge {
         let mode = preferences.string("themeMode")
         let night = mode == "2" || (mode == "0" && systemNight)
         let suffix = night ? "Night" : ""
-        var theme = preferences.currentTheme(name: preferences.string("durThemeName" + suffix), night: night)
-        theme.transparentNavBar = preferences.defaults.bool(forKey: "transparentNavBar" + suffix)
+        let theme = preferences.currentTheme(name: preferences.string("durThemeName" + suffix), night: night)
         do {
             let text = String(decoding: try JSONEncoder().encode(theme), as: UTF8.self)
             JsPlatformServices.shared.updateAppearance(mode: mode, configuration: text)

@@ -32,7 +32,7 @@ struct LocalImportView: View {
                 NavigationLink("TXT 目录规则") { TxtTocRulesView(database: database) }
             }
         }
-        .navigationTitle("导入本地书")
+        .legadoNavigationTitle("导入本地书")
         .sheet(isPresented: $showsPicker) {
             LocalDocumentPicker { urls in
                 showsPicker = false

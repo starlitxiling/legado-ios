@@ -16,6 +16,7 @@ struct LegadoApp: App {
 
 struct AppStartupView: View {
     @ObservedObject var appDelegate: LegadoAppDelegate
+    @State private var theme = ThemeStore(preferences: .shared)
 
     var body: some View {
         Group {
@@ -34,7 +35,7 @@ struct AppStartupView: View {
             }
         }
         .modifier(ScriptHostModifier())
-        .tint(Theme.accent)
+        .modifier(ThemeEnvironmentModifier(store: theme))
         .task { appDelegate.openDatabase() }
     }
 }

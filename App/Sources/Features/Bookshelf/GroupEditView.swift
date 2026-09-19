@@ -46,7 +46,7 @@ struct GroupEditView: View {
             }
             if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
         }
-        .navigationTitle("编辑分组")
+        .legadoNavigationTitle("编辑分组")
         .toolbar { EditButton() }
         .task { await perform { try await repository.ensureBuiltinGroups() } }
     }

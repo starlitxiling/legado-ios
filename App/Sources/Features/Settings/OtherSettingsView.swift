@@ -64,7 +64,7 @@ struct OtherSettingsView: View {
             }
             if let message { Section { Text(message) } }
         }
-        .navigationTitle("其他设置")
+        .legadoNavigationTitle("其他设置")
         .task {
             do { sources = try await container.bookSources.all().map { try DiscoveryStorage.source($0) } }
             catch { message = error.localizedDescription }

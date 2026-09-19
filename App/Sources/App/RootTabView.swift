@@ -60,7 +60,7 @@ struct RootTabView: View {
     private func placeholder(_ title: String, image: String, message: String) -> some View {
         NavigationStack {
             EmptyStateView(title: title, systemImage: image, message: message)
-                .navigationTitle(title)
+                .legadoNavigationTitle(title)
         }
         .tabItem { Label(title, systemImage: image) }
     }

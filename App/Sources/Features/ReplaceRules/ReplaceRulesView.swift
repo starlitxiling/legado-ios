@@ -50,7 +50,7 @@ struct ReplaceRulesView: View {
                     .allowsHitTesting(false)
             }
         }
-        .navigationTitle("替换规则")
+        .legadoNavigationTitle("替换规则")
         .searchable(text: $model.keyword, prompt: "名称、匹配文本或分组")
         .refreshable { await model.load() }
         .toolbar {

@@ -50,7 +50,7 @@ struct GeneralSettingsView: View {
                 TextField("设备名", text: string("webDavDeviceName"))
             }
         }
-        .navigationTitle("通用设置")
+        .legadoNavigationTitle("通用设置")
         .onAppear { preferences.reload() }
     }
 

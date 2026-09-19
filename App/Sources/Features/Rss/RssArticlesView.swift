@@ -40,7 +40,7 @@ struct RssArticlesView: View {
             if model.loading { ProgressView() }
             else if model.nextURL != nil { Button("加载更多") { Task { await model.loadMore() } } }
         }
-        .navigationTitle(model.source.sourceName)
+        .legadoNavigationTitle(model.source.sourceName)
         .task(id: model.columnIndex) { await model.refresh() }
         .refreshable { await model.refresh() }
     }

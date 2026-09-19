@@ -52,7 +52,7 @@ final class AppPreferencesTests: XCTestCase {
         defer { defaults.removePersistentDomain(forName: suite) }
         let preferences = AppPreferences(defaults: defaults)
         let expectedTrue = "coverShowName coverShowAuthor coverShowNameN coverShowAuthorN coverTitleAdaptive welcomeShowText welcomeShowIcon welcomeShowTextDark welcomeShowIconDark showDiscovery showRss replaceEnableDefault autoClearExpired showAddToShelfAlert showMangaUi jsSourceApiTokenRequired autoCheckNewBackup"
-        let expectedFalse = "coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome auto_refresh onlyUpdateRead defaultToRead showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore syncBookProgressPlus"
+        let expectedFalse = "transparentNavBar transparentNavBarNight coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome auto_refresh onlyUpdateRead defaultToRead showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore syncBookProgressPlus"
         for key in expectedTrue.split(separator: " ") { XCTAssertEqual(preferences.snapshot[String(key)], .boolean(true), String(key)) }
         for key in expectedFalse.split(separator: " ") { XCTAssertEqual(preferences.snapshot[String(key)], .boolean(false), String(key)) }
         let integers: [String: Int32] = ["fontScale": 0, "backgroundImageBlurring": 0, "backgroundImageNightBlurring": 0,
@@ -81,7 +81,7 @@ final class AppPreferencesTests: XCTestCase {
         preferences.set("coverKeepPunctuation", .boolean(true))
         XCTAssertEqual(preferences.coverText(title: "书！", author: "作者", night: false).title, "书！")
         preferences.set("colorAccentNight", .int(-123))
-        preferences.saveTheme(name: "测试", night: true)
+        try preferences.saveTheme(name: "测试", night: true)
         preferences.set("colorAccentNight", .int(0))
         try preferences.applyTheme(XCTUnwrap(preferences.themes.first { $0.themeName == "测试" }))
         XCTAssertEqual(preferences.integer("colorAccentNight"), -123)
@@ -97,7 +97,7 @@ final class AppPreferencesTests: XCTestCase {
         let preferences = AppPreferences(defaults: defaults)
         var expected: [String: AndroidPreferenceValue] = [:]
         for key in "coverShowName coverShowAuthor coverShowNameN coverShowAuthorN coverTitleAdaptive welcomeShowText welcomeShowIcon welcomeShowTextDark welcomeShowIconDark showDiscovery showRss replaceEnableDefault autoClearExpired showAddToShelfAlert showMangaUi jsSourceApiTokenRequired autoCheckNewBackup autoBackup autoBackupWebDav syncBookProgress onlyLatestBackup".split(separator: " ") { expected[String(key)] = .boolean(true) }
-        for key in "coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome useDefaultCover auto_refresh onlyUpdateRead defaultToRead showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore syncBookProgressPlus loadCoverOnlyWifi".split(separator: " ") { expected[String(key)] = .boolean(false) }
+        for key in "transparentNavBar transparentNavBarNight coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome useDefaultCover auto_refresh onlyUpdateRead defaultToRead showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore syncBookProgressPlus loadCoverOnlyWifi".split(separator: " ") { expected[String(key)] = .boolean(false) }
         for key in "backgroundImage backgroundImageNight welcomeImagePath welcomeImagePathDark coverFont userAgent customHosts jsSourceApiToken backupUri localPassword defaultCover defaultCoverDark readRecordCover readRecordCoverDark durThemeName durThemeNameNight".split(separator: " ") { expected[String(key)] = .string("") }
         for (key, value) in ["themeMode": "0", "language": "auto", "webDavDir": "legado", "defaultHomePage": "bookshelf", "launcherIcon": "ic_launcher"] { expected[key] = .string(value) }
         for (key, value): (String, Int32) in ["fontScale": 0, "backgroundImageBlurring": 0, "backgroundImageNightBlurring": 0,

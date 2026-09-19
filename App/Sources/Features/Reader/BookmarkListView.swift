@@ -22,7 +22,7 @@ struct BookmarkListView: View {
                     .swipeActions { Button("删除", role: .destructive) { Task { await model.deleteBookmark(bookmark) } } }
                 }
             }
-            .navigationTitle("书签")
+            .legadoNavigationTitle("书签")
             .toolbar { Button("完成") { dismiss() } }
         }
     }

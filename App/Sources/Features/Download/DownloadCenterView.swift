@@ -27,7 +27,7 @@ struct DownloadCenterView: View {
             }
             if let error = model.errorMessage { Text(error).foregroundStyle(.red) }
         }
-        .navigationTitle("下载中心")
+        .legadoNavigationTitle("下载中心")
         .task { await model.poll() }
     }
 
@@ -86,7 +86,7 @@ struct BookCacheExportView: View {
             if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
             if let error = model.errorMessage { Text(error).foregroundStyle(.red) }
         }
-        .navigationTitle("缓存与导出")
+        .legadoNavigationTitle("缓存与导出")
     }
 
     private var valid: Bool { book.totalChapterNum > 0 && start <= end }

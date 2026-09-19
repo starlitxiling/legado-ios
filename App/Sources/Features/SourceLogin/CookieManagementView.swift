@@ -21,7 +21,7 @@ struct CookieManagementView: View {
                 }
             }
         }
-        .navigationTitle("Cookie 管理")
+        .legadoNavigationTitle("Cookie 管理")
         .overlay { if domains.isEmpty && errorMessage == nil { ContentUnavailableView("没有 Cookie", systemImage: "tray") } }
         .task { await load() }
         .refreshable { await load() }

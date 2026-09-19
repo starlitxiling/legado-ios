@@ -25,6 +25,6 @@ struct WebServiceView: View {
                 Text("WebSocket 书源调试与搜索暂未提供。")
             }
         }
-        .navigationTitle("Web 服务")
+        .legadoNavigationTitle("Web 服务")
     }
 }

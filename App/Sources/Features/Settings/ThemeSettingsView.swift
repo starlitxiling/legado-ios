@@ -4,6 +4,8 @@ import UIKit
 @MainActor struct ThemeSettingsView: View {
     let preferences: AppPreferences
     @Environment(\.colorScheme) private var colorScheme
+    @Environment(ThemeStore.self) private var themeStore
+    @Environment(\.themeColors) private var themeColors
     @State private var themeName = ""
     @State private var message: String?
     private var controls: PreferenceControls { .init(preferences: preferences) }
@@ -12,25 +14,45 @@ import UIKit
         Form {
             Section("主题") {
                 NavigationLink("应用图标") { LauncherIconSettingsView(preferences: preferences) }
-                Picker("模式", selection: controls.string("themeMode")) {
-                    Text("跟随系统").tag("0"); Text("浅色").tag("1"); Text("深色").tag("2"); Text("墨水屏").tag("3")
-                }
-                Picker("字体缩放", selection: controls.integer("fontScale")) {
-                    Text("跟随系统").tag(0)
-                    ForEach(8...16, id: \.self) { Text("\($0 * 10)%").tag($0) }
+                Menu {
+                    ForEach(ThemeMode.allCases, id: \.rawValue) { mode in
+                        Button { themeStore.mode = mode } label: {
+                            if themeStore.mode == mode { Label(modeName(mode), systemImage: "checkmark") }
+                            else { Text(modeName(mode)) }
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Text("模式").foregroundStyle(themeColors.textPrimary)
+                        Spacer()
+                        Text(modeName(themeStore.mode)).foregroundStyle(themeColors.accent)
+                    }.contentShape(Rectangle())
+                }.accessibilityIdentifier("theme.mode")
+                Menu {
+                    Button("跟随系统") { preferences.set("fontScale", .int(0)) }
+                    ForEach(8...16, id: \.self) { scale in
+                        Button("\(scale * 10)%") { preferences.set("fontScale", .int(Int32(scale))) }
+                    }
+                } label: {
+                    HStack {
+                        Text("字体缩放").foregroundStyle(themeColors.textPrimary)
+                        Spacer()
+                        Text(preferences.integer("fontScale") == 0 ? "跟随系统" : "\(preferences.integer("fontScale") * 10)%")
+                            .foregroundStyle(themeColors.accent)
+                    }.contentShape(Rectangle())
                 }
                 NavigationLink("主题列表") {
                     List(preferences.themes, id: \.themeName) { theme in
                         Button(theme.themeName) {
-                            do { try preferences.applyTheme(theme, systemIsNight: colorScheme == .dark); message = "已应用 \(theme.themeName)" }
+                            do { try themeStore.apply(theme, systemIsNight: colorScheme == .dark); message = "已应用 \(theme.themeName)" }
                             catch { message = "主题颜色无效" }
                         }
-                    }.navigationTitle("主题列表")
+                    }.legadoNavigationTitle("主题列表")
                 }
                 controls.text("主题名称", "durThemeName")
                 TextField("保存名称", text: $themeName)
-                Button("保存日间主题") { preferences.saveTheme(name: themeName, night: false) }
-                Button("保存夜间主题") { preferences.saveTheme(name: themeName, night: true) }
+                Button("保存日间主题") { saveTheme(night: false) }
+                Button("保存夜间主题") { saveTheme(night: true) }
                 if let message { Text(message) }
             }
             colors(night: false)
@@ -39,7 +61,21 @@ import UIKit
                 NavigationLink("欢迎页") { WelcomeSettingsView(preferences: preferences) }
                 NavigationLink("封面设置") { CoverSettingsView(preferences: preferences) }
             }
-        }.navigationTitle("主题设置")
+        }.legadoNavigationTitle("主题设置")
+    }
+
+    private func modeName(_ mode: ThemeMode) -> String {
+        switch mode {
+        case .system: "跟随系统"
+        case .light: "浅色"
+        case .dark: "深色"
+        case .eInk: "墨水屏"
+        }
+    }
+
+    private func saveTheme(night: Bool) {
+        do { try themeStore.save(name: themeName, night: night); message = "主题已保存" }
+        catch { message = error.localizedDescription }
     }
 
     private func colors(night: Bool) -> some View {
@@ -81,7 +117,7 @@ import UIKit
                     controls.toggle("显示图标", "welcomeShowIcon" + suffix)
                 }
             }
-        }.navigationTitle("欢迎页")
+        }.legadoNavigationTitle("欢迎页")
     }
 }
 
@@ -120,6 +156,6 @@ import UIKit
                 controls.number("大封面作者 %", "coverAuthorLargeSize", range: 50...200)
                 controls.number("小封面作者 %", "coverAuthorSmallSize", range: 50...200)
             }
-        }.navigationTitle("封面设置")
+        }.legadoNavigationTitle("封面设置")
     }
 }

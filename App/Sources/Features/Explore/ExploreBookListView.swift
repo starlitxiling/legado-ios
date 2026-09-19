@@ -34,7 +34,7 @@ struct ExploreBookListView: View {
             }
             if !model.hasMore { Text(model.books.isEmpty ? "暂无书籍" : "已加载全部书籍").foregroundStyle(.secondary) }
         }
-        .navigationTitle(kind.title)
+        .legadoNavigationTitle(kind.title)
         .task { await model.select(kind) }
         .refreshable { await model.select(kind) }
     }

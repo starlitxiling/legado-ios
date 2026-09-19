@@ -26,6 +26,6 @@ struct BookInfoEditView: View {
             Button("保存") { Task { if await model.save() { dismiss() } } }
                 .disabled(model.isSaving)
         }
-        .navigationTitle("编辑书籍信息")
+        .legadoNavigationTitle("编辑书籍信息")
     }
 }

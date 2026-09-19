@@ -42,7 +42,7 @@ struct RulesManagementView: View {
                 }
             }
         }
-        .navigationTitle(model.kind == .txt ? "TXT 目录规则" : "字典规则")
+        .legadoNavigationTitle(model.kind == .txt ? "TXT 目录规则" : "字典规则")
         .toolbar {
             Button("新建", systemImage: "plus") {
                 model.newRule(now: Int64(Date().timeIntervalSince1970 * 1000)); showEditor = true
@@ -71,7 +71,7 @@ struct RulesManagementView: View {
                     }
                 }
                 .textInputAutocapitalization(.never).autocorrectionDisabled()
-                .navigationTitle("编辑规则")
+                .legadoNavigationTitle("编辑规则")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("取消") { showEditor = false } }
                     ToolbarItem(placement: .confirmationAction) {
@@ -87,7 +87,7 @@ struct RulesManagementView: View {
                         .textInputAutocapitalization(.never).autocorrectionDisabled()
                     if let error = model.errorMessage { Text(error).foregroundStyle(.red) }
                 }
-                .navigationTitle("粘贴 JSON")
+                .legadoNavigationTitle("粘贴 JSON")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("取消") { showImport = false } }
                     ToolbarItem(placement: .confirmationAction) {

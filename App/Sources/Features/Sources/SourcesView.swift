@@ -75,7 +75,7 @@ struct SourcesView: View {
                     .allowsHitTesting(false)
             }
         }
-        .navigationTitle("书源")
+        .legadoNavigationTitle("书源")
         .searchable(text: $model.keyword, prompt: "名称、地址或分组")
         .refreshable { await model.load() }
         .toolbar {

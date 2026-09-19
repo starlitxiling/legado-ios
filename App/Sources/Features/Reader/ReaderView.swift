@@ -7,6 +7,7 @@ import Network
 @MainActor
 struct ReaderView: View {
     let destination: ReaderDestination
+    @Environment(\.themeColors) private var themeColors
     @State private var model: ReaderViewModel
     @State private var readAloud: ReadAloudController
     @State private var showsReadAloud = false
@@ -81,10 +82,11 @@ struct ReaderView: View {
     }
 
     private var background: Color {
+        if themeColors.isEInk { return themeColors.background }
         switch model.settings.theme {
         case .day: return Color(white: 238 / 255)
         case .night: return .black
-        case .eyeCare: return Color(red: 0.8, green: 0.91, blue: 0.81)
+        case .eyeCare: return ARGBColor(0xFFCCE8CF).color
         }
     }
 
@@ -94,7 +96,7 @@ struct ReaderView: View {
             ZStack {
                 background.ignoresSafeArea()
                 VStack(spacing: 0) {
-                    ReaderPagePresentation(mode: model.settings.pageAnim,
+                    ReaderPagePresentation(mode: themeColors.palette.pageAnimation(model.settings.pageAnim),
                         page: model.chapterPosition * 1_000_000 + model.pageIndex,
                         progress: autoRead.progress, turn: scrollTurnPage) {
                         pageContent(index: model.pageIndex, size: pageSize)
@@ -298,7 +300,7 @@ struct ReaderView: View {
                     Text("护眼").tag(ReaderTheme.eyeCare)
                 }
             }
-            .navigationTitle("阅读设置")
+            .legadoNavigationTitle("阅读设置")
             .toolbar { Button("完成") { showsSettings = false } }
         }.presentationDetents([.large])
     }
@@ -319,7 +321,7 @@ struct ReaderView: View {
                     }
                 }.disabled(model.isLoading)
             }
-            .navigationTitle("目录")
+            .legadoNavigationTitle("目录")
             .safeAreaInset(edge: .bottom) {
                 Text("已缓存 \(model.cachedChapterIndices.count) / \(model.chapters.count) 章").font(.caption).padding()
             }
@@ -393,7 +395,7 @@ struct ReaderView: View {
                     if !item.note.isEmpty { Text(item.note).foregroundStyle(.secondary) }
                 }
                 .swipeActions { Button("删除", role: .destructive) { Task { await model.deleteHighlight(item) } } }
-            }.navigationTitle("本章高亮与批注")
+            }.legadoNavigationTitle("本章高亮与批注")
                 .toolbar { Button("完成") { showsHighlights = false } }
         }
     }

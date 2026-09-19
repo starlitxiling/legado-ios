@@ -19,7 +19,7 @@ struct WebLoginView: View {
 
     var body: some View {
         WebLoginBrowser(webView: webView, url: url)
-            .navigationTitle("网页登录")
+            .legadoNavigationTitle("网页登录")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("完成") {

@@ -55,7 +55,7 @@ struct BookSourceEditView: View {
                 }
             }
         }
-        .navigationTitle("书源编辑")
+        .legadoNavigationTitle("书源编辑")
         .toolbar {
             ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
             ToolbarItem(placement: .confirmationAction) { Button("保存") { Task { await save() } }.disabled(saving) }

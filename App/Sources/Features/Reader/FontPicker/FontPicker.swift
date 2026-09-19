@@ -61,7 +61,7 @@ struct FontPicker: View {
                 }
             }
         }
-        .navigationTitle("字体")
+        .legadoNavigationTitle("字体")
         .task { ReaderFonts.registerInstalled(); reload() }
         .fileImporter(isPresented: $showsImporter, allowedContentTypes: [.font]) { result in
             do { selection = try ReaderFonts.install(result.get()); errorMessage = nil; reload() }

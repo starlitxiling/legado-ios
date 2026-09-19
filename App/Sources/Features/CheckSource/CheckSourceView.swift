@@ -33,7 +33,7 @@ struct CheckSourceView: View {
                 }
             }
         }
-        .navigationTitle("书源校验")
+        .legadoNavigationTitle("书源校验")
         .onDisappear { task?.cancel() }
     }
 }

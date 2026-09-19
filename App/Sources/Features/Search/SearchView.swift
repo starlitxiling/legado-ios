@@ -63,7 +63,7 @@ struct SearchView: View {
                 }
             }
         }
-        .navigationTitle("搜索")
+        .legadoNavigationTitle("搜索")
         .task { await model.loadHistory() }
         .searchable(text: $model.query, prompt: "书名或作者")
         .onSubmit(of: .search) { Task { await model.search(model.query) } }

@@ -3,7 +3,6 @@ import SwiftUI
 struct BackupLifecycleModifier: ViewModifier {
     let container: AppContainer
     @Environment(\.scenePhase) private var scenePhase
-    @AppStorage("themeMode") private var themeMode = "0"
     @AppStorage("language") private var language = "auto"
     @State private var model: BackupViewModel?
     @State private var operation: Task<Void, Never>?
@@ -11,9 +10,6 @@ struct BackupLifecycleModifier: ViewModifier {
 
     func body(content: Content) -> some View {
         content
-            .preferredColorScheme(themeMode == "0" ? nil : themeMode == "2" ? .dark : .light)
-            .tint(themeMode == "3" ? .black : Theme.accent)
-            .transaction { if themeMode == "3" { $0.animation = nil } }
             .environment(\.locale, language == "auto" ? .current : Locale(identifier: language == "tw" ? "zh-Hant" : language))
             .task { activate() }
             .overlay(alignment: .top) {

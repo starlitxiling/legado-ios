@@ -64,7 +64,7 @@ struct BackupView: View {
                 Button("重试") { prepare() }
             } else { ProgressView() }
         }
-        .navigationTitle("备份与恢复")
+        .legadoNavigationTitle("备份与恢复")
         .task { if model == nil { prepare() } }
         .confirmationDialog("恢复这份备份？相同记录可能被覆盖。", isPresented: Binding(
             get: { selectedBackup != nil }, set: { if !$0 { selectedBackup = nil } }

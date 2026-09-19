@@ -43,12 +43,12 @@ struct SettingsView: View {
                 }
                 NavigationLink("阅读设置") {
                     Text("字号、行距与主题可在阅读器中设置。")
-                        .padding().navigationTitle("阅读设置")
+                        .padding().legadoNavigationTitle("阅读设置")
                 }
                 NavigationLink("关于") { AboutView() }
             }
         }
-        .navigationTitle("设置")
+        .legadoNavigationTitle("设置")
         .onAppear { preferences.reload() }
     }
 }
@@ -61,13 +61,13 @@ private struct AboutView: View {
                 ForEach(OpenSourceLicense.all, id: \.name) { license in
                     NavigationLink {
                         ScrollView { Text(license.text).textSelection(.enabled).padding() }
-                            .navigationTitle(license.name)
+                            .legadoNavigationTitle(license.name)
                     } label: {
                         LabeledContent(license.name, value: license.kind)
                     }
                 }
             }
         }
-        .navigationTitle("关于")
+        .legadoNavigationTitle("关于")
     }
 }

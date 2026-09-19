@@ -30,7 +30,7 @@ struct FormLoginView: View {
         }
         .disabled(model.isBusy)
         .overlay { if model.isBusy { ProgressView() } }
-        .navigationTitle("书源登录")
+        .legadoNavigationTitle("书源登录")
         .task { await model.load() }
     }
 }

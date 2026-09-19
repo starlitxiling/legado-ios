@@ -23,7 +23,7 @@ struct ReaderReviewView: View {
                     }
                 }
             }
-            .navigationTitle("段评")
+            .legadoNavigationTitle("段评")
             .toolbar { Button("完成") { dismiss() } }
             .task(id: paragraph) {
                 isLoading = true; errorMessage = nil

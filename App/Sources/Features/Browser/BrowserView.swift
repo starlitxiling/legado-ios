@@ -14,7 +14,7 @@ struct BrowserView: View {
                 BrowserPage(webView: webView)
                 if let error = model.errorMessage { Text(error).foregroundStyle(.red).padding() }
             }
-            .navigationTitle(title)
+            .legadoNavigationTitle(title)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消", action: onCancel) }

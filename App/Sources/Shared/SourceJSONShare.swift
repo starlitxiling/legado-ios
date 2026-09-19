@@ -26,7 +26,7 @@ struct SourceJSONShareView: View {
             }
             if let error { Text(error).foregroundStyle(.secondary) }
         }
-        .padding().navigationTitle("导出与分享")
+        .padding().legadoNavigationTitle("导出与分享")
         .task {
             let filter = CIFilter.qrCodeGenerator()
             filter.message = Data(text.utf8); filter.correctionLevel = "L"
