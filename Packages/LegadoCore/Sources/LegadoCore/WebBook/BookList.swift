@@ -43,7 +43,7 @@ public enum BookList {
         var seen = Set<String>()
         for element in elements {
             try Task.checkCancellation()
-            parser.setContent(element)
+            try parser.setContent(element)
             var book = SearchBook(now: 0)
             book.name = WebBookContext.name(try parser.getString(rule.name))
             guard let name = book.name, !name.isEmpty else { continue }

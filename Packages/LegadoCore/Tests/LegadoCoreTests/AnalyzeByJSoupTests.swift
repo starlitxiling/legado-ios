@@ -22,7 +22,7 @@ final class AnalyzeByJSoupTests: XCTestCase {
         let parser = AnalyzeRule(content: html, engines: [.default: engine])
         XCTAssertEqual(try parser.getStringList("span@html&&script@id"), ["<span>A</span>"])
         XCTAssertEqual(try parser.getStringList("script@id"), [])
-        parser.setContent(html)
+        try parser.setContent(html)
         XCTAssertEqual(try parser.getStringList("script@id"), ["s"])
         XCTAssertEqual(try parser.getStringList("span@html"), ["<span>A</span>"])
         XCTAssertEqual(try parser.getStringList("script@id"), [])

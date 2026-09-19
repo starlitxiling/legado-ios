@@ -30,10 +30,18 @@ public extension SelectorEngine {
 
 /// 规格 §4、§7：尚未提供的引擎与无效正则显式失败。
 public enum RuleEvaluationError: Error, Equatable {
+    case nullContent
     case unsupported(RuleMode)
     case emptyRegex
     case unmatchedCapture(Int)
     case invalidReplacement
+}
+
+extension RuleEvaluationError: LocalizedError {
+    public var errorDescription: String? {
+        if self == .nullContent { return "内容不可空（Content cannot be null）" }
+        return nil
+    }
 }
 
 /// 规格 §4、§5.2：未安装引擎的桩；仅实现无需解析文档的空 JSoup 列表规则。
@@ -82,6 +90,7 @@ func ruleText(_ value: Any?) -> String {
     if let string = value as? String { return string }
     if let number = value as? NSNumber, CFGetTypeID(number) == CFBooleanGetTypeID() { return number.boolValue ? "true" : "false" }
     if let list = value as? [Any] { return "[" + list.map { ruleText($0) }.joined(separator: ", ") + "]" }
+    if let object = value as? JsObject { return String(describing: object.values) }
     return String(describing: value)
 }
 

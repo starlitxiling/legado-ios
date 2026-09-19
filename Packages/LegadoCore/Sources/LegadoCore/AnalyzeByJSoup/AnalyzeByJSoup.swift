@@ -35,6 +35,15 @@ public final class AnalyzeByJSoup: SelectorEngine {
         }
     }
 
+    public func evaluate(_ rule: String, content: Any, operation: RuleOperation, isCSS: Bool, context: AnalyzeRule) throws -> Any? {
+        let root = try context.jsoupRoot(for: content)
+        if operation == .element || operation == .elements {
+            return try elements(root, isCSS ? "@CSS:" + rule : rule)
+        }
+        let values = try singleStrings(root, rule, isCSS: isCSS)
+        return operation == .string ? (values.isEmpty ? nil : values.joined(separator: "\n")) : values
+    }
+
     /// 规格 §5、§6：空匹配返回 nil。
     public func getString(_ rule: String) throws -> String? {
         let values = try getStringList(rule)
@@ -71,24 +80,25 @@ public final class AnalyzeByJSoup: SelectorEngine {
         let rules = try analyzer.splitRule(separators: ["&&", "||", "%%"])
         var lists: [[String]] = []
         for rule in rules {
-            let values: [String]
-            if source.css {
-                guard let at = rule.lastIndex(of: "@") else { throw EvaluationError.missingCSSKeyword }
-                values = try result(try root.select(String(rule[..<at])).array(), String(rule[rule.index(after: at)...]))
-            } else if rule.isEmpty {
-                values = []
-            } else {
-                let chain = RuleAnalyzer(rule)
-                try chain.trim()
-                let parts = try chain.splitRule(separators: ["@"])
-                var selected = [root]
-                for part in parts.dropLast() { selected = try selected.flatMap { try single($0, part) } }
-                values = selected.isEmpty ? [] : try result(selected, parts.last!)
-            }
+            let values = try singleStrings(root, rule, isCSS: source.css)
             if !values.isEmpty { lists.append(values) }
             if analyzer.elementsType == "||", !values.isEmpty { break }
         }
         return combine(lists, type: analyzer.elementsType)
+    }
+
+    private func singleStrings(_ root: Element, _ rule: String, isCSS: Bool) throws -> [String] {
+        if isCSS {
+            guard let at = rule.lastIndex(of: "@") else { throw EvaluationError.missingCSSKeyword }
+            return try result(try root.select(String(rule[..<at])).array(), String(rule[rule.index(after: at)...]))
+        }
+        guard !rule.isEmpty else { return [] }
+        let chain = RuleAnalyzer(rule)
+        try chain.trim()
+        let parts = try chain.splitRule(separators: ["@"])
+        var selected = [root]
+        for part in parts.dropLast() { selected = try selected.flatMap { try single($0, part) } }
+        return selected.isEmpty ? [] : try result(selected, parts.last!)
     }
 
     private func elements(_ root: Element, _ rawRule: String) throws -> [Element] {
@@ -160,6 +170,6 @@ public final class AnalyzeByJSoup: SelectorEngine {
             }
         default: selected = try root.select(index.selector).array()
         }
-        return index.apply(selected)
+        return try index.apply(selected)
     }
 }

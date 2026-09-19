@@ -209,7 +209,8 @@ final class WebBookContext {
         let chapterStore = chapter.map { RuleVariableStore(name: $0.title ?? "") }
         let parser = AnalyzeRule(content: body, engines: [.default: AnalyzeByJSoup(), .xpath: AnalyzeByXPath(),
             .json: AnalyzeByJSonPath(), .js: js], chapter: chapterStore, book: bookStore, source: sourceStore)
-        parser.scriptBaseUrl = baseURL
+        parser.setBaseUrl(baseURL)
+        parser.setRedirectUrl(baseURL)
         return parser
     }
 
@@ -244,8 +245,10 @@ final class WebBookContext {
     }
 
     static func url(_ parser: AnalyzeRule, rule: String?, base: String, redirect: String? = nil) throws -> String {
-        let value = try parser.getString(rule, isURL: true)
-        return value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? base : absolute(value, base: redirect ?? base)
+        parser.setBaseUrl(base)
+        parser.setRedirectUrl(redirect ?? base)
+        guard let rule, !rule.isEmpty else { return base }
+        return try parser.getString(rule, isURL: true)
     }
 
     var bookType: Int {
@@ -297,10 +300,7 @@ final class WebBookContext {
     }
 
     func urls(_ parser: AnalyzeRule, rule: String?, base: String) throws -> [String] {
-        var seen = Set<String>()
-        return try (parser.getStringList(rule) ?? []).compactMap { value in
-            let url = Self.absolute(value, base: base)
-            return !url.isEmpty && url != base && seen.insert(url).inserted ? url : nil
-        }
+        parser.setRedirectUrl(base)
+        return try parser.getStringList(rule, isURL: true) ?? []
     }
 }

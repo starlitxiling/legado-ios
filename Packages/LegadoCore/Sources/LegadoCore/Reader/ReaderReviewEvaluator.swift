@@ -23,20 +23,20 @@ public enum ReaderReviewEvaluator {
         if number <= Double(Int32.min) { return Int(Int32.min) }
         return Int(number)
     }
-    private static func parser(_ body: String, supplied: AnalyzeRule?) -> AnalyzeRule {
+    private static func parser(_ body: String, supplied: AnalyzeRule?) throws -> AnalyzeRule {
         let parser = supplied ?? AnalyzeRule(engines: [.default: AnalyzeByJSoup(), .xpath: AnalyzeByXPath(), .json: AnalyzeByJSonPath()])
-        parser.setContent(body)
+        try parser.setContent(body)
         return parser
     }
 
     public static func summary(body: String, rule: ReviewRule, parser supplied: AnalyzeRule? = nil) throws -> ReaderReviewSummary {
         guard rule.enabled, let list = rule.summaryListRule, !list.isEmpty,
               let indexRule = rule.summaryParagraphIndexRule, !indexRule.isEmpty else { return ReaderReviewSummary() }
-        let parser = parser(body, supplied: supplied)
+        let parser = try parser(body, supplied: supplied)
         let items = try parser.getElements(list)
         var result = ReaderReviewSummary()
         for (offset, item) in items.enumerated() {
-            parser.setContent(item)
+            try parser.setContent(item)
             let indexValue = try? parser.getString(indexRule)
             let index = indexValue.flatMap(parseInt) ?? offset + 1
             let count = (try? parser.getString(rule.summaryCountRule)).flatMap(parseInt) ?? 0
@@ -50,9 +50,9 @@ public enum ReaderReviewEvaluator {
 
     public static func details(body: String, rule: ReviewRule, parser supplied: AnalyzeRule? = nil) throws -> [ReaderReviewItem] {
         guard rule.enabled, let list = rule.detailListRule, !list.isEmpty else { return [] }
-        let parser = parser(body, supplied: supplied)
+        let parser = try parser(body, supplied: supplied)
         return try parser.getElements(list).enumerated().map { offset, item in
-            parser.setContent(item)
+            try parser.setContent(item)
             return ReaderReviewItem(id: (try? parser.getString(rule.detailIdRule)).flatMap { $0.isEmpty ? nil : $0 } ?? String(offset),
                 name: (try? parser.getString(rule.detailNameRule)) ?? "",
                 content: (try? parser.getString(rule.detailContentRule)) ?? "",

@@ -28,7 +28,7 @@ public enum BookInfo {
         try Task.checkCancellation()
         let rule = context.source.ruleBookInfo ?? BookInfoRule()
         let parser = try context.parser(body, baseURL: baseURL)
-        if let initial = rule.`init`, !initial.isEmpty { parser.setContent(try parser.getElement(initial)) }
+        if let initial = rule.`init`, !initial.isEmpty { try parser.setContent(try parser.getElement(initial)) }
         var result = book
         let rename = canReName && !(rule.canReName ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let name = WebBookContext.name(try parser.getString(rule.name))

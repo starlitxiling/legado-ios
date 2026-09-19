@@ -27,7 +27,7 @@ final class AnalyzeRuleTests: XCTestCase {
     func testCaptureTemplates() throws {
         let parser = AnalyzeRule(content: ["whole", "A", NSNull()] as [Any])
         XCTAssertEqual(try parser.getString("$0/$1/$2/$9"), "$0/A//")
-        parser.setContent("text")
+        try parser.setContent("text")
         XCTAssertEqual(try parser.getString("$1"), "$1")
         XCTAssertEqual(try parser.splitSourceRule("p{{1}}").first?.mode, .regex)
         XCTAssertEqual(try parser.splitSourceRule("p##x##{{1}}").first?.mode, .default)
@@ -41,7 +41,7 @@ final class AnalyzeRuleTests: XCTestCase {
         XCTAssertEqual(try parser.getString("##[0-9]+##X###"), "X")
         XCTAssertEqual(try parser.getString("##Z##X###"), "")
         XCTAssertEqual(try parser.getString("##[##literal###"), "literal")
-        parser.setContent("a[b[")
+        try parser.setContent("a[b[")
         XCTAssertEqual(try parser.getString("##[##X"), "aXbX")
         XCTAssertEqual(try parser.getString("##b##$8"), "a[$8[")
     }
@@ -66,7 +66,7 @@ final class AnalyzeRuleTests: XCTestCase {
     func testPutAndRepeatedCompilation() throws {
         let parser = AnalyzeRule(content: "abc", ruleData: RuleVariableStore())
         XCTAssertEqual(try parser.getString("@put:{n:'##a##A'}@get:{n}"), "Abc")
-        parser.setContent("abcabc")
+        try parser.setContent("abcabc")
         XCTAssertEqual(try parser.getString("@put:{n:'##a##A'}@get:{n}"), "AbcAbc")
         XCTAssertEqual(try parser.getString("@put:{broken}@get:{missing}"), "")
     }
@@ -76,9 +76,9 @@ final class AnalyzeRuleTests: XCTestCase {
         let parser = AnalyzeRule(content: "A1 B2")
         XCTAssertEqual(try parser.getElement(":([A-Z])([0-9])") as? [String], ["A1", "A", "1"])
         XCTAssertEqual(try parser.getElements(":[A-Z][0-9]&&([0-9])") as? [[String]], [["1", "1"], ["2", "2"]])
-        parser.setContent("a##x##y")
+        try parser.setContent("a##x##y")
         XCTAssertEqual(try parser.getElements(":a##x##y") as? [[String]], [["a##x##y"]])
-        parser.setContent("b ab")
+        try parser.setContent("b ab")
         XCTAssertEqual(try parser.getElements(":(a)?b") as? [[String]], [["b", ""], ["ab", "a"]])
         XCTAssertThrowsError(try parser.getElement(":(a)?b"))
     }

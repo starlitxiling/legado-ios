@@ -92,7 +92,7 @@ public final class JsEngine: SelectorEngine {
         guard let value = value as? JSValue else { return value }
         if value.isNull || value.isUndefined { return nil }
         if value.isNumber { return value.toDouble() }
-        return JavaHost.nativeValue(value.toObject())
+        return JsObject.snapshot(JavaHost.nativeValue(value.toObject()))
     }
 
     private func run(_ script: String, in session: JsSession) throws -> JSValue? {

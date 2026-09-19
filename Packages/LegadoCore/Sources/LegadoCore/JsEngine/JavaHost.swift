@@ -190,8 +190,7 @@ public final class JavaHost {
             }
             guard let content = value(0), !(content is NSNull) else { throw JsEngineError.exception("内容不可空（Content cannot be null）") }
             let parser = try analyzer()
-            parser.setContent(Self.nativeValue(content))
-            if let baseUrl = value(1) as? String { parser.scriptBaseUrl = baseUrl }
+            try parser.setContent(JsObject.snapshot(Self.nativeValue(content)), baseUrl: value(1) as? String)
             return nil
         case "getString":
             guard (1...3).contains(arguments.count), value(0) is String || value(0) is NSNull else {
@@ -199,11 +198,13 @@ public final class JavaHost {
             }
             let rule = value(0) is NSNull ? nil : string(0)
             if arguments.count == 2, let unescape = boolean(1) { return try analyzer().getString(rule, unescape: unescape) }
-            if arguments.count == 3 {
-                guard let isUrl = boolean(2), !isUrl else { throw JsEngineError.unimplemented("java.getString isUrl 重载") }
-            }
-            return try analyzer().getString(rule, content: Self.nativeValue(value(1)))
-        case "getStringList": return try analyzer().getStringList(string(0))
+            guard arguments.count < 3 || boolean(2) != nil else { throw JsEngineError.unimplemented("java.getString isUrl 重载") }
+            return try analyzer().getString(rule, content: JsObject.snapshot(Self.nativeValue(value(1))), isURL: boolean(2) ?? false)
+        case "getStringList":
+            guard (1...3).contains(arguments.count), value(0) is String || value(0) is NSNull,
+                  arguments.count < 3 || boolean(2) != nil else { throw JsEngineError.unimplemented("java.getStringList 重载") }
+            return try analyzer().getStringList(value(0) is NSNull ? nil : string(0),
+                content: JsObject.snapshot(Self.nativeValue(value(1))), isURL: boolean(2) ?? false)
         case "getElement": return try analyzer().getElement(string(0))
         case "getElements": return try analyzer().getElements(string(0))
         case "log": logger(string(0)); return value(0)

@@ -85,8 +85,8 @@ struct JSoupIndex {
         mode = " "
     }
 
-    func apply<T>(_ values: [T]) -> [T] {
-        guard mode != " ", !values.isEmpty else { return values }
+    func apply<T>(_ values: [T]) throws -> [T] {
+        guard mode != " " else { return values }
         let count = values.count
         var indices: [Int] = []
         var seen: Set<Int> = []
@@ -102,6 +102,7 @@ struct JSoupIndex {
                 if start < 0 { start += count }
                 if end < 0 { end += count }
                 if (start < 0 && end < 0) || (start >= count && end >= count) { continue }
+                guard count > 0 else { throw AnalyzeByJSoup.EvaluationError.invalidIndex }
                 start = min(max(start, 0), count - 1)
                 end = min(max(end, 0), count - 1)
                 if start == end || step >= count { append(start); continue }

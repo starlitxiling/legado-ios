@@ -71,7 +71,7 @@ final class JsEngineTests: XCTestCase {
         XCTAssertEqual(try parser.getString("@js:java.getString('tag.p@text','<p>other</p>')"), "other")
         XCTAssertEqual(try parser.getString("@js:java.getString('tag.p@text','<p>other</p>',false)"), "other")
         XCTAssertEqual(try parser.getString("@js:java.getString('@js:src','other')"), "<p>original</p>")
-        XCTAssertThrowsError(try parser.getString("@js:java.getString('x','y',true)"))
+        XCTAssertEqual(try parser.getString("@js:java.getString('x','y',true)"), "")
         XCTAssertThrowsError(try parser.getString("@js:java.getString('x','y',false,42)"))
     }
 

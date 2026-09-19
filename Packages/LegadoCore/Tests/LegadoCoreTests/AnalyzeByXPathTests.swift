@@ -61,7 +61,7 @@ final class AnalyzeByXPathTests: XCTestCase {
         let parser = parser("<div><script id='s'>x</script></div>")
         _ = try parser.getString("div@html")
         XCTAssertEqual(try parser.getStringList("//script/@id"), ["s"])
-        parser.setContent("<script id='new'>new</script>")
+        try parser.setContent("<script id='new'>new</script>")
         XCTAssertEqual(try parser.getStringList("//script/@id"), ["new"])
     }
 

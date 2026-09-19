@@ -1,10 +1,12 @@
 import Foundation
+import JavaScriptCore
 import SwiftSoup
 
 /// 规格 §2、§4、§8：有状态规则求值器；选择器与变量宿主通过协议注入。
 public final class AnalyzeRule {
     var scriptSession: JsSession?
     var scriptBaseUrl: String?
+    public private(set) var redirectUrl: URL?
     /// 规格 §4：当前整份内容；内插子规则与 @put 均以此为输入。
     public private(set) var content: Any?
     /// 规格 §2.1：对象入口冒号规则设置的黏性状态。
@@ -31,11 +33,33 @@ public final class AnalyzeRule {
         self.book = book
         self.ruleData = ruleData
         self.source = source
-        setContent(content)
+        updateContent(content)
     }
 
     /// 规格 §2.2：首尾括号判 JSON；更换内容不重置 isRegex 或已编译字符串规则。
-    public func setContent(_ value: Any?) {
+    public func setContent(_ value: Any?, baseUrl: String? = nil) throws {
+        guard let value, !(value is NSNull),
+              !((value as? JSValue).map { $0.isNull || $0.isUndefined } ?? false) else {
+            throw RuleEvaluationError.nullContent
+        }
+        updateContent(value)
+        setBaseUrl(baseUrl)
+    }
+
+    public func setBaseUrl(_ value: String?) {
+        if let value { scriptBaseUrl = value }
+    }
+
+    @discardableResult
+    public func setRedirectUrl(_ value: String) -> URL? {
+        guard !value.lowercased().hasPrefix("data:"), let url = URL(string: value),
+              let scheme = url.scheme?.lowercased(), ["http", "https", "ftp", "file", "jar"].contains(scheme),
+              !["http", "https", "ftp"].contains(scheme) || url.host?.isEmpty == false else { return redirectUrl }
+        redirectUrl = url
+        return url
+    }
+
+    private func updateContent(_ value: Any?) {
         jsoupDocument = nil
         content = value is NSNull ? nil : value
         let text = (value as? String)?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
@@ -47,7 +71,7 @@ public final class AnalyzeRule {
 
     /// 规格 §9.1：只向脚本暴露列出的局部绑定，实体暂提供名称骨架。
     var scriptBindings: [String: Any] {
-        var values: [String: Any] = ["src": content ?? NSNull(),
+        var values: [String: Any] = ["src": JsEngine.nativeValue(content) ?? NSNull(),
             "book": book.map { ["name": $0.name] as Any } ?? NSNull(),
             "chapter": chapter.map { ["title": $0.name] as Any } ?? NSNull(),
             "source": source.map { ["name": $0.name] as Any } ?? NSNull(),
@@ -104,21 +128,44 @@ public final class AnalyzeRule {
         return segments
     }
 
-    /// 规格 §4：默认执行 HTML4 反转义；URL 后处理留给宿主集成层。
+    /// 规格 §4：默认执行 HTML4 反转义，URL 相对重定向地址解析。
     public func getString(_ rule: String?, unescape: Bool = true, content replacementContent: Any? = nil, isURL: Bool = false) throws -> String {
+        guard let rule, !rule.isEmpty else { return "" }
         let previous = isURLString
         isURLString = isURL
         defer { isURLString = previous }
         let result = try evaluate(cached(rule), operation: .string, content: replacementContent)
         let text = result == nil || result is NSNull ? "" : ruleText(result)
-        return unescape ? try HTML4Entities.unescape(text) : text
+        let decoded = unescape ? try HTML4Entities.unescape(text) : text
+        if isURL {
+            return decoded.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? scriptBaseUrl ?? "" : absoluteURL(decoded)
+        }
+        return decoded
     }
 
     /// 规格 §4：字符串按换行拆列表，空规则或非列表结果返回 nil。
-    public func getStringList(_ rule: String?) throws -> [String]? {
-        let value = try evaluate(cached(rule), operation: .stringList)
-        if let text = value as? String { return text.components(separatedBy: "\n") }
-        return value as? [String]
+    public func getStringList(_ rule: String?, content replacementContent: Any? = nil, isURL: Bool = false) throws -> [String]? {
+        let value = try evaluate(cached(rule), operation: .stringList, content: replacementContent)
+        guard let value, !(value is NSNull) else { return nil }
+        let list = (value as? String).map { $0.components(separatedBy: "\n") } ?? value as? [String]
+        guard isURL else { return list }
+        var seen = Set<String>()
+        return ((value as? [Any])?.map { ruleText($0) } ?? list ?? []).compactMap {
+            let url = absoluteURL($0)
+            return !url.isEmpty && seen.insert(url).inserted ? url : nil
+        }
+    }
+
+    private func absoluteURL(_ value: String) -> String {
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let redirectUrl else { return trimmed }
+        if trimmed.isEmpty { return redirectUrl.absoluteString }
+        if trimmed.lowercased().hasPrefix("data:") { return trimmed }
+        if trimmed.hasPrefix("javascript") { return "" }
+        let parts = UrlOptions.parse(trimmed)
+        let address = URL(string: parts.url, relativeTo: redirectUrl)?.absoluteURL.absoluteString ?? parts.url
+        return address + String(trimmed.dropFirst(parts.url.count))
     }
 
     /// 规格 §4：单对象入口支持模板与替换。
@@ -178,6 +225,25 @@ public final class AnalyzeRule {
             let previousSession = scriptSession
             scriptSession = nil
             defer { scriptSession = previousSession }
+            if operation == .string || operation == .stringList, !(content is JsonPathObject),
+               let object = JsEngine.nativeValue(content) as? [String: Any], let first = segments.first {
+                guard content is JSValue || content is JsObject else { return object[first.rule] }
+                for key in first.putMap.keys.sorted() { put(key, value: try getString(first.putMap[key])) }
+                let replacement = try first.makeUpRule(content, context: self)
+                let value: Any?
+                if first.mode == .js || first.mode == .json {
+                    value = try dispatch(replacement.rule, mode: first.mode, content: object, operation: operation)
+                } else if first.parameters.count > 1 { value = replacement.rule }
+                else { value = object[replacement.rule] }
+                guard let value = JsEngine.nativeValue(value), !(value is NSNull) else { return nil }
+                if !replacement.pattern.isEmpty {
+                    if operation == .stringList, let values = value as? [Any] {
+                        return values.map { replacer.apply(ruleText($0), replacement: replacement) }
+                    }
+                    return replacer.apply(ruleText(value), replacement: replacement)
+                }
+                return value
+            }
             var result: Any? = content
             for segment in segments {
                 for key in segment.putMap.keys.sorted() { put(key, value: try getString(segment.putMap[key])) }
@@ -238,9 +304,6 @@ public final class AnalyzeRule {
         let separators = operation == .string && mode != .default ? ["&&", "||"] : ["&&", "||", "%%"]
         let rules = try analyzer.splitRule(separators: separators)
         if rules.count == 1 {
-            if mode == .default {
-                return try selector.evaluate(elementsRule, content: content, operation: operation, isCSS: isCSS, context: self)
-            }
             return try selector.evaluate(rule, content: content, operation: operation, context: self)
         }
         var lists: [[String]] = []

@@ -54,7 +54,7 @@ public struct RssParser {
             func log(_ message: String) { if index == 0 { debugLog?(message) } }
             for key in Array(variables.variables.keys) { variables.setValue(nil, for: key) }
             for (key, value) in listVariables { variables.setValue(value, for: key) }
-            parser.setContent(item)
+            try parser.setContent(item)
             log("┌获取标题")
             let title = try parser.getString(source.ruleTitle)
             log("└\(title)")
