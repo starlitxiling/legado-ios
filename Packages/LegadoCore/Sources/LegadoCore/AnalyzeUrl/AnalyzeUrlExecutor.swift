@@ -16,14 +16,22 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
         public let raw: HttpResponse
         public let body: String
         public let callTime: Int
+        public let requestURL: String?
+        public let ruleURL: String?
+        public let isRedirected: Bool
         public var url: String { raw.finalURL.absoluteString }
         public var code: Int { raw.status }
         public var headers: [String: String] { raw.headers }
         public var isSuccessful: Bool { (200..<300).contains(code) }
-        public init(raw: HttpResponse, body: String, callTime: Int = 0) { self.raw = raw; self.body = body; self.callTime = callTime }
+        public init(raw: HttpResponse, body: String, callTime: Int = 0, requestURL: String? = nil,
+                    ruleURL: String? = nil, isRedirected: Bool = false) {
+            self.raw = raw; self.body = body; self.callTime = callTime
+            self.requestURL = requestURL; self.ruleURL = ruleURL; self.isRedirected = isRedirected
+        }
     }
 
     public let url: String
+    public let ruleURL: String
     public let options: UrlOptions
     private let parser: AnalyzeRule
     private let engine: JsEngine
@@ -64,11 +72,13 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
                 result = (result as NSString).replacingCharacters(in: match.range, with: pages[min(page - 1, pages.count - 1)].trimmingCharacters(in: .whitespacesAndNewlines))
             }
         }
+        ruleURL = result
         let parsed = UrlOptions.parse(result)
         self.options = parsed.options
         if parsed.status == .lenient { engine.logger("链接参数 JSON 格式不规范，请改为规范格式") }
-        let base = UrlOptions.parse(engine.baseUrl).url
-        var address = URL(string: parsed.url, relativeTo: URL(string: base))?.absoluteURL.absoluteString ?? parsed.url
+        let base = UrlOptions.parse(engine.baseUrl).url.trimmingCharacters(in: .whitespacesAndNewlines)
+        let path = parsed.url.trimmingCharacters(in: .whitespacesAndNewlines)
+        var address = URL(string: path, relativeTo: URL(string: base))?.absoluteURL.absoluteString ?? path
         if let target = URL(string: address), let scheme = target.scheme, let host = target.host {
             self.engine.baseUrl = "\(scheme)://\(host)" + (target.port.map { ":\($0)" } ?? "")
         }

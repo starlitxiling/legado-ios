@@ -27,7 +27,7 @@
 | U0 主题基础 | 完成 | 主会话 | ThemeStoreTests / assets/theme-*.png | AppCore 244/0；iOS 构建与模拟器 5 项通过 |
 | U9 通用组件 | 完成 | 主会话 | Shared/Components / assets/components*.png | 逻辑 3/0；iOS 图标与交互 2/0 |
 | 批次 1 门禁 | 完成 | 主会话 | .build/round5/batch1-*.log | Core 599/0、AppCore 247/0、CLI 7/0；iOS 构建/启动通过 |
-| 批次 2：P4 | 在途 | 主会话 | WebBook 四流程 | 先响应检查与 HTML 复用 |
+| 批次 2：P4 | 在途 | 主会话 | WebBook 四流程 | Core 634/0、AppCore 249/0、CLI 7/0、iOS 构建通过；真实门禁未达标 |
 | 批次 2 其余及批次 3-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -36,4 +36,6 @@
 
 ## 下一步
 
-U0 提交 3428ccdb0；继续 P4 的 14 项接线与真实书源验证，随后 P5/P6/U1-U3。全程不推送；WebDAV 凭据只用于读取。
+最近提交 fff0004db（U9）；P4 流程基础已验证，继续真实回归/去重取舍；随后 P5/P6/U1-U3。全程不推送；WebDAV 凭据只用于读取。
+
+P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。

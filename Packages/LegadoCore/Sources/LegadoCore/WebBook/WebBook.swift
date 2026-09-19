@@ -4,6 +4,7 @@ public enum WebBookError: Error, Equatable {
     case missingRule(String)
     case emptyToc
     case emptyContent
+    case bookNotFound(String, String)
     case emptyDownloadURLs
     case httpStatus(Int, String)
     case unsupported(String)
@@ -17,6 +18,7 @@ public final class WebBook {
     private let cookies: CookieStore
     private let precisionSearch: Bool
     private let tocCountWords: Bool
+    private let configuration: WebBookConfiguration
     private let jsSourceApi = JsSourceApi()
 
     private var isJsSource: Bool {
@@ -28,14 +30,15 @@ public final class WebBook {
     }
 
     public convenience init(source: BookSource, client: any HttpClient, replaceRules: [ReplaceRule] = [],
-                            precisionSearch: Bool = false, tocCountWords: Bool = false,
+                            precisionSearch: Bool = false, tocCountWords: Bool = false, configuration: WebBookConfiguration = .init(),
                             now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }) {
         self.init(source: source, client: client, replaceRules: replaceRules, precisionSearch: precisionSearch,
-                  tocCountWords: tocCountWords, cookies: CookieStore(), now: now)
+                  tocCountWords: tocCountWords, cookies: CookieStore(), configuration: configuration, now: now)
     }
 
     public init(source: BookSource, client: any HttpClient, replaceRules: [ReplaceRule] = [],
                 precisionSearch: Bool = false, tocCountWords: Bool = false, cookies: CookieStore,
+                configuration: WebBookConfiguration = .init(),
                 now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }) {
         self.source = source
         self.client = (client as? any SourceSessionClientProviding)?.client(for: source) ?? client
@@ -44,6 +47,7 @@ public final class WebBook {
         self.precisionSearch = precisionSearch
         self.tocCountWords = tocCountWords
         self.cookies = cookies
+        self.configuration = configuration
     }
 
     public func checkKeyword(default fallback: String) -> String {
@@ -54,41 +58,46 @@ public final class WebBook {
     }
 
     public func search(key: String, page: Int = 1,
-                       filter: BookList.Filter? = nil) async throws -> [SearchBook] {
+                       filter: BookList.Filter? = nil, shouldBreak: ((Int) -> Bool)? = nil) async throws -> [SearchBook] {
         if isJsSource {
-            return try jsSourceEngine().search(key: key, page: page).filter {
-                (!precisionSearch || ($0.name ?? "").contains(key) || ($0.author ?? "").contains(key) || $0.kind?.contains(key) == true)
-                    && (filter?($0.name ?? "", $0.author ?? "", $0.kind) ?? true)
+            var results: [SearchBook] = []
+            for book in try jsSourceEngine().search(key: key, page: page) {
+                if (!precisionSearch || (book.name ?? "").contains(key) || (book.author ?? "").contains(key) || book.kind?.contains(key) == true)
+                    && (filter?(book.name ?? "", book.author ?? "", book.kind) ?? true) { results.append(book) }
+                if shouldBreak?(results.count) == true { break }
             }
+            return results
         }
         guard let url = source.searchUrl, !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw WebBookError.missingRule("searchUrl")
         }
-        let context = try WebBookContext(source: source, client: client, cookies: cookies, sourceAPI: jsSourceApi)
+        let context = try WebBookContext(source: source, client: client, cookies: cookies, sourceAPI: jsSourceApi, configuration: configuration)
         let response = try await context.request(url, baseURL: source.bookSourceUrl ?? "",
                                                  bindings: ["key": key, "page": page])
         return try await BookList.analyze(context: context, body: response.body, baseURL: response.url,
+            requestURL: response.requestURL, ruleURL: response.ruleURL, isRedirected: response.isRedirected,
             isSearch: true, filter: { name, author, kind in
                 (!self.precisionSearch || name.contains(key) || author.contains(key) || kind?.contains(key) == true)
                     && (filter?(name, author, kind) ?? true)
-            })
+            }, shouldBreak: shouldBreak)
     }
 
     public func explore(url: String, page: Int = 1) async throws -> [SearchBook] {
         if isJsSource { return try jsSourceEngine().explore(url: url, page: page) }
-        let context = try WebBookContext(source: source, client: client, cookies: cookies, sourceAPI: jsSourceApi)
+        let context = try WebBookContext(source: source, client: client, cookies: cookies, sourceAPI: jsSourceApi, configuration: configuration)
         let response = try await context.request(url, baseURL: source.bookSourceUrl ?? "", bindings: ["page": page])
-        return try await BookList.analyze(context: context, body: response.body, baseURL: response.url, isSearch: false)
+        return try await BookList.analyze(context: context, body: response.body, baseURL: response.url,
+            requestURL: response.requestURL, ruleURL: response.ruleURL, isRedirected: response.isRedirected, isSearch: false)
     }
 
     public func bookInfo(_ result: SearchBook, canReName: Bool = false) async throws -> Book {
-        var book = Book(now: now())
-        book.bookUrl = result.bookUrl; book.name = result.name; book.author = result.author
-        book.origin = result.origin; book.originName = result.originName; book.originOrder = result.originOrder
-        book.type = result.type; book.kind = result.kind; book.intro = result.intro
-        book.coverUrl = result.coverUrl; book.wordCount = result.wordCount
-        book.latestChapterTitle = result.latestChapterTitle; book.variable = result.variable
-        return try await bookInfo(book, canReName: canReName)
+        try await bookInfo(result.toBook(now: now()), canReName: canReName)
+    }
+
+    public func preciseSearch(name: String, author: String) async throws -> Book {
+        let results = try await search(key: name, filter: { foundName, foundAuthor, _ in foundName == name && foundAuthor == author }, shouldBreak: { $0 > 0 })
+        guard let result = results.first else { throw WebBookError.bookNotFound(name, author) }
+        return result.toBook(now: now())
     }
 
     public func bookInfo(_ book: Book, canReName: Bool = false) async throws -> Book {
@@ -97,31 +106,39 @@ public final class WebBook {
 
     public func bookInfoDetails(_ book: Book, canReName: Bool = false) async throws -> BookInfo.Result {
         if isJsSource { return try jsSourceEngine().bookInfo(book, canReName: canReName) }
-        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi)
+        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi, configuration: configuration)
+        if let body = book.infoHtml, !body.isEmpty {
+            return try await BookInfo.analyzeDetails(context: context, book: book, body: body,
+                baseURL: book.bookUrl ?? "", redirectURL: book.bookUrl, canReName: canReName)
+        }
         let response = try await context.request(book.bookUrl ?? "", baseURL: source.bookSourceUrl ?? "")
         return try await BookInfo.analyzeDetails(context: context, book: book, body: response.body,
             baseURL: book.bookUrl ?? "", redirectURL: response.url, canReName: canReName)
     }
 
-    public func chapterList(book: inout Book) async throws -> [BookChapter] {
+    public func chapterList(book: inout Book, previousChapters: [BookChapter] = [],
+                            runPreUpdate: Bool = false, fromBookInfo: Bool = false) async throws -> [BookChapter] {
         if LocalBook.isLocal(book) {
             let chapters = try LocalBook.chapterList(book: book)
             book.totalChapterNum = chapters.count
             book.latestChapterTitle = chapters.last?.title
             return chapters
         }
-        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi)
-        let chapters: [BookChapter]
+        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi, configuration: configuration)
+        var chapters: [BookChapter]
         if isJsSource { chapters = try jsSourceEngine().chapters(book: book) }
-        else { chapters = try await BookChapterList.load(context: context, book: book, tocCountWords: tocCountWords) }
-        if !isJsSource { book.variable = try context.bookStore.snapshot().variable }
+        else { chapters = try await BookChapterList.load(context: context, book: book, tocCountWords: tocCountWords,
+            runPreUpdate: runPreUpdate, fromBookInfo: fromBookInfo) }
+        if !isJsSource { book = try context.bookStore.snapshot() }
+        chapters = BookChapterList.upChapterInfo(chapters, previous: previousChapters, enabled: tocCountWords)
         let timestamp = now()
         if book.totalChapterNum < chapters.count {
             book.lastCheckCount = chapters.count - book.totalChapterNum
             book.latestChapterTime = timestamp
         }
         book.totalChapterNum = chapters.count; book.lastCheckTime = timestamp
-        book.latestChapterTitle = try processor.title(book: book, chapter: chapters[chapters.count - 1])
+        let simulatedIndex = book.simulatedTotalChapterNum(now: Date(timeIntervalSince1970: Double(timestamp) / 1000)) - 1
+        book.latestChapterTitle = try processor.title(book: book, chapter: chapters[chapters.indices.contains(simulatedIndex) ? simulatedIndex : chapters.count - 1])
         let current = chapters.indices.contains(book.durChapterIndex) ? book.durChapterIndex : chapters.count - 1
         book.durChapterTitle = try processor.title(book: book, chapter: chapters[current])
         return chapters
@@ -129,15 +146,47 @@ public final class WebBook {
 
     public func content(book: Book, chapter: BookChapter, nextChapterUrl: String? = nil,
                         includeTitle: Bool = true) async throws -> BookContent.Result {
-        if isJsSource && !LocalBook.isLocal(book) {
-            let raw = try jsSourceEngine().content(book: book, chapter: chapter, nextChapterUrl: nextChapterUrl)
-            let processed = try processor.getContent(book: book, chapter: chapter, content: raw, includeTitle: includeTitle)
-            return BookContent.Result(chapter: chapter, rawContent: raw, text: processed.text,
-                paragraphs: processed.paragraphs, imageStyle: book.readConfig?.imageStyle ?? (source.bookSourceType == 2 ? "FULL" : nil), payAction: nil)
+        try await BookContent.cached(source: source, book: book, chapter: chapter, client: client, cookies: cookies,
+            configuration: configuration, processor: processor, includeTitle: includeTitle) {
+            if isJsSource && !LocalBook.isLocal(book) {
+                let raw = try jsSourceEngine().content(book: book, chapter: chapter, nextChapterUrl: nextChapterUrl)
+                let processed = try processor.getContent(book: book, chapter: chapter, content: raw, includeTitle: includeTitle)
+                return BookContent.Result(chapter: chapter, rawContent: raw, text: processed.text,
+                    paragraphs: processed.paragraphs, imageStyle: book.readConfig?.imageStyle ?? source.ruleContent?.imageStyle ?? (source.bookSourceType == 2 ? "FULL" : nil), payAction: source.ruleContent?.payAction)
+            }
+            let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi, configuration: configuration)
+            return try await BookContent.load(context: context, book: book, chapter: chapter,
+                nextChapterURL: nextChapterUrl, processor: processor, includeTitle: includeTitle)
         }
-        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi)
-        return try await BookContent.load(context: context, book: book, chapter: chapter,
-            nextChapterURL: nextChapterUrl, processor: processor, includeTitle: includeTitle)
+    }
+
+    public func contentBatch(book: Book, chapters: [BookChapter]) async throws -> [BookChapter] {
+        try Task.checkCancellation()
+        guard !chapters.isEmpty else { return [] }
+        guard let directory = configuration.cacheDirectory else { throw WebBookError.missingRule("cacheDirectory") }
+        let script = source.ruleContent?.contentBatch?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard isJsSource || !script.isEmpty else { throw WebBookError.missingRule("contentBatch") }
+        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies,
+            sourceAPI: jsSourceApi, configuration: configuration)
+        let base = (book.tocUrl ?? "").isEmpty ? source.bookSourceUrl ?? "" : book.tocUrl ?? ""
+        let engine = try context.engine(baseURL: base)
+        let parser = try context.parser("", baseURL: base, chapter: chapters.first, engine: engine)
+        let batch = try BatchContentContext(chapters: chapters, context: context, book: book, directory: directory)
+        parser.batchContent = batch
+        defer { batch.close(); parser.batchContent = nil }
+        let values = try chapters.map(WebBookContext.object)
+        try await context.limiter.acquire(key: source.bookSourceUrl, rate: source.concurrentRate)
+        if isJsSource {
+            _ = try engine.evaluateScript((source.mainJs ?? "") + "\n;if(typeof getContentBatch === 'function') getContentBatch(chapters, book);",
+                bindings: ["chapters": values], context: parser)
+        } else if script.lowercased().hasPrefix("<js>") || script.lowercased().hasPrefix("@js:") {
+            for rule in try parser.splitSourceRule(script) {
+                guard rule.mode == .js else { throw JsEngineError.exception("contentBatch only accepts JavaScript") }
+                _ = try engine.evaluateScript(rule.rule, bindings: ["result": values], context: parser)
+            }
+        } else { _ = try engine.evaluateScript(script, bindings: ["result": values], context: parser) }
+        try Task.checkCancellation()
+        return batch.missingChapters()
     }
 
     public func resolvePayAction(book: Book, chapter: BookChapter) async throws -> String {
@@ -145,7 +194,7 @@ public final class WebBook {
         guard let action = source.ruleContent?.payAction, !action.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw WebBookError.missingRule("payAction")
         }
-        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi)
+        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi, configuration: configuration)
         let base = WebBookContext.absolute(chapter.url ?? "", base: chapter.baseUrl ?? book.tocUrl ?? "")
         let engine = try context.engine(baseURL: base)
         let bindings: [String: Any] = ["book": try WebBookContext.object(book),
@@ -170,10 +219,12 @@ final class WebBookContext {
     let sourceStore: JsSourceBinding
     private var chapterStores: [String: JsChapterBinding] = [:]
     let cookies: CookieStore
+    let configuration: WebBookConfiguration
     let limiter = ConcurrentRateLimiter.shared
 
     init(source: BookSource, client: any HttpClient, book: Book? = nil, cookies: CookieStore = CookieStore(),
-         sourceAPI: JsSourceApi = JsSourceApi()) throws {
+         sourceAPI: JsSourceApi = JsSourceApi(), configuration: WebBookConfiguration = .init()) throws {
+        self.configuration = configuration
         self.source = source; self.client = client; self.book = book
         self.cookies = cookies
         bookStore = try JsBookBinding(book ?? Book(now: 0))
@@ -192,7 +243,7 @@ final class WebBookContext {
     func engine(baseURL: String) throws -> JsEngine {
         let engine = JsEngine(baseUrl: baseURL, httpClient: client, cookieStore: cookies,
             networkSource: .init(key: source.bookSourceUrl, enabledCookieJar: source.enabledCookieJar ?? true,
-                                 concurrentRate: source.concurrentRate), rateLimiter: limiter)
+                                 concurrentRate: source.concurrentRate), rateLimiter: limiter, headlessWebView: configuration.headlessWebView)
         engine.bindings["source"] = try sourceStore.scriptObject()
         if book != nil { engine.bindings["book"] = try bookStore.scriptObject() }
         if let session = client as? any SourceScriptClient { session.configureSourceBindings(engine) }
@@ -236,10 +287,39 @@ final class WebBookContext {
         let js = try engine(baseURL: baseURL)
         let parser = try parser("", baseURL: baseURL, chapter: chapter, engine: js)
         let executor = try AnalyzeUrlExecutor(url, engine: js, bindings: bindings, context: parser)
-        var response = try await executor.getStrResponse(jsStr: webJs, sourceRegex: sourceRegex, forceWebView: forceWebView)
-        if let session = client as? any SourceScriptClient {
-            let checked = try await session.checkResponse(StrResponse(raw: response.raw, body: response.body))
-            response = .init(raw: checked.raw, body: checked.body, callTime: response.callTime)
+        func check(_ response: AnalyzeUrlExecutor.Response) async throws -> AnalyzeUrlExecutor.Response {
+            let text = StrResponse(raw: response.raw, body: response.body)
+            let checked: StrResponse
+            if let session = client as? any SourceScriptClient { checked = try await session.checkResponse(text) }
+            else {
+                checked = try await SourceResponseCheck.check(source: source, response: text) { script, bindings in
+                    try js.evaluateScript(script, bindings: bindings, context: parser)
+                }
+            }
+            return .init(raw: checked.raw, body: checked.body, callTime: response.callTime,
+                requestURL: executor.url, ruleURL: executor.ruleURL, isRedirected: response.url != executor.url)
+        }
+        let response: AnalyzeUrlExecutor.Response
+        do {
+            let received = try await executor.getStrResponse(jsStr: webJs, sourceRegex: sourceRegex, forceWebView: forceWebView)
+            response = try await check(received)
+        } catch {
+            let original = error
+            try Task.checkCancellation()
+            guard !(original is CancellationError), (original as? URLError)?.code != .cancelled,
+                  !(source.loginCheckJs ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty,
+                  let address = URL(string: executor.url) else { throw original }
+            let message = String(describing: original)
+            let failed = AnalyzeUrlExecutor.Response(raw: HttpResponse(status: 500, body: Data(message.utf8), finalURL: address), body: message)
+            do {
+                let recovered = try await check(failed)
+                guard recovered.code != 500 else { throw original }
+                response = recovered
+            } catch {
+                try Task.checkCancellation()
+                if error is CancellationError || (error as? URLError)?.code == .cancelled { throw error }
+                throw original
+            }
         }
         try Task.checkCancellation()
         guard response.isSuccessful else { throw WebBookError.httpStatus(response.code, response.url) }

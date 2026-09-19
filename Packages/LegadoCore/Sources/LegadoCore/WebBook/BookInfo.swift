@@ -64,6 +64,7 @@ public enum BookInfo {
             guard !downloads.isEmpty else { throw WebBookError.emptyDownloadURLs }
         } else {
             result.tocUrl = try WebBookContext.url(parser, rule: rule.tocUrl, base: baseURL, redirect: redirectURL)
+            result.tocHtml = result.tocUrl == baseURL ? body : nil
         }
         result.variable = try context.bookStore.snapshot().variable
         result.origin = context.source.bookSourceUrl; result.originName = context.source.bookSourceName

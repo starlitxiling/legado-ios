@@ -155,7 +155,7 @@ public final class JsEngine: SelectorEngine {
         return JsSession(context: context, host: host)
     }
 
-    private func freezeEntities(in context: JSContext) {
+    func freezeEntities(in context: JSContext) {
         context.evaluateScript("""
         (function() {
             function freeze(value) {

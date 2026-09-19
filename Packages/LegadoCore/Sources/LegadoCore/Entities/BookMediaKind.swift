@@ -13,6 +13,7 @@ public enum BookMediaKind: Equatable, Sendable {
 }
 
 extension Book {
+    public var isOnLineTxt: Bool { !LocalBook.isLocal(self) && type & 8 != 0 }
     public var isAudio: Bool { type & 32 != 0 }
     public var isImage: Bool { type & 64 != 0 }
     public var isVideo: Bool { type & 4 != 0 }

@@ -87,3 +87,14 @@
 - 新增 3 项 ComponentMetricsTests；iOS ComponentIconTests 验证全部 SF Symbols 存在；ComponentUITests 验证真实搜索提交/清空、全选及墨水屏切换。DEBUG 画廊不进入正式导航；真实截图 assets/components*.png 已检查。
 - 批次 1 最终状态：Core 599/0（P3d 后 Core 未改）、AppCore 247/0、CLI 7/0，完整语料 134/142（8 unsupported）；generic iOS 构建通过。启动注册 3 项、冷启动 UI 1 项在最终根视图上复跑通过；主题与组件交互均通过。
 - 真机按计划在批次 3/5 验证，本批仅模拟器和构建，不声称新版本已经在 iPhone 完成验收。
+
+
+## P4 流程基础（真实门禁与去重取舍待收口）
+
+- 新增响应检查/HTML 复用/请求身份、正文缓存/副文/WebView、受限分页、共享搜索排序、目录刷新宿主及批量正文回存。未增加外部依赖；Core 配置显式接收目录和平台服务。
+- 新增 35 项 Core 测试，覆盖五入口、原始错误与取消、单次检查、POST 规则、缓存免请求与图片补全、分页乱序/限并发/取消、精准搜索提前终止、Java Period 语义、批量重复 URL 拒绝与章节对象回存。
+- 自查补齐本地下载缓存保留及整架刷新书籍 URL 迁移，新增 2 项 App 测试；既有阅读取消/共享下载/改章名兼容均通过。App 的一次 EXC_BAD_ACCESS 定位到旧 Book 布局对象文件，清理 SwiftPM 后全量复跑消失。
+- 真实书源复现并修复：单独 webJs 不应强制 WebView；URL 前置副作用表达式留下的空白应先移除再解析。浏览器能力仍要求平台注入，命令行不伪造该能力。
+- Core 634/0、AppCore 249/0、CLI 7/0（134/142，8 unsupported）、generic iOS 构建通过；详见 p4-core-final / p4-appcore-final / p4-ios-final / p4-cli 日志。
+- P4-8 的全字段方案与 Kotlin 实际实现及数据库主键冲突。临时方案已移至忽略目录补丁，主分支保留原行为以继续测试，不将沉默视作用户决策。
+- 真实首轮 2/8 通过，扩展验证继续；P4 不标记完成。缓存批量调度/版本隔离按 P8/P3h 接线，处理器特殊 HTML 按 P5 接线。详细边界见 docs/spec/webbook-compat.md。

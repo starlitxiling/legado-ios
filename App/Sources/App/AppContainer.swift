@@ -62,7 +62,8 @@ final class AppContainer {
         searchCache = SearchCacheRepository(database: database)
         cookies = CookieRepository(database: database)
         downloads = DownloadCenterModel(database: database, client: self.httpClient,
-            threadCount: UserDefaults.standard.object(forKey: "threadCount") as? Int ?? 32)
+            threadCount: UserDefaults.standard.object(forKey: "threadCount") as? Int ?? 32,
+            adaptSpecialStyle: UserDefaults.standard.object(forKey: "adaptSpecialStyle") as? Bool ?? true)
         backgroundRefresh = BookshelfBackgroundRefresh(database: database, client: self.httpClient)
         webService = WebServiceController.live(database: database, client: self.httpClient)
     }

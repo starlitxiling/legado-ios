@@ -12,9 +12,41 @@ public enum BookContent {
 
     public static func load(source: BookSource, book: Book, chapter: BookChapter, client: any HttpClient,
                             nextChapterURL: String? = nil, processor: ContentProcessor = ContentProcessor(),
-                            includeTitle: Bool = true) async throws -> Result {
-        try await load(context: WebBookContext(source: source, client: client, book: book), book: book,
-            chapter: chapter, nextChapterURL: nextChapterURL, processor: processor, includeTitle: includeTitle)
+                            includeTitle: Bool = true, configuration: WebBookConfiguration = .init()) async throws -> Result {
+        try await cached(source: source, book: book, chapter: chapter, client: client, cookies: CookieStore(),
+            configuration: configuration, processor: processor, includeTitle: includeTitle) {
+                try await load(context: WebBookContext(source: source, client: client, book: book, configuration: configuration),
+                    book: book, chapter: chapter, nextChapterURL: nextChapterURL, processor: processor, includeTitle: includeTitle)
+            }
+    }
+
+    static func cached(source: BookSource, book: Book, chapter: BookChapter, client: any HttpClient,
+                       cookies: CookieStore, configuration: WebBookConfiguration, processor: ContentProcessor,
+                       includeTitle: Bool, load: () async throws -> Result) async throws -> Result {
+        try Task.checkCancellation()
+        guard let directory = configuration.cacheDirectory, !LocalBook.isLocal(book) else {
+            return try await load()
+        }
+        let result: Result
+        if let text = try BookHelp.content(directory: directory, book: book, chapter: chapter) {
+            let processed = try processor.getContent(book: book, chapter: chapter, content: text, includeTitle: includeTitle)
+            result = Result(chapter: chapter, rawContent: text, text: processed.text, paragraphs: processed.paragraphs,
+                imageStyle: book.readConfig?.imageStyle ?? source.ruleContent?.imageStyle ?? (source.bookSourceType == 2 ? "FULL" : nil),
+                payAction: source.ruleContent?.payAction)
+        } else {
+            result = try await load()
+            try Task.checkCancellation()
+            try BookHelp.save(result.rawContent, directory: directory, book: book, chapter: chapter)
+        }
+        try await BookHelp.saveImages(source: source, book: book, chapter: result.chapter, content: result.rawContent,
+            directory: directory, client: client, cookies: cookies)
+        try Task.checkCancellation()
+        guard let saved = try BookHelp.content(directory: directory, book: book, chapter: chapter) else {
+            throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey:
+                BookHelp.contentURL(directory: directory, book: book, chapter: chapter).path])
+        }
+        return Result(chapter: result.chapter, rawContent: saved, text: result.text, paragraphs: result.paragraphs,
+            imageStyle: result.imageStyle, payAction: result.payAction)
     }
 
     static func load(context: WebBookContext, book: Book, chapter: BookChapter, nextChapterURL: String?,
@@ -30,14 +62,10 @@ public enum BookContent {
         if LocalBook.isLocal(book) { return try finish(LocalBook.content(book: book, chapter: chapter), chapter: chapter) }
         if chapter.isVolume && (chapter.url ?? "").hasPrefix(chapter.title ?? "") { return try finish("", chapter: chapter) }
         if (rule.content ?? "").isEmpty { return try finish(chapter.url ?? "", chapter: chapter) }
-        let mediaWebView = bookIsMedia(context) && (!(rule.webJs ?? "").isEmpty || !(rule.sourceRegex ?? "").isEmpty)
-        if !bookIsMedia(context), !(rule.webJs ?? "").isEmpty || !(rule.sourceRegex ?? "").isEmpty {
-            throw WebBookError.unsupported("正文 WebView/webJs/sourceRegex")
-        }
         let base = chapter.baseUrl ?? book.tocUrl ?? context.source.bookSourceUrl ?? ""
         func request(_ url: String, baseURL: String) async throws -> AnalyzeUrlExecutor.Response {
             try await context.request(url, baseURL: baseURL, chapter: chapter,
-                webJs: rule.webJs, sourceRegex: rule.sourceRegex, forceWebView: mediaWebView)
+                webJs: rule.webJs, sourceRegex: rule.sourceRegex)
         }
         let firstURL = WebBookContext.absolute(chapter.url ?? "", base: base)
         let first = try await request(firstURL, baseURL: base)
@@ -55,18 +83,44 @@ public enum BookContent {
                 data = next
             }
         } else {
-            for url in data.1 where url != nextChapter && visited.insert(url).inserted {
-                let response = try await request(url, baseURL: first.url)
-                if response.url == nextChapter || (response.url != url && !visited.insert(response.url).inserted) { continue }
-                let next = try page(context: context, chapter: chapter, response: response, rule: rule,
-                                    getNext: false, nextChapterURL: nextChapterURL, baseURL: url)
-                contents.append(next.0)
+            let urls = data.1.filter { $0 != nextChapter && visited.insert($0).inserted }
+            let pages = try await context.mapPages(urls, chapter: chapter) { context, url in
+                let response = try await context.request(url, baseURL: first.url, chapter: chapter,
+                    webJs: rule.webJs, sourceRegex: rule.sourceRegex)
+                let content = try page(context: context, chapter: chapter, response: response, rule: rule,
+                    getNext: false, nextChapterURL: nextChapterURL, baseURL: url).0
+                return (url, response.url, content)
+            }
+            for (url, redirectedURL, content) in pages {
+                if redirectedURL == nextChapter || (redirectedURL != url && !visited.insert(redirectedURL).inserted) { continue }
+                contents.append(content)
+            }
+        }
+        if let subRule = rule.subContent, !subRule.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            let raw = try parser.getString(subRule)
+            if book.isOnLineTxt { contents.append(raw) }
+            else {
+                do {
+                    var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if text.lowercased().hasPrefix("http") {
+                        text = try await context.request(text, baseURL: first.url, chapter: chapter).body
+                    }
+                    if book.isAudio { try context.chapterBinding(chapter).setValue(text, for: "lyric") }
+                    else if book.isVideo { try context.chapterBinding(chapter).setValue(text, for: "danmaku") }
+                } catch {
+                    try Task.checkCancellation()
+                    if error is CancellationError || (error as? URLError)?.code == .cancelled { throw error }
+                    NSLog("Sub-content failed for %@: %@", chapter.url ?? "", String(describing: error))
+                }
             }
         }
         var content = contents.joined(separator: "\n")
         if let replacement = rule.replaceRegex, !replacement.isEmpty {
             content = content.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")
             content = try parser.getString(replacement, content: content)
+            if book.isOnLineTxt {
+                content = content.components(separatedBy: "\n").map { "\u{3000}\u{3000}" + $0 }.joined(separator: "\n")
+            }
         }
         var updated = chapter
         if let titleRule = rule.title, !titleRule.isEmpty {
@@ -92,12 +146,11 @@ public enum BookContent {
         let parser = try context.parser(response.body, baseURL: baseURL, chapter: chapter, nextChapterURL: nextChapterURL)
         let raw = try parser.getString(rule.content, unescape: false)
         let isMediaAddress = context.book?.isAudio == true || context.book?.isVideo == true
-        let content = isMediaAddress ? raw : try HTML4Entities.unescape(HtmlFormatter.formatKeepImg(raw, redirectUrl: URL(string: response.url)))
+        let protected = try ProtectedHTML(raw, enabled: context.configuration.adaptSpecialStyle && !isMediaAddress)
+        let content = isMediaAddress ? raw : try protected.restore(HTML4Entities.unescape(
+            HtmlFormatter.formatKeepImg(protected.text, redirectUrl: URL(string: response.url))))
         let next = getNext ? try context.urls(parser, rule: rule.nextContentUrl, base: response.url) : []
         return (content, next)
     }
 
-    private static func bookIsMedia(_ context: WebBookContext) -> Bool {
-        context.book?.isAudio == true || context.book?.isVideo == true || context.book?.isImage == true
-    }
 }

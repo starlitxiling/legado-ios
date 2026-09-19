@@ -98,3 +98,11 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 
 - timeFormat 默认 `yyyy/MM/dd HH:mm`，使用引擎注入的本地时区；第二参数支持自定义格式（按计划新增的重载，固定 Kotlin 只有单参数版本）。timeFormatUTC(time, format, sh) 的 sh 按 SimpleTimeZone 的毫秒偏移计算，包括不足一秒的偏移。
 - 格式依据 [Java SimpleDateFormat](https://docs.oracle.com/en/java/javase/17/docs/api/java.base/java/text/SimpleDateFormat.html)：对 S 毫秒最小宽度、u 星期编号、X/Z 时区宽度和引号单独处理；其余字段使用 Foundation 日历格式器，文字月份/纪元等本地化名称仍取平台 locale 数据。非法格式和越界数字显式抛错。
+
+
+## WebBook 宿主（轮次 5 / P4）
+
+`java.getElementsRaw` 保留标量结果；`reGetBook` / `refreshTocUrl` 仅限目录 preUpdateJs。
+`java.cacheContent` 已支持批量正文回存（章节对象或唯一 URL），普通规则调用会报错。
+正文 webJs/sourceRegex 适用于所有类型，浏览器启动仍由 URL 的 webView 选项控制。
+完整流程与未完成队列层事项见 [webbook-compat.md](webbook-compat.md)。

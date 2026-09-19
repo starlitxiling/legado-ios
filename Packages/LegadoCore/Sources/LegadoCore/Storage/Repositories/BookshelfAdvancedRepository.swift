@@ -109,6 +109,11 @@ extension Repository where Record == BookRow {
             let oldChapter = try BookChapterRow.fetchOne(db, sql: "SELECT * FROM chapters WHERE bookUrl = ? AND \"index\" = ?",
                                                         arguments: [bookURL, current.durChapterIndex])
             let ordered = chapters.sorted { $0.index < $1.index }
+            var progress = Book(now: checkedAt)
+            progress.totalChapterNum = ordered.count
+            progress.readConfig = try current.readConfig.map { try JSONDecoder().decode(ReadConfig.self, from: Data($0.utf8)) }
+            let latestIndex = progress.simulatedTotalChapterNum(now: Date(timeIntervalSince1970: Double(checkedAt) / 1000)) - 1
+            let latestTitle = ordered[ordered.indices.contains(latestIndex) ? latestIndex : ordered.count - 1].title
             let title = current.durChapterTitle.flatMap { $0.isEmpty ? nil : $0 } ?? oldChapter?.title
             let position = BookChapterLocator.locate(oldIndex: current.durChapterIndex, oldTitle: title,
                 oldCount: current.totalChapterNum, titles: ordered.map(\.title), oldURL: oldChapter?.url, urls: ordered.map(\.url))
@@ -118,7 +123,7 @@ extension Repository where Record == BookRow {
             try db.execute(sql: """
                 UPDATE books SET totalChapterNum = ?, latestChapterTitle = ?, lastCheckTime = ?, lastCheckCount = ?,
                 latestChapterTime = ?, durChapterIndex = ?, durChapterTitle = ?, type = type & ~16 WHERE bookUrl = ?
-                """, arguments: [chapters.count, ordered.last?.title, checkedAt, added > 0 ? added : current.lastCheckCount,
+                """, arguments: [chapters.count, latestTitle, checkedAt, added > 0 ? added : current.lastCheckCount,
                                   added > 0 ? checkedAt : current.latestChapterTime, position, ordered[position].title, bookURL])
         }
     }

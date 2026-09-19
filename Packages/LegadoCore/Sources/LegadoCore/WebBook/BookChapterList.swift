@@ -1,21 +1,49 @@
 import Foundation
 
 public enum BookChapterList {
-    public static func load(source: BookSource, book: Book, client: any HttpClient, tocCountWords: Bool = false) async throws -> [BookChapter] {
-        try await load(context: WebBookContext(source: source, client: client, book: book), book: book, tocCountWords: tocCountWords)
+    public static func load(source: BookSource, book: Book, client: any HttpClient, tocCountWords: Bool = false,
+                            runPreUpdate: Bool = false, fromBookInfo: Bool = false) async throws -> [BookChapter] {
+        try await load(context: WebBookContext(source: source, client: client, book: book), book: book, tocCountWords: tocCountWords,
+            runPreUpdate: runPreUpdate, fromBookInfo: fromBookInfo)
     }
 
-    static func load(context: WebBookContext, book: Book, tocCountWords: Bool = false) async throws -> [BookChapter] {
+    static func load(context: WebBookContext, book: Book, tocCountWords: Bool = false,
+                     runPreUpdate: Bool = false, fromBookInfo: Bool = false) async throws -> [BookChapter] {
         try Task.checkCancellation()
         let rule = context.source.ruleToc ?? TocRule()
         let (listRule, reverse) = WebBookContext.listRule(rule.chapterList)
         guard !listRule.isEmpty else { throw WebBookError.missingRule("chapterList") }
-        if let script = rule.preUpdateJs, !script.isEmpty {
-            let parser = try context.parser("", baseURL: book.tocUrl ?? "")
+        if runPreUpdate, let script = rule.preUpdateJs, !script.isEmpty {
+            let parser = try context.parser("", baseURL: book.tocUrl ?? "", fromBookInfo: fromBookInfo)
+            parser.refreshBook = { [weak context] research in
+                guard let context else { throw CancellationError() }
+                if !research && fromBookInfo { return }
+                let original = try context.bookStore.snapshot()
+                let updated = try HostAsyncBridge.wait {
+                    let web = WebBook(source: context.source, client: context.client, cookies: context.cookies,
+                        configuration: context.configuration)
+                    var book = original
+                    book.infoHtml = nil; book.tocHtml = nil
+                    if research {
+                        let found = try await web.preciseSearch(name: book.name ?? "", author: book.author ?? "")
+                        book.bookUrl = found.bookUrl
+                        let variables = try JsBookBinding(book)
+                        for (key, value) in try JsBookBinding(found).store.variables { variables.setValue(value, for: key) }
+                        book.variable = try variables.snapshot().variable
+                    }
+                    return try await web.bookInfo(book)
+                }
+                context.bookStore.book = updated
+                context.bookStore.store.replace(with: try JsBookBinding(updated).store.variables)
+            }
             _ = try parser.getString("@js:" + script)
         }
+        let book = try context.bookStore.snapshot()
         let firstURL = (book.tocUrl ?? "").isEmpty ? book.bookUrl ?? "" : book.tocUrl ?? ""
-        let first = try await context.request(firstURL, baseURL: context.source.bookSourceUrl ?? "")
+        let first: AnalyzeUrlExecutor.Response
+        if book.bookUrl == firstURL, let body = book.tocHtml, !body.isEmpty, let url = URL(string: firstURL) {
+            first = .init(raw: HttpResponse(status: 200, body: Data(body.utf8), finalURL: url), body: body)
+        } else { first = try await context.request(firstURL, baseURL: context.source.bookSourceUrl ?? "") }
         var visited: Set<String> = [WebBookContext.absolute(firstURL, base: context.source.bookSourceUrl ?? ""), first.url]
         var data = try page(context: context, book: book, response: first, rule: rule, listRule: listRule,
                             baseURL: firstURL, tocCountWords: tocCountWords)
@@ -29,12 +57,16 @@ public enum BookChapterList {
                 chapters.append(contentsOf: data.0)
             }
         } else {
-            // 多链接是本次目录的完整分页清单，不递归展开子页的下一页规则。
-            for url in data.1 where visited.insert(url).inserted {
+            let urls = data.1.filter { visited.insert($0).inserted }
+            let pages = try await context.mapPages(urls) { context, url in
                 let response = try await context.request(url, baseURL: first.url)
-                if response.url != url && !visited.insert(response.url).inserted { continue }
-                chapters.append(contentsOf: try page(context: context, book: book, response: response,
-                    rule: rule, listRule: listRule, getNext: false, baseURL: url, tocCountWords: tocCountWords).0)
+                let chapters = try page(context: context, book: book, response: response,
+                    rule: rule, listRule: listRule, getNext: false, baseURL: url, tocCountWords: tocCountWords).0
+                return (url, response.url, chapters)
+            }
+            for (url, redirectedURL, pageChapters) in pages {
+                if redirectedURL != url && !visited.insert(redirectedURL).inserted { continue }
+                chapters.append(contentsOf: pageChapters)
             }
         }
         guard !chapters.isEmpty else { throw WebBookError.emptyToc }
@@ -65,6 +97,19 @@ public enum BookChapterList {
             }
         }
         return chapters
+    }
+
+    public static func upChapterInfo(_ chapters: [BookChapter], previous: [BookChapter], enabled: Bool) -> [BookChapter] {
+        guard enabled else { return chapters }
+        let previous = Dictionary(previous.map { ("\($0.index)_\($0.title ?? "")", $0) }, uniquingKeysWith: { _, last in last })
+        return chapters.map { chapter in
+            guard let old = previous["\(chapter.index)_\(chapter.title ?? "")"] else { return chapter }
+            var result = chapter
+            if let value = old.wordCount { result.wordCount = value }
+            if let value = old.variable { result.variable = value }
+            if let value = old.imgUrl { result.imgUrl = value }
+            return result
+        }
     }
 
     private static func page(context: WebBookContext, book: Book, response: AnalyzeUrlExecutor.Response,

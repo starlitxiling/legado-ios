@@ -78,7 +78,7 @@ final class ReaderViewModel {
     private var loadDestination: ReaderDestination?
 
     init(database: AppDatabase, client: any HttpClient, cacheDirectory: URL,
-         settings: ReaderSettings = ReaderSettings(),
+         settings: ReaderSettings = ReaderSettings(), threadCount: Int = 32, adaptSpecialStyle: Bool = true,
          preDownloadCount: @escaping @Sendable () -> Int = { 1 },
          now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) },
          layoutDidStart: @escaping @Sendable () -> Void = {},
@@ -87,7 +87,7 @@ final class ReaderViewModel {
          }) {
         self.database = database; self.client = client
         self.preDownloadCount = preDownloadCount
-        cache = ReaderChapterCache(directory: cacheDirectory)
+        cache = ReaderChapterCache(directory: cacheDirectory, threadCount: threadCount, adaptSpecialStyle: adaptSpecialStyle)
         self.settings = settings.normalized; self.now = now
         self.layoutDidStart = layoutDidStart
         self.waitForLayoutDebounce = waitForLayoutDebounce

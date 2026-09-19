@@ -39,6 +39,9 @@ public struct SearchBook: Codable, Equatable {
     /// Kotlin 默认值：`-1`（SearchBook.kt:54）。
     public var respondTime: Int = -1
 
+    public var infoHtml: String? = nil
+    public var tocHtml: String? = nil
+
     private enum CodingKeys: String, CodingKey {
         case bookUrl
         case origin
@@ -134,4 +137,17 @@ public struct SearchBook: Codable, Equatable {
         try container.encode(respondTime, forKey: .respondTime)
     }
 
+}
+
+extension SearchBook {
+    public func toBook(now: Int64 = GsonDecoding.currentTimeMillis()) -> Book {
+        var book = Book(now: now)
+        book.bookUrl = bookUrl; book.name = name; book.author = author
+        book.origin = origin; book.originName = originName; book.originOrder = originOrder
+        book.type = type; book.kind = kind; book.intro = intro
+        book.coverUrl = coverUrl; book.wordCount = wordCount
+        book.latestChapterTitle = latestChapterTitle; book.variable = variable
+        book.tocUrl = tocUrl; book.infoHtml = infoHtml; book.tocHtml = tocHtml
+        return book
+    }
 }

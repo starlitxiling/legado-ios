@@ -47,7 +47,11 @@ final class TocViewModel {
         defer { isLoading = false }
         do {
             var updated = book
-            let loaded = try await WebBook(source: source, client: client).chapterList(book: &updated)
+            let countWords = UserDefaults.standard.object(forKey: "tocCountWords") as? Bool ?? false
+            let previous = countWords ? try chapters.map { try JSONDecoder().decode(BookChapter.self, from: JSONEncoder().encode($0)) } : []
+            let loaded = try await WebBook(source: source, client: client, tocCountWords: countWords,
+                configuration: .init(threadCount: UserDefaults.standard.object(forKey: "threadCount") as? Int ?? 32))
+                .chapterList(book: &updated, previousChapters: previous, runPreUpdate: true)
             try Task.checkCancellation()
             let rows = try loaded.map { try DiscoveryStorage.row($0, defaults: BookChapterRow()) }
             updated = try await SourceChangeTransaction.save(book: updated, previous: book, chapters: rows, database: database)

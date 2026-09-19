@@ -71,6 +71,9 @@ public struct Book: Codable, Equatable {
     /// Kotlin 默认值：`null`（Book.kt:129）。
     public var persistedCoverUrl: String? = nil
 
+    public var infoHtml: String? = nil
+    public var tocHtml: String? = nil
+
     private enum CodingKeys: String, CodingKey {
         case bookUrl
         case tocUrl

@@ -7,6 +7,59 @@ import LegadoCore
 final class BookshelfReviewTests: XCTestCase {
     private let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=")!
 
+    func testPreUpdateMigratesBookURLAndPersistsRefreshedToc() async throws {
+        let database = try AppDatabase.inMemory()
+        var source = BookSource()
+        source.bookSourceUrl = "https://refresh.test"
+        source.searchUrl = "/search"
+        source.ruleSearch = SearchRule()
+        source.ruleSearch?.bookList = "tag.a"; source.ruleSearch?.name = "text"
+        source.ruleSearch?.author = "data-author"; source.ruleSearch?.bookUrl = "href"
+        source.ruleBookInfo = BookInfoRule(); source.ruleBookInfo?.tocUrl = "tag.nav@data-url"
+        source.ruleToc = TocRule(); source.ruleToc?.preUpdateJs = "java.reGetBook()"
+        source.ruleToc?.chapterList = "tag.a"; source.ruleToc?.chapterName = "text"; source.ruleToc?.chapterUrl = "href"
+        try await BookSourceRepository(database: database).insert(DiscoveryStorage.row(source, defaults: BookSourceRow()))
+        var book = BookRow()
+        book.bookUrl = "https://refresh.test/old"; book.tocUrl = "https://refresh.test/old-toc"
+        book.origin = source.bookSourceUrl!; book.name = "Book"; book.author = "Author"; book.durChapterPos = 12
+        try await BookshelfRepository(database: database).insert(book)
+        let client = ReplayHttpClient()
+        for (path, body) in [("/search", "<a href='/new' data-author='Author'>Book</a>"),
+                             ("/new", "<nav data-url='/new-toc'></nav>"), ("/new-toc", "<a href='/chapter'>Chapter</a>")] {
+            let url = URL(string: "https://refresh.test" + path)!
+            await client.enqueue(url: url, response: HttpResponse(status: 200, body: Data(body.utf8), finalURL: url))
+        }
+        _ = try await BookshelfRefreshService.refresh(database: database, client: client, rows: [book])
+        let stored = try await BookshelfRepository(database: database).get(bookUrl: "https://refresh.test/new")
+        let updated = try XCTUnwrap(stored)
+        XCTAssertEqual(updated.tocUrl, "https://refresh.test/new-toc")
+        XCTAssertEqual(updated.durChapterPos, 12)
+        let old = try await BookshelfRepository(database: database).get(bookUrl: book.bookUrl)
+        XCTAssertNil(old)
+        let chapters = try await ChapterRepository(database: database).list(bookUrl: updated.bookUrl)
+        XCTAssertEqual(chapters.map(\.title), ["Chapter"])
+    }
+
+    func testLocalDownloadStillWritesPortableContentCache() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let file = directory.appendingPathComponent("local.txt")
+        try "Body text".write(to: file, atomically: true, encoding: .utf8)
+        let parsed = try LocalBook.parse(url: file)
+        let database = try AppDatabase.inMemory()
+        try await LocalBook.save(book: parsed.book, chapters: parsed.chapters, database: database)
+        let stored = try await BookshelfRepository(database: database).get(bookUrl: parsed.book.bookUrl ?? "")
+        let row = try XCTUnwrap(stored)
+        let cache = directory.appendingPathComponent("cache")
+        let model = DownloadCenterModel(database: database, client: ReplayHttpClient(), directory: cache)
+        await model.download([row])
+        await model.queue.waitUntilIdle()
+        XCTAssertNotNil(try BookHelp.content(directory: cache, book: parsed.book, chapter: XCTUnwrap(parsed.chapters.first)))
+        let states = await model.queue.snapshot()
+        XCTAssertEqual(states.map(\.state), [.completed])
+    }
+
     private func fixture() async throws -> (AppDatabase, BookRow, BookChapter, URL, ReplayHttpClient, DownloadCenterModel) {
         let db = try AppDatabase.inMemory()
         let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()

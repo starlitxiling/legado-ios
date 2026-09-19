@@ -26,8 +26,12 @@ final class DownloadCenterModel {
     private let database: AppDatabase
     private let client: any HttpClient
     let directory: URL
+    private let threadCount: Int
+    private let adaptSpecialStyle: Bool
 
-    init(database: AppDatabase, client: any HttpClient, directory: URL = URL.applicationSupportDirectory.appendingPathComponent("Legado/ReaderCache"), threadCount: Int = 3) {
+    init(database: AppDatabase, client: any HttpClient, directory: URL = URL.applicationSupportDirectory.appendingPathComponent("Legado/ReaderCache"), threadCount: Int = 3, adaptSpecialStyle: Bool = true) {
+        self.threadCount = threadCount
+        self.adaptSpecialStyle = adaptSpecialStyle
         queue = CacheBook(maximumConcurrent: min(128, max(1, threadCount)))
         self.database = database; self.client = client; self.directory = directory
     }
@@ -55,7 +59,7 @@ final class DownloadCenterModel {
                     guard let sourceRow = try await BookSourceRepository(database: database).get(bookSourceUrl: row.origin) else { throw BookshelfDownloadsError.missingSource }
                     source = try DiscoveryStorage.source(sourceRow)
                 }
-                let client = client, directory = directory
+                let client = client, directory = directory, threadCount = threadCount, adaptSpecialStyle = adaptSpecialStyle
                 let cookies = CookieStore()
                 for cookie in try await CookieRepository(database: database).list() { await cookies.setCookie(url: cookie.url, cookie: cookie.cookie) }
                 let selected = chapters.filter { range?.contains($0.index) ?? true }
@@ -64,16 +68,14 @@ final class DownloadCenterModel {
                     let chapter = chapters[position]
                     if BookHelp.hasImageContent(directory: directory, book: book, chapter: chapter) { return }
                     let nextURL = position + 1 < chapters.count ? chapters[position + 1].url : nil
-                    let content: String
-                    if let cached = try BookHelp.content(directory: directory, book: book, chapter: chapter) { content = cached }
-                    else {
-                        let result = try await WebBook(source: source, client: client).content(book: book, chapter: chapter,
-                            nextChapterUrl: nextURL, includeTitle: false)
-                        content = result.rawContent
-                        try BookHelp.save(content, directory: directory, book: book, chapter: chapter)
+                    let result = try await WebBook(source: source, client: client, cookies: cookies,
+                        configuration: .init(cacheDirectory: directory, threadCount: threadCount, adaptSpecialStyle: adaptSpecialStyle)).content(
+                            book: book, chapter: chapter, nextChapterUrl: nextURL, includeTitle: false)
+                    if LocalBook.isLocal(book) {
+                        try BookHelp.save(result.rawContent, directory: directory, book: book, chapter: chapter)
+                        try await BookHelp.saveImages(source: source, book: book, chapter: chapter, content: result.rawContent,
+                            directory: directory, client: client, cookies: cookies)
                     }
-                    try await BookHelp.saveImages(source: source, book: book, chapter: chapter, content: content,
-                                                  directory: directory, client: client, cookies: cookies)
                 }
             } catch { errorMessage = "\(row.name)：\(error.localizedDescription)" }
         }
@@ -157,11 +159,23 @@ enum BookshelfRefreshService {
             do {
                 guard let current = try await repository.get(bookUrl: url) else { throw BookshelfEditError.missingBook }
                 guard let sourceRow = try await BookSourceRepository(database: database).get(bookSourceUrl: current.origin) else { throw BookshelfDownloadsError.missingSource }
-                var book = try DiscoveryStorage.book(current)
-                let chapters = try await WebBook(source: DiscoveryStorage.source(sourceRow), client: client).chapterList(book: &book)
+                let previousBook = try DiscoveryStorage.book(current)
+                var book = previousBook
+                let countWords = UserDefaults.standard.object(forKey: "tocCountWords") as? Bool ?? false
+                let previous: [BookChapter]
+                if countWords {
+                    previous = try await ChapterRepository(database: database).list(bookUrl: url).map {
+                        try JSONDecoder().decode(BookChapter.self, from: JSONEncoder().encode($0))
+                    }
+                } else { previous = [] }
+                let chapters = try await WebBook(source: DiscoveryStorage.source(sourceRow), client: client, tocCountWords: countWords,
+                    configuration: .init(threadCount: UserDefaults.standard.object(forKey: "threadCount") as? Int ?? 32))
+                    .chapterList(book: &book, previousChapters: previous, runPreUpdate: true)
                 let rows = try chapters.map { try DiscoveryStorage.row($0, defaults: BookChapterRow()) }
                 try Task.checkCancellation()
-                try await repository.saveChapterUpdate(bookURL: url, chapters: rows, checkedAt: book.lastCheckTime)
+                if book.bookUrl != previousBook.bookUrl || book.tocUrl != previousBook.tocUrl || book.variable != previousBook.variable {
+                    _ = try await SourceChangeTransaction.save(book: book, previous: previousBook, chapters: rows, database: database)
+                } else { try await repository.saveChapterUpdate(bookURL: url, chapters: rows, checkedAt: book.lastCheckTime) }
             } catch {
                 if !(error is CancellationError) && !Task.isCancelled { try await repository.markUpdateFailed(bookURL: url) }
                 throw error

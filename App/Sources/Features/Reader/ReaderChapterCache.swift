@@ -14,9 +14,13 @@ actor ReaderChapterCache {
     }
 
     private let directory: URL
+    private let configuration: WebBookConfiguration
     private var pending: [String: Download] = [:]
 
-    init(directory: URL) { self.directory = directory }
+    init(directory: URL, threadCount: Int = 32, adaptSpecialStyle: Bool = true) {
+        self.directory = directory
+        configuration = .init(cacheDirectory: directory, threadCount: threadCount, adaptSpecialStyle: adaptSpecialStyle)
+    }
 
     var pendingConsumerCount: Int { pending.values.reduce(0) { $0 + $1.consumers.count } }
 
@@ -43,10 +47,8 @@ actor ReaderChapterCache {
         try Task.checkCancellation()
         let url = try fileURL(book: book, chapter: chapter)
         let key = url.deletingPathExtension().lastPathComponent
-        if let data = try? Data(contentsOf: url), let cached = try? JSONDecoder().decode(CachedReaderChapter.self, from: data) {
-            return cached
-        }
-        if let content = try BookHelp.content(directory: directory, book: book, chapter: chapter) {
+        if let content = try BookHelp.content(directory: directory, book: book, chapter: chapter),
+           source == nil || BookHelp.hasImageContent(directory: directory, book: book, chapter: chapter) {
             return CachedReaderChapter(rawContent: content)
         }
         let source = source ?? (LocalBook.isLocal(book) ? BookSource() : nil)
@@ -63,7 +65,7 @@ actor ReaderChapterCache {
                 let task = Task {
                     let result: Result<CachedReaderChapter, Error>
                     do {
-                        let response = try await WebBook(source: source, client: client).content(
+                        let response = try await WebBook(source: source, client: client, configuration: configuration).content(
                             book: book, chapter: chapter, nextChapterUrl: nextURL, includeTitle: false)
                         try Task.checkCancellation()
                         result = .success(CachedReaderChapter(rawContent: response.rawContent))

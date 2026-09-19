@@ -143,7 +143,7 @@ final class MediaTests: XCTestCase {
         var rule = ContentRule(); rule.content = "@js: result"; rule.webJs = "result"; rule.sourceRegex = "\\.mp3"
         source.ruleContent = rule
         var book = Book(now: 0); book.type = 32
-        var chapter = BookChapter(); chapter.url = "https://site.test/chapter"
+        var chapter = BookChapter(); chapter.url = #"https://site.test/chapter,{"webView":true}"#
         let resource = try await MediaContentResolver.audio(source: source, book: book, chapter: chapter, client: MediaFixtureClient())
         XCTAssertEqual(resource.url.absoluteString, "https://site.test/sound.mp3")
     }

@@ -2,29 +2,6 @@ import Foundation
 import Observation
 import LegadoCore
 
-struct SearchResult: Identifiable {
-    struct Identity: Hashable {
-        let name: String
-        let author: String
-    }
-
-    let id: Identity
-    private(set) var sources: [SearchBook]
-    var book: SearchBook { sources[0] }
-
-    init(book: SearchBook) {
-        id = Identity(name: (book.name ?? "").trimmingCharacters(in: .whitespacesAndNewlines),
-                      author: (book.author ?? "").trimmingCharacters(in: .whitespacesAndNewlines))
-        sources = [book]
-    }
-
-    mutating func merge(_ book: SearchBook) {
-        guard !sources.contains(where: { $0.origin == book.origin }) else { return }
-        sources.append(book)
-        sources.sort { ($0.originOrder, $0.origin ?? "") < ($1.originOrder, $1.origin ?? "") }
-    }
-}
-
 @Observable
 @MainActor
 final class SearchViewModel {
@@ -45,6 +22,7 @@ final class SearchViewModel {
     private let concurrencyLimit: Int
     private let sourceTimeout: UInt64
     private let timeoutSleep: @Sendable (UInt64) async throws -> Void
+    private var mergedResults = SearchModel()
     private var generation = 0
     private var searchTask: Task<Void, Never>?
 
@@ -83,6 +61,7 @@ final class SearchViewModel {
         let key = text.trimmingCharacters(in: .whitespacesAndNewlines)
         query = text
         results = []
+        mergedResults = SearchModel()
         completedSources = 0
         totalSources = 0
         failedSources = 0
@@ -139,12 +118,7 @@ final class SearchViewModel {
                     completedSources += 1
                     switch outcome {
                     case .success(let books):
-                        for book in books {
-                            let result = SearchResult(book: book)
-                            if let index = results.firstIndex(where: { $0.id == result.id }) {
-                                results[index].merge(book)
-                            } else { results.append(result) }
-                        }
+                        results = mergedResults.merge(books, key: key, precision: precise)
                     case .failure: failedSources += 1
                     }
                     if next < enabled.count { enqueue() }

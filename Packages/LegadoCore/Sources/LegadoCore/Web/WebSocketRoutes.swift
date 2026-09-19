@@ -34,10 +34,10 @@ public struct WebSocketRoutes {
                 }
                 do {
                     if searching {
-                        var snapshot = WebSocketSearchSnapshot()
+                        var snapshot = SearchModel()
                         for try await books in search(values["key"]!) {
                             try Task.checkCancellation()
-                            let merged = snapshot.merge(books, key: values["key"]!)
+                            let merged = snapshot.merge(books, key: values["key"]!).map(\.book)
                             continuation.yield(.text(String(decoding: try JSONEncoder().encode(merged), as: UTF8.self)))
                         }
                     } else {

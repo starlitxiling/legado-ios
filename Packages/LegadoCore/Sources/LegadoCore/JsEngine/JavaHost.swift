@@ -138,7 +138,7 @@ public final class JavaHost {
                 }
                 return result;
             }
-            const methods = ['get','put','getString','getStringList','getElement','getElements','setContent',
+            const methods = ['get','put','getString','getStringList','getElement','getElements','getElementsRaw','cacheContent','reGetBook','refreshTocUrl','setContent',
                 'timeFormat','timeFormatUTC','log','toast','longToast','logType','randomUUID','androidId',
                 'getReadBookConfig','getReadBookConfigMap','getThemeMode','getThemeConfig','getThemeConfigMap',
                 'base64DecodeToByteArray','hexDecodeToByteArray','hexEncodeToString','strToBytes','bytesToStr','decodeURI','htmlFormat','toURL','base64Decode','base64Encode','hexDecodeToString','toNumChapter',
@@ -257,6 +257,21 @@ public final class JavaHost {
                 content: JsObject.snapshot(Self.nativeValue(value(1))), isURL: boolean(2) ?? false)
         case "getElement": return try analyzer().getElement(string(0))
         case "getElements": return try analyzer().getElements(string(0))
+        case "cacheContent":
+            guard arguments.count == 2, let batch = try analyzer().batchContent else {
+                throw JsEngineError.exception("java.cacheContent requires a chapter and content inside a batch rule")
+            }
+            return try batch.saveContent(identifier: Self.nativeValue(value(0)), content: string(1))
+        case "getElementsRaw": return try analyzer().getElementsRaw(string(0))
+        case "reGetBook", "refreshTocUrl":
+            guard arguments.isEmpty else { throw JsEngineError.exception("java.\(method) takes no arguments") }
+            let parser = try analyzer()
+            if method == "reGetBook" { try parser.reGetBook() } else { try parser.refreshTocUrl() }
+            if let context = JSContext.current(), let book = try parser.scriptBindings["book"] {
+                context.setObject(book, forKeyedSubscript: "book" as NSString)
+                network.engine.freezeEntities(in: context)
+            }
+            return nil
         case "log": logger(string(0)); return value(0)
         case "logType": logger(string(0)); return nil
         case "toast", "longToast":

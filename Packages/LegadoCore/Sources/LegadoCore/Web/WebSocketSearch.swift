@@ -115,34 +115,3 @@ enum WebSocketSearch {
         }
     }
 }
-
-struct WebSocketSearchSnapshot {
-    private struct Entry {
-        let book: SearchBook
-        var origins: Set<String>
-    }
-    private var entries: [Entry] = []
-
-    mutating func merge(_ books: [SearchBook], key: String) -> [SearchBook] {
-        for book in books {
-            if let index = entries.firstIndex(where: { $0.book.name == book.name && $0.book.author == book.author }) {
-                entries[index].origins.insert(book.origin ?? "")
-            } else { entries.append(.init(book: book, origins: [book.origin ?? ""])) }
-        }
-        func rank(_ book: SearchBook) -> Int {
-            if book.name == key || book.author == key { return 0 }
-            if book.kind?.contains(key) == true { return 1 }
-            if (book.name ?? "").contains(key) || (book.author ?? "").contains(key) { return 2 }
-            return 3
-        }
-        entries = entries.enumerated().sorted { left, right in
-            let a = rank(left.element.book), b = rank(right.element.book)
-            if a != b { return a < b }
-            if a < 3, left.element.origins.count != right.element.origins.count {
-                return left.element.origins.count > right.element.origins.count
-            }
-            return left.offset < right.offset
-        }.map(\.element)
-        return entries.map(\.book)
-    }
-}

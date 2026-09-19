@@ -4,13 +4,14 @@ public enum BookList {
     public typealias Filter = (String, String, String?) -> Bool
 
     public static func analyze(source: BookSource, body: String, baseURL: String,
-                               isSearch: Bool = true, filter: Filter? = nil) async throws -> [SearchBook] {
+                               isSearch: Bool = true, filter: Filter? = nil, shouldBreak: ((Int) -> Bool)? = nil) async throws -> [SearchBook] {
         try await analyze(context: WebBookContext(source: source, client: ReplayHttpClient()),
-                          body: body, baseURL: baseURL, isSearch: isSearch, filter: filter)
+                          body: body, baseURL: baseURL, isSearch: isSearch, filter: filter, shouldBreak: shouldBreak)
     }
 
     static func analyze(context: WebBookContext, body: String, baseURL: String,
-                        isSearch: Bool = true, filter: Filter? = nil) async throws -> [SearchBook] {
+                        requestURL: String? = nil, ruleURL: String? = nil, isRedirected: Bool = false,
+                        isSearch: Bool = true, filter: Filter? = nil, shouldBreak: ((Int) -> Bool)? = nil) async throws -> [SearchBook] {
         try Task.checkCancellation()
         let source = context.source
         var rule = source.ruleSearch ?? SearchRule()
@@ -26,7 +27,10 @@ public enum BookList {
         }
         let elements = isInfo ? [] : try parser.getElements(listRule)
         if isInfo || (elements.isEmpty && (source.bookUrlPattern ?? "").isEmpty) {
-            var book = Book(now: 0); book.bookUrl = baseURL
+            var book = Book(now: 0)
+            if !isRedirected, let requestURL, let ruleURL {
+                book.bookUrl = WebBookContext.absolute(ruleURL, base: requestURL)
+            } else { book.bookUrl = baseURL }
             book = try await BookInfo.analyze(context: context, book: book, body: body, baseURL: baseURL)
             guard let name = book.name, !name.isEmpty, filter?(name, book.author ?? "", book.kind) ?? true else { return [] }
             var result = SearchBook(now: 0)
@@ -34,6 +38,7 @@ public enum BookList {
             result.name = name; result.author = book.author; result.kind = book.kind
             result.coverUrl = book.coverUrl; result.intro = book.intro; result.wordCount = book.wordCount
             result.latestChapterTitle = book.latestChapterTitle; result.variable = book.variable
+            result.infoHtml = body; result.tocHtml = book.tocHtml
             result.origin = source.bookSourceUrl; result.originName = source.bookSourceName
             result.originOrder = source.customOrder
             result.type = context.bookType
@@ -42,7 +47,9 @@ public enum BookList {
         var results: [SearchBook] = []
         var seen = Set<String>()
         let listVariables = context.bookStore.store.variables
-        for element in elements {
+        var parsedCount = 0
+        for (index, element) in elements.enumerated() {
+            if index > 0, shouldBreak?(parsedCount) == true { break }
             try Task.checkCancellation()
             try parser.setContent(element)
             let binding = try JsBookBinding(Book(now: 0))
@@ -59,7 +66,6 @@ public enum BookList {
             guard filter?(name, book.author ?? "", book.kind) ?? true else { continue }
             let url = try WebBookContext.url(parser, rule: rule.bookUrl, base: baseURL)
             book.bookUrl = url.isEmpty ? baseURL : url
-            guard seen.insert(book.bookUrl ?? "").inserted else { continue }
             binding.book.bookUrl = book.bookUrl
             book.origin = source.bookSourceUrl; book.originName = source.bookSourceName
             book.originOrder = source.customOrder
@@ -75,7 +81,9 @@ public enum BookList {
             binding.book.wordCount = book.wordCount
             book.latestChapterTitle = try WebBookContext.optional { try parser.getString(rule.lastChapter) }
             book.variable = try binding.snapshot().variable
-            results.append(book)
+            if book.bookUrl == baseURL { book.infoHtml = body }
+            parsedCount += 1
+            if seen.insert(book.bookUrl ?? "").inserted { results.append(book) }
         }
         return reverse ? Array(results.reversed()) : results
     }

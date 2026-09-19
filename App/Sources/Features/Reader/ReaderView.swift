@@ -30,7 +30,9 @@ struct ReaderView: View {
         let directory = cacheDirectory ?? URL.applicationSupportDirectory
             .appendingPathComponent("Legado/ReaderCache", isDirectory: true)
         let model = ReaderViewModel(database: database, client: client,
-            cacheDirectory: directory, settings: ReaderSettings.load(), preDownloadCount: {
+            cacheDirectory: directory, settings: ReaderSettings.load(),
+            threadCount: UserDefaults.standard.object(forKey: "threadCount") as? Int ?? 32,
+            adaptSpecialStyle: UserDefaults.standard.object(forKey: "adaptSpecialStyle") as? Bool ?? true, preDownloadCount: {
                 UserDefaults.standard.object(forKey: "preDownloadNum") as? Int ?? 2
             })
         model.replaceEnableDefault = { UserDefaults.standard.object(forKey: "replaceEnableDefault") as? Bool ?? true }

@@ -103,17 +103,9 @@ public actor SourceLogin {
     }
 
     public func check(source: BookSource, response: StrResponse) async throws -> StrResponse {
-        guard let code = source.loginCheckJs, !code.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return response }
-        let data: [String: Any] = ["body": response.body, "code": response.code, "url": response.url]
-        let loginCode = Self.loginScript(source)
-        let definitions = loginCode.hasPrefix("http://") || loginCode.hasPrefix("https://") ? "" : loginCode
-        let setup = definitions + "\nvar result = {body:function(){return __response.body},code:function(){return __response.code},url:function(){return __response.url}};\n"
-        let value = try await evaluate(source: source, script: setup + "var __checked = eval(__checkCode); if (__checked === false || __checked == null) throw 'Login check rejected'; ({body:typeof __checked.body === 'function' ? String(__checked.body()) : __response.body, code:typeof __checked.code === 'function' ? Number(__checked.code()) : __response.code, url:typeof __checked.url === 'function' ? String(__checked.url()) : __response.url});", bindings: ["__response": data, "__checkCode": Self.script(code)])
-        guard let checked = value as? [String: Any], let body = checked["body"] as? String,
-              let status = checked["code"] as? NSNumber, let address = checked["url"] as? String,
-              let url = URL(string: address) else { throw SourceLoginError.rejected }
-        let raw = HttpResponse(status: status.intValue, body: response.raw.body, finalURL: url, headers: response.headers)
-        return StrResponse(raw: raw, body: body)
+        try await SourceResponseCheck.check(source: source, response: response) { script, bindings in
+            try await self.evaluate(source: source, script: script, bindings: bindings)
+        }
     }
 
     public func saveWebCookies(_ values: [HTTPCookie], url: URL) async throws {
@@ -177,7 +169,7 @@ public actor SourceLogin {
         if let mainJs = source.mainJs, !mainJs.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return mainJs }
         return script(source.loginUrl ?? "")
     }
-    private static func script(_ text: String) -> String {
+    static func script(_ text: String) -> String {
         let text = text.trimmingCharacters(in: .whitespacesAndNewlines)
         if text.lowercased().hasPrefix("@js:") { return String(text.dropFirst(4)) }
         if text.lowercased().hasPrefix("<js>"), text.lowercased().hasSuffix("</js>") { return String(text.dropFirst(4).dropLast(5)) }

@@ -178,7 +178,7 @@ final class ReaderRevisionTests: XCTestCase {
         let requests = await client.requests
         XCTAssertEqual(requests.count, 1)
         let files = try FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: nil)
-        let object = try JSONSerialization.jsonObject(with: Data(contentsOf: XCTUnwrap(files.first))) as? [String: Any]
+        let object = try JSONSerialization.jsonObject(with: Data(contentsOf: XCTUnwrap(files.first { $0.pathExtension == "json" }))) as? [String: Any]
         XCTAssertNil(object?["chapter"], "正文缓存不得保存章节元数据")
         await reopened.close()
     }

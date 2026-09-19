@@ -72,6 +72,8 @@ public final class AnalyzeRule {
     var sourceAPI: JsSourceApi? { (source as? JsSourceBinding)?.api }
 
     public var contextBindings: [String: Any] = [:]
+    var refreshBook: ((Bool) throws -> Void)?
+    var batchContent: BatchContentContext?
 
     var scriptBindings: [String: Any] {
         get throws {
@@ -184,8 +186,20 @@ public final class AnalyzeRule {
 
     /// 规格 §4、§11：对象列表不调用 makeUpRule，归一时去除 null。
     public func getElements(_ rule: String?) throws -> [Any] {
-        let value = try evaluate(splitSourceRule(rule, allInOne: true), operation: .elements)
+        let value = try getElementsRaw(rule)
         return (value as? [Any])?.filter { !($0 is NSNull) } ?? []
+    }
+
+    public func getElementsRaw(_ rule: String?) throws -> Any? {
+        try evaluate(splitSourceRule(rule, allInOne: true), operation: .elements)
+    }
+
+    public func reGetBook() throws { try refreshBookForPreUpdate(research: true) }
+    public func refreshTocUrl() throws { try refreshBookForPreUpdate(research: false) }
+
+    private func refreshBookForPreUpdate(research: Bool) throws {
+        guard let refreshBook else { throw JsEngineError.exception("Book refresh is only available in preUpdateJs") }
+        try refreshBook(research)
     }
 
     func evaluateScript(_ script: String, result: Any?) throws -> Any? {
