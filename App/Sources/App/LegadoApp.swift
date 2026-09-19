@@ -33,6 +33,7 @@ struct AppStartupView: View {
                 ProgressView("正在打开书库")
             }
         }
+        .modifier(ScriptHostModifier())
         .tint(Theme.accent)
         .task { appDelegate.openDatabase() }
     }

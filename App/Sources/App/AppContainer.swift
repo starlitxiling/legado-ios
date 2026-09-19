@@ -28,6 +28,7 @@ final class AppContainer {
 
     init(database: AppDatabase, httpClient: BoundedURLSessionHttpClient = .init()) {
         self.database = database
+        ScriptHostBridge.install(database: database)
         let httpClient = PreferenceHttpClient(underlying: httpClient,
             userAgent: { UserDefaults.standard.string(forKey: "userAgent") ?? "" },
             recordResponse: { request, response in

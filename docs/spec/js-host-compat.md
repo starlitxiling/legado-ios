@@ -55,7 +55,7 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 
 | 仍有差异的项 | 当前边界 |
 | --- | --- |
-| WebView 与 UI | 只有启用 webView 才进入未实现分支；单独 webJs 在普通 HTTP 路径忽略。ajax/connect 按自身错误契约包装 WebView 错误。toast、浏览器和验证 UI 尚未实现。 |
+| WebView 与 UI | 只有启用 webView 才进入未实现分支；单独 webJs 在普通 HTTP 路径忽略。ajax/connect 按自身错误契约包装 WebView 错误。toast/longToast 已由 App overlay 承载，浏览器和验证 UI 使用已接入的 WebView 服务。 |
 | 文件系统 | `downloadFile` 默认只保存内存字节，返回路径形状的句柄，不保证操作系统文件存在；落盘须实现并注入 `HostDownloadStore`。`readFile` 仍为桩。 |
 | 缓存后端 | 字符串使用文件替代 Kotlin 数据库；未提供 ByteArray 的 ACache API、QueryTTF 与其他内存对象接口。浮点转换使用 Swift 语法，不支持 JVM 十六进制浮点字面量等扩展。 |
 | 网络后端 | serverID 保留供 U6 WebDAV 凭据选择，普通 HTTP 不使用；DNS、代理、TLS、重定向和多值头边界沿用 `network-compat.md`。未复制 Jsoup 的完整 Response/URL/Headers Java 类型及默认 User-Agent、大小上限等内部行为。 |
@@ -64,3 +64,12 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 | 错误文本 | 返回 Swift 错误和 Swift 调用栈，不逐字模拟 JVM 类名、堆栈和平台超时分类；未运行 Android/Rhino 对照。 |
 
 既有网络及 cache 桩断言已迁移为当前契约，并注入离线依赖；全量验证不通过默认客户端访问真实网络。
+
+
+## UI 与系统宿主（轮次 5 / P3a）
+
+- toast/longToast 保留书源标签，调用后脚本继续。Core 使用注入回调；没有 UI 回调的命令行环境写入 logger。
+- androidId 在 iOS 返回 identifierForVendor；独立 Core 默认空串，可注入固定标识供离线测试。
+- getReadBookConfig/getThemeConfig 返回 JSON，Map 版本支持 get；App 保留当前选中/共享阅读配置字段，并覆盖当前用户设置。主题随偏好和系统外观刷新。
+- logType 对 null、布尔、数字、字符串、普通数组/对象和 undefined 输出对应 Kotlin/Rhino 类型名；复杂平台宿主对象和动态生成函数类名不提供 JVM 反射的逐字模拟。
+- URL 变量按已确认计划扩展为 chapter/book/ruleData/source 全链；额外参数仅覆盖当前 URL 的读取。实体字段以只读快照暴露，变量通过 java/source 方法更新。

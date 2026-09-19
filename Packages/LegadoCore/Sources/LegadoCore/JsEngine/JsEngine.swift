@@ -31,6 +31,7 @@ public final class JsEngine: SelectorEngine {
     public var libraryInitializer: ((JSContext) throws -> Void)?
     public var sourceBindingInstaller: ((JSContext) throws -> Void)?
     public var logger: (String) -> Void
+    public var platformServices: JsPlatformServices
     public var timeZone: TimeZone
     public var httpClient: any HttpClient
     public var cookieStore: CookieStore
@@ -49,7 +50,9 @@ public final class JsEngine: SelectorEngine {
                 httpClient: any HttpClient = URLSessionHttpClient(), cookieStore: CookieStore = JsEngine.sharedCookieStore,
                 cacheManager: CacheManager = .shared, networkSource: AnalyzeUrlExecutor.Source = .init(),
                 rateLimiter: ConcurrentRateLimiter = .shared, downloadStore: any HostDownloadStore = MemoryHostDownloadStore(),
-                headlessWebView: (any HeadlessWebViewProtocol)? = nil, webViewInteraction: (any WebViewUserInteraction)? = nil) {
+                headlessWebView: (any HeadlessWebViewProtocol)? = nil, webViewInteraction: (any WebViewUserInteraction)? = nil,
+                platformServices: JsPlatformServices = .shared) {
+        self.platformServices = platformServices
         self.baseUrl = baseUrl
         self.bindings = bindings
         self.timeZone = timeZone
@@ -115,7 +118,7 @@ public final class JsEngine: SelectorEngine {
         let networkEngine = networkCopy()
         networkEngine.baseUrl = bindings["baseUrl"] as? String ?? parser?.scriptBaseUrl ?? baseUrl
         let host = JavaHost(parser: parser, timeZone: timeZone, logger: logger, network: JavaHostNetwork(engine: networkEngine),
-                            extraParams: url ? bindings["extraParams"] as? [String: String] ?? [:] : [:])
+                            extraParams: url ? bindings["extraParams"] as? [String: String] ?? [:] : [:], platformServices: platformServices)
         host.install(in: context)
         var values: [String: Any] = ["result": NSNull(), "src": NSNull(), "baseUrl": baseUrl,
             "source": NSNull(), "book": NSNull(), "chapter": NSNull(), "chapters": NSNull(),
@@ -170,6 +173,7 @@ public final class JsEngine: SelectorEngine {
         let copy = JsEngine(baseUrl: baseUrl, bindings: bindings, timeZone: timeZone, logger: logger,
                             httpClient: httpClient, cookieStore: cookieStore, cacheManager: cacheManager,
                             networkSource: networkSource, rateLimiter: rateLimiter, downloadStore: downloadStore)
+        copy.platformServices = platformServices
         copy.variableContext = variableContext
         copy.libraryInitializer = libraryInitializer
         copy.sourceBindingInstaller = sourceBindingInstaller

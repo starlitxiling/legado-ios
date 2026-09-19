@@ -34,3 +34,12 @@
 - 全量发现只读保护提前于发现页初始化会阻止持久化方法安装，已调整顺序并通过既有回归。复查修复请求初始化重复求值 header 的问题。
 - Core 574/0、AppCore 236/0、CLI 7/0；完整语料 134/142（8 unsupported），js 7/7。AppCore/CLI 首次受 SwiftPM 旧构建清单影响漏编新文件，刷新 manifest 时间戳后完整重建通过。
 - iOS 构建及真机检查仍按批次门禁执行，本项未宣称完成真机验收。
+
+
+## P3a
+
+- 对照固定 Kotlin JsExtensions 的 UI/系统方法，补齐 toast/longToast、logType、randomUUID、androidId、阅读/主题配置及 Map 版本。先复现 3 项测试的 4 处失败，最终 Core 新增 6 项、AppCore 新增 2 项。
+- JsPlatformServices 在锁外调用注入回调，网络副本共享当前服务；App 注入 identifierForVendor、主线程提示展示和异步配置读取。JSON 配置读取不等待 MainActor，避免同步 JS 宿主阻塞主线程时死锁。
+- App 提示带书源标签，短/长时长分别为 2/3.5 秒，更新消息不会被上一条的取消任务清除。配置选中项、共享配置、备份保留字段与当前归一化设置有行为覆盖。
+- logType 对常见 JS 类型输出 Rhino/JVM 名称；复杂宿主对象不模拟完整 JVM 反射类型，记录为兼容边界。UUID 使用小写标准形式，不把随机值写死成黄金向量。
+- Core 580/0、AppCore 238/0，新增配置断言后宿主 6/0；generic iOS 构建通过。所有检查由主会话执行，未启动代理。

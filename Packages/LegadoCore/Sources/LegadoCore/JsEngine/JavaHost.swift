@@ -34,6 +34,7 @@ private final class JavaElement: NSObject, JavaElementExport {
 /// 规则与平台宿主；网络服务通过独立依赖对象注入。
 public final class JavaHost {
     private weak var parser: AnalyzeRule?
+    private let platformServices: JsPlatformServices
     private let extraParams: [String: String]
     private let timeZone: TimeZone
     private let logger: (String) -> Void
@@ -41,14 +42,16 @@ public final class JavaHost {
 
     public init(parser: AnalyzeRule?, timeZone: TimeZone, logger: @escaping (String) -> Void) {
         self.parser = parser
+        self.platformServices = .shared
         self.extraParams = [:]
         self.timeZone = timeZone
         self.logger = logger
         self.network = JavaHostNetwork(engine: JsEngine(timeZone: timeZone, logger: logger))
     }
 
-    init(parser: AnalyzeRule?, timeZone: TimeZone, logger: @escaping (String) -> Void, network: JavaHostNetwork, extraParams: [String: String] = [:]) {
+    init(parser: AnalyzeRule?, timeZone: TimeZone, logger: @escaping (String) -> Void, network: JavaHostNetwork, extraParams: [String: String] = [:], platformServices: JsPlatformServices = .shared) {
         self.parser = parser
+        self.platformServices = platformServices
         self.extraParams = extraParams
         self.timeZone = timeZone
         self.logger = logger
@@ -115,7 +118,8 @@ public final class JavaHost {
                 return result;
             }
             const methods = ['get','put','getString','getStringList','getElement','getElements','setContent',
-                'timeFormat','log','toast','md5Encode','digestHex','base64Decode','base64Encode','hexDecodeToString','toNumChapter','aesBase64DecodeToString',
+                'timeFormat','log','toast','longToast','logType','randomUUID','androidId',
+                'getReadBookConfig','getReadBookConfigMap','getThemeMode','getThemeConfig','getThemeConfigMap','md5Encode','digestHex','base64Decode','base64Encode','hexDecodeToString','toNumChapter','aesBase64DecodeToString',
                 'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','readFile','downloadFile','cacheFile',
                 'webViewGetSource','webViewGetOverrideUrl','getVerificationCode','startBrowser','startBrowserAwait','getWebViewUA'];
             methods.forEach(function(name) {
@@ -127,7 +131,21 @@ public final class JavaHost {
                         if (args.length !== 2) throw new Error('未实现：java.put 重载');
                         args[0] = String(args[0]); args[1] = String(args[1]);
                     }
+                    if (name === 'toast' || name === 'longToast') {
+                        args[0] = String(args[0]);
+                        args[1] = String(typeof source === 'object' && source != null
+                            ? (source.bookSourceName == null ? source.sourceName == null ? null : source.sourceName : source.bookSourceName) : null);
+                    }
+                    if (name === 'logType') {
+                        const value = args[0], type = typeof value;
+                        args[0] = value === null ? 'null' : type === 'undefined' ? 'org.htmlunit.corejs.javascript.Undefined'
+                            : type === 'string' ? 'java.lang.String' : type === 'boolean' ? 'java.lang.Boolean'
+                            : type === 'number' ? 'java.lang.Double' : Array.isArray(value) ? 'org.htmlunit.corejs.javascript.NativeArray'
+                            : type === 'function' ? 'org.htmlunit.corejs.javascript.InterpretedFunction'
+                            : 'org.htmlunit.corejs.javascript.NativeObject';
+                    }
                     const value = response(invoke(name, args));
+                    if (name === 'getReadBookConfigMap' || name === 'getThemeConfigMap') return javaMap(value, false);
                     return name === 'setContent' ? java : value;
                 };
             });
@@ -213,6 +231,22 @@ public final class JavaHost {
         case "getElement": return try analyzer().getElement(string(0))
         case "getElements": return try analyzer().getElements(string(0))
         case "log": logger(string(0)); return value(0)
+        case "logType": logger(string(0)); return nil
+        case "toast", "longToast":
+            platformServices.showToast(string(1) + ": " + string(0), long: method == "longToast", logger: logger)
+            return nil
+        case "randomUUID": return UUID().uuidString.lowercased()
+        case "androidId": return platformServices.identifier()
+        case "getThemeMode": return platformServices.appearance().mode
+        case "getReadBookConfig", "getReadBookConfigMap", "getThemeConfig", "getThemeConfigMap":
+            let text = try method.hasPrefix("getReadBookConfig") ? platformServices.readingConfiguration() : platformServices.appearance().configuration
+            if method.hasSuffix("Map") {
+                guard let object = try JSONSerialization.jsonObject(with: Data(text.utf8)) as? [String: Any] else {
+                    throw JsEngineError.exception("\(method) requires a JSON object")
+                }
+                return object
+            }
+            return text
         case "timeFormat":
             let time = (value(0) as? NSNumber)?.doubleValue ?? (value(0) as? String).flatMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
             guard let time, time.isFinite else { throw JsEngineError.exception("timeFormat 需要毫秒数") }
