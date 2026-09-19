@@ -43,3 +43,13 @@
 - App 提示带书源标签，短/长时长分别为 2/3.5 秒，更新消息不会被上一条的取消任务清除。配置选中项、共享配置、备份保留字段与当前归一化设置有行为覆盖。
 - logType 对常见 JS 类型输出 Rhino/JVM 名称；复杂宿主对象不模拟完整 JVM 反射类型，记录为兼容边界。UUID 使用小写标准形式，不把随机值写死成黄金向量。
 - Core 580/0、AppCore 238/0，新增配置断言后宿主 6/0；generic iOS 构建通过。所有检查由主会话执行，未启动代理。
+
+
+## P3b
+
+- 先复现 6 项测试的 21 处失败；补齐 Uint8Array/ArrayBuffer/有符号数组到 Data 的桥和 8 个编解码/URL 宿主方法，无新包依赖。
+- UTF-8/UTF-16/ASCII 的无效输入按替代字符处理，UTF-16 大端 BOM 与空串行为有覆盖；GBK/GB2312 等复用现有字符集映射，不可表示的字符编码为问号。
+- 按 AOSP Base64 实现校验可省略 padding、显式 padding 必须完整及跳过非字母字符；按固定 Hutool 5.8.22 区分空串 null 与纯空白空数组，并支持全角十六进制数字。
+- HTML 复用既有 Kotlin formatter，包括其四个全角首缩进行为；URL searchParams 保留原始键、解码值、重复键取末值，并提供 get。
+- decodeURI 在固定 Kotlin JsExtensions 中不存在，本项依已确认计划实现为 encodeURI 的表单解码对应操作，不替换 JS 全局 decodeURI。
+- Core 586/0、AppCore 238/0、CLI 7/0，完整语料 134/142。少数字符集的损坏字节仍遵循 Foundation 的显式失败，见兼容文档。

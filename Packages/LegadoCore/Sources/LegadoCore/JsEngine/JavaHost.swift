@@ -101,6 +101,7 @@ public final class JavaHost {
                 }});
             }
             function response(value) {
+                if (value && value.__legadoBytes) return new Uint8Array(value.__legadoBytes);
                 if (Array.isArray(value)) return value.map(response);
                 if (!value || !value.__strResponse) return value;
                 const headers = javaMap(value.headers, true);
@@ -119,12 +120,17 @@ public final class JavaHost {
             }
             const methods = ['get','put','getString','getStringList','getElement','getElements','setContent',
                 'timeFormat','log','toast','longToast','logType','randomUUID','androidId',
-                'getReadBookConfig','getReadBookConfigMap','getThemeMode','getThemeConfig','getThemeConfigMap','md5Encode','digestHex','base64Decode','base64Encode','hexDecodeToString','toNumChapter','aesBase64DecodeToString',
+                'getReadBookConfig','getReadBookConfigMap','getThemeMode','getThemeConfig','getThemeConfigMap',
+                'base64DecodeToByteArray','hexDecodeToByteArray','hexEncodeToString','strToBytes','bytesToStr','decodeURI','htmlFormat','toURL','md5Encode','digestHex','base64Decode','base64Encode','hexDecodeToString','toNumChapter','aesBase64DecodeToString',
                 'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','readFile','downloadFile','cacheFile',
                 'webViewGetSource','webViewGetOverrideUrl','getVerificationCode','startBrowser','startBrowserAwait','getWebViewUA'];
             methods.forEach(function(name) {
                 java[name] = function() {
-                    const args = Array.prototype.slice.call(arguments);
+                    const args = Array.prototype.map.call(arguments, function(value) {
+                        if (ArrayBuffer.isView(value)) return Array.from(new Uint8Array(value.buffer, value.byteOffset, value.byteLength));
+                        if (value instanceof ArrayBuffer) return Array.from(new Uint8Array(value));
+                        return value;
+                    });
                     const headerIndex = name === 'post' ? 2 : (name === 'get' || name === 'head' ? 1 : -1);
                     if (headerIndex >= 0 && args[headerIndex] instanceof Map) args[headerIndex] = Object.fromEntries(args[headerIndex]);
                     if (name === 'put') {
@@ -145,6 +151,7 @@ public final class JavaHost {
                             : 'org.htmlunit.corejs.javascript.NativeObject';
                     }
                     const value = response(invoke(name, args));
+                    if (name === 'toURL' && value.searchParams != null) value.searchParams = javaMap(value.searchParams, false);
                     if (name === 'getReadBookConfigMap' || name === 'getThemeConfigMap') return javaMap(value, false);
                     return name === 'setContent' ? java : value;
                 };
@@ -167,6 +174,7 @@ public final class JavaHost {
     }
 
     func bridge(_ value: Any?) -> Any {
+        if let data = value as? Data { return ["__legadoBytes": Array(data).map(Int.init)] }
         if let element = value as? Element { return JavaElement(element) }
         if let list = value as? [Any] { return list.map { bridge($0) } }
         if let object = value as? [String: Any] { return object.mapValues { bridge($0) } }
@@ -247,6 +255,16 @@ public final class JavaHost {
                 return object
             }
             return text
+        case "strToBytes": return try JavaHostEncoding.encode(string(0), charset: value(1).map { ruleText($0) } ?? "UTF-8")
+        case "bytesToStr": return try JavaHostEncoding.decode(JavaHostEncoding.bytes(value(0)), charset: value(1).map { ruleText($0) } ?? "UTF-8")
+        case "base64DecodeToByteArray":
+            guard let input = value(0), !(input is NSNull), !string(0).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+            return try JavaHostEncoding.base64(string(0), flags: (value(1) as? NSNumber)?.intValue ?? 0)
+        case "hexDecodeToByteArray": return string(0).isEmpty ? nil : try JavaHostEncoding.hex(string(0))
+        case "hexEncodeToString": return Data(string(0).utf8).map { String(format: "%02x", $0) }.joined()
+        case "decodeURI": return try JavaHostEncoding.decodeURI(string(0), charset: value(1).map { ruleText($0) } ?? "UTF-8")
+        case "htmlFormat": return HtmlFormatter.formatKeepImg(string(0), redirectUrl: (value(1) as? String).flatMap(URL.init(string:)))
+        case "toURL": return try JavaHostEncoding.url(string(0), base: value(1) as? String)
         case "timeFormat":
             let time = (value(0) as? NSNumber)?.doubleValue ?? (value(0) as? String).flatMap { Double($0.trimmingCharacters(in: .whitespacesAndNewlines)) }
             guard let time, time.isFinite else { throw JsEngineError.exception("timeFormat 需要毫秒数") }
@@ -285,19 +303,11 @@ public final class JavaHost {
                 }.joined(separator: separator) + separator
             }
             return encoded
-        case "hexDecodeToString":
-            var hex = string(0).filter { !$0.isWhitespace }
-            if hex.count % 2 != 0 { hex = "0" + hex }
-            var data = Data()
-            while !hex.isEmpty {
-                guard let byte = UInt8(hex.prefix(2), radix: 16) else { throw JsEngineError.exception("hexDecodeToString 无效输入") }
-                data.append(byte); hex.removeFirst(2)
-            }
-            return String(decoding: data, as: UTF8.self)
+        case "hexDecodeToString": return string(0).isEmpty ? nil : try JavaHostEncoding.decode(JavaHostEncoding.hex(string(0)))
         case "base64Decode":
             if value(0) == nil || value(0) is NSNull { return nil }
             let flags = (value(1) as? NSNumber)?.int32Value
-            let encoding = flags == nil ? try charset(value(1).map { ruleText($0) } ?? "UTF-8") : .utf8
+            let encoding = flags == nil ? try JavaHostEncoding.charset(value(1).map { ruleText($0) } ?? "UTF-8") : .utf8
             var encoded = string(0).filter { !$0.isWhitespace }
             if flags == nil || flags! & 8 != 0 {
                 encoded = encoded.replacingOccurrences(of: "-", with: "+").replacingOccurrences(of: "_", with: "/")
@@ -308,7 +318,7 @@ public final class JavaHost {
             }
             return decoded
         case "encodeURI":
-            guard let encoding = try? charset(value(1).map { ruleText($0) } ?? "UTF-8"),
+            guard let encoding = try? JavaHostEncoding.charset(value(1).map { ruleText($0) } ?? "UTF-8"),
                   let data = string(0).data(using: encoding, allowLossyConversion: true) else { return "" }
             return data.map { byte -> String in
                 if byte == 32 { return "+" }
@@ -320,21 +330,6 @@ public final class JavaHost {
         case "toNumChapter": return value(0) is NSNull ? nil : chapterNumber(string(0))
         case "aesBase64DecodeToString": return try decrypt(string(0), key: string(1), transformation: string(2), iv: string(3))
         default: throw JsEngineError.unimplemented("java.\(method)")
-        }
-    }
-
-    private func charset(_ name: String) throws -> String.Encoding {
-        switch name.uppercased() {
-        case "GBK", "GB2312", "GB18030":
-            let encoding = CFStringConvertIANACharSetNameToEncoding(name as CFString)
-            guard encoding != kCFStringEncodingInvalidId else { throw JsEngineError.unimplemented("字符集 \(name)") }
-            return String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(encoding))
-        case "UTF-8", "UTF8": return .utf8
-        case "UTF-16LE": return .utf16LittleEndian
-        case "UTF-16BE": return .utf16BigEndian
-        case "ISO-8859-1": return .isoLatin1
-        case "US-ASCII", "ASCII": return .ascii
-        default: throw JsEngineError.unimplemented("字符集 \(name)")
         }
     }
 

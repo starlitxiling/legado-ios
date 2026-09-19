@@ -73,3 +73,12 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 - getReadBookConfig/getThemeConfig 返回 JSON，Map 版本支持 get；App 保留当前选中/共享阅读配置字段，并覆盖当前用户设置。主题随偏好和系统外观刷新。
 - logType 对 null、布尔、数字、字符串、普通数组/对象和 undefined 输出对应 Kotlin/Rhino 类型名；复杂平台宿主对象和动态生成函数类名不提供 JVM 反射的逐字模拟。
 - URL 变量按已确认计划扩展为 chapter/book/ruleData/source 全链；额外参数仅覆盖当前 URL 的读取。实体字段以只读快照暴露，变量通过 java/source 方法更新。
+
+
+## 字节与编解码（轮次 5 / P3b）
+
+- 宿主字节结果是 Uint8Array；输入可用 TypedArray/ArrayBuffer 或 -128...255 的整数数组，非整数及越界值报错。
+- Base64 字节解码遵循 [AOSP Base64 状态机](https://raw.githubusercontent.com/aosp-mirror/platform_frameworks_base/master/core/java/android/util/Base64.java)；十六进制空值与奇数长度遵循 [Hutool 5.8.22 Base16Codec](https://raw.githubusercontent.com/dromara/hutool/5.8.22/hutool-core/src/main/java/cn/hutool/core/codec/Base16Codec.java)。UTF-16 空串不输出 BOM，依据 [OpenJDK UnicodeEncoder](https://raw.githubusercontent.com/openjdk/jdk17u/master/src/java.base/share/classes/sun/nio/cs/UnicodeEncoder.java)。这些断言为源码推导，本机无 JVM，未声称运行 Android 对拍。
+- UTF-8/UTF-16/ASCII 解码替换坏字节；其他字符集的有效输入由系统转换器处理，损坏序列会显式报错，未模拟所有 JVM 字符集的替换粒度。
+- toURL 提供 host/origin/pathname/searchParams；Foundation 会对原始 URL 中非法空格进行百分号编码，未保留 Java URL 的非规范原始空格。
+- java.decodeURI 为计划要求的扩展，使用表单规则（加号为空格），支持可选字符集；JS 原生 decodeURI 不变。
