@@ -10,7 +10,7 @@ extension AppPreferences {
         for key in "coverShowName coverShowAuthor coverShowNameN coverShowAuthorN coverTitleAdaptive welcomeShowText welcomeShowIcon welcomeShowTextDark welcomeShowIconDark replaceEnableDefault autoClearExpired showAddToShelfAlert showMangaUi jsSourceApiTokenRequired".split(separator: " ") {
             values[String(key)] = .boolean(true)
         }
-        for key in "transparentNavBar transparentNavBarNight coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome useDefaultCover showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore".split(separator: " ") {
+        for key in "importReplaceSource transparentNavBar transparentNavBarNight coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome useDefaultCover showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore".split(separator: " ") {
             values[String(key)] = .boolean(false)
         }
         for key in "backgroundImage backgroundImageNight welcomeImagePath welcomeImagePathDark coverFont userAgent customHosts jsSourceApiToken backupUri localPassword defaultCover defaultCoverDark readRecordCover readRecordCoverDark durThemeName durThemeNameNight".split(separator: " ") {

@@ -1,4 +1,5 @@
 import XCTest
+import Observation
 import LegadoCore
 @testable import ReaderCheck
 
@@ -24,6 +25,32 @@ final class ReaderRevisionTests: XCTestCase {
         let requests = await client.requests
         XCTAssertEqual(requests.count, 1)
         await restored.close()
+    }
+
+    func testRuleEditsAutomaticallyRefreshReaderWithoutFetchingAgain() async throws {
+        let (database, book, directory) = try await fixture(count: 1)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let client = ReplayHttpClient()
+        let url = URL(string: "https://revision.test/0")!
+        await client.enqueue(url: url, response: .init(status: 200, body: Data("<p>后来</p>".utf8), finalURL: url))
+        let model = ReaderViewModel(database: database, client: client, cacheDirectory: directory, preDownloadCount: { 0 })
+        await model.load(bookURL: book.bookUrl)
+        var rule = ReplaceRuleRow(); rule.id = 1; rule.pattern = "後來"; rule.replacement = "updated"; rule.isRegex = false
+        model.chineseConverterType = { 2 }
+        let updated = expectation(description: "Rule update reached visible pagination")
+        withObservationTracking {
+            _ = model.pagination
+        } onChange: {
+            Task { @MainActor in
+                XCTAssertTrue(model.pagination?.text.string.contains("updated") == true)
+                updated.fulfill()
+            }
+        }
+        try await ReplaceRuleRepository(database: database).insert(rule)
+        await fulfillment(of: [updated], timeout: 5)
+        let requests = await client.requests
+        XCTAssertEqual(requests.count, 1)
+        await model.close()
     }
 
     func testConfiguredPreDownloadCountControlsRequests() async throws {
@@ -139,6 +166,8 @@ final class ReaderRevisionTests: XCTestCase {
                 await model.reflow(settings: settings)
             }
         }
+        await barrier.waitForPending()
+        await barrier.release()
         for task in tasks { await task.value }
         XCTAssertFalse(probe.mainThreadSeen)
         XCTAssertEqual(probe.count, 1, "连续设置必须合并为最后一次分页")
@@ -242,16 +271,26 @@ private final class LayoutProbe: @unchecked Sendable {
 
 private actor LayoutBarrier {
     private var initialLoad = true
+    private var released = false
     private var waiting: [CheckedContinuation<Void, Never>] = []
+    private var pendingWaiters: [CheckedContinuation<Void, Never>] = []
     func wait() async {
         if initialLoad { initialLoad = false; return }
+        if released { return }
         await withCheckedContinuation { continuation in
             waiting.append(continuation)
-            if waiting.count == 5 {
-                for continuation in waiting { continuation.resume() }
-                waiting.removeAll()
-            }
+            for waiter in pendingWaiters { waiter.resume() }
+            pendingWaiters.removeAll()
         }
+    }
+    func waitForPending() async {
+        if !waiting.isEmpty { return }
+        await withCheckedContinuation { pendingWaiters.append($0) }
+    }
+    func release() {
+        released = true
+        for continuation in waiting { continuation.resume() }
+        waiting.removeAll()
     }
 }
 

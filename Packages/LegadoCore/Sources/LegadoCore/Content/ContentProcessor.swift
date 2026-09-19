@@ -5,7 +5,7 @@ public enum ContentProcessorError: Error, Equatable {
     case regexTimeout(Int64)
 }
 
-public struct ContentProcessor {
+public final class ContentProcessor {
     public struct Result {
         public let sameTitleRemoved: Bool
         public let paragraphs: [String]
@@ -13,7 +13,26 @@ public struct ContentProcessor {
         public var text: String { paragraphs.joined(separator: "\n") }
     }
 
-    public let rules: [ReplaceRule]
+    private let stateLock = NSRecursiveLock()
+    private var storedRules: [ReplaceRule]
+    public var rules: [ReplaceRule] {
+        stateLock.lock(); defer { stateLock.unlock() }
+        return storedRules
+    }
+
+    public func upReplaceRules(_ rules: [ReplaceRule]) {
+        let sorted = Self.sorted(rules)
+        stateLock.lock(); defer { stateLock.unlock() }
+        guard storedRules != sorted else { return }
+        storedRules = sorted
+        disabled.reset()
+    }
+
+    private static func sorted(_ rules: [ReplaceRule]) -> [ReplaceRule] {
+        rules.enumerated().sorted { a, b in
+            a.element.order == b.element.order ? a.offset < b.offset : a.element.order < b.element.order
+        }.map(\.element)
+    }
     private let clock: () -> TimeInterval
     private let replaceEnableDefault: Bool
     private let adaptSpecialStyle: Bool
@@ -25,6 +44,10 @@ public struct ContentProcessor {
     private final class DisabledRules {
         private let lock = NSLock()
         private var ids = Set<Int64>()
+        func reset() {
+            lock.lock(); defer { lock.unlock() }
+            ids.removeAll()
+        }
         func contains(_ id: Int64) -> Bool {
             lock.lock(); defer { lock.unlock() }
             return ids.contains(id)
@@ -39,9 +62,7 @@ public struct ContentProcessor {
                 paragraphIndent: String = "　　", chineseConverterType: Int = 0,
                 replaceEnableDefault: Bool = true, adaptSpecialStyle: Bool = true, cacheDirectory: URL? = nil, onError: @escaping (ReplaceRule, Error) -> Void = { _, _ in },
                 disableRule: @escaping (Int64) -> Void = { _ in }) {
-        self.rules = rules.enumerated().sorted { a, b in
-            a.element.order == b.element.order ? a.offset < b.offset : a.element.order < b.element.order
-        }.map(\.element)
+        self.storedRules = Self.sorted(rules)
         self.replaceEnableDefault = replaceEnableDefault
         self.adaptSpecialStyle = adaptSpecialStyle
         self.cacheDirectory = cacheDirectory
@@ -51,6 +72,7 @@ public struct ContentProcessor {
     }
 
     public func title(book: Book, chapter: BookChapter, useReplace: Bool = true, chineseConvert: Bool = true) throws -> String {
+        stateLock.lock(); defer { stateLock.unlock() }
         try Task.checkCancellation()
         var title = (chapter.title ?? "").replacingOccurrences(of: "\r", with: "").replacingOccurrences(of: "\n", with: "")
         if chineseConvert { title = try ChineseConverter.convert(title, type: chineseConverterType) }
@@ -67,6 +89,7 @@ public struct ContentProcessor {
 
     public func getContent(book: Book, chapter: BookChapter, content: String, includeTitle: Bool = true,
                            useReplace: Bool = true, removeDuplicateParagraphs: Bool = false) throws -> Result {
+        stateLock.lock(); defer { stateLock.unlock() }
         try Task.checkCancellation()
         var text = content
         var removed = false

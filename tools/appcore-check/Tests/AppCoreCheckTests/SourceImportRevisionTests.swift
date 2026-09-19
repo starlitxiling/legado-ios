@@ -5,6 +5,33 @@ import LegadoCore
 
 final class SourceImportRevisionTests: XCTestCase {
     @MainActor
+    func testSourceReplacementAppliesBeforePreviewAndRejectsBrokenJSON() async throws {
+        let database = try AppDatabase.inMemory()
+        let repository = BookSourceRepository(database: database)
+        let rules = ReplaceRuleRepository(database: database)
+        var rule = ReplaceRuleRow(); rule.id = 1; rule.scopeSource = true; rule.scopeContent = false
+        rule.isRegex = false; rule.pattern = "Old"; rule.replacement = "New"
+        try await rules.insert(rule)
+        let model = SourcesViewModel(repository: repository, httpClient: ReplayHttpClient())
+        XCTAssertFalse(model.useSourceReplacement)
+        model.useSourceReplacement = true
+        await model.prepareImport(text: #"{"bookSourceUrl":"https://source.test","bookSourceName":"Old"}"#)
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(model.importPreview?.newCount, 1)
+        await model.confirmImport()
+        let stored = try await repository.get(bookSourceUrl: "https://source.test")
+        XCTAssertEqual(stored?.bookSourceName, "New")
+        rule.pattern = "{"; rule.replacement = "broken"
+        try await rules.update(rule)
+        await model.prepareImport(text: #"{"bookSourceUrl":"https://other.test"}"#)
+        XCTAssertNotNil(model.errorMessage)
+        XCTAssertNil(model.importPreview)
+        await model.confirmImport()
+        let rejected = try await repository.get(bookSourceUrl: "https://other.test")
+        XCTAssertNil(rejected)
+    }
+
+    @MainActor
     func testKeepEnableCanBeChangedAfterPreviewWithoutKeepingTimestamp() async throws {
         let repository = BookSourceRepository(database: try .inMemory())
         var source = BookSourceRow()

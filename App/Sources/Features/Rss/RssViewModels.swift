@@ -4,6 +4,7 @@ import LegadoCore
 
 @Observable @MainActor
 final class RssSourceListModel {
+    var useSourceReplacement = false
     var sources: [RssSource] = []
     var selectedGroup = "全部"
     var error: String?
@@ -51,7 +52,8 @@ final class RssSourceListModel {
                 case .invalid: throw RssError.invalidSource
                 }
             }
-            try await repository.saveSources(values)
+            let replacement = useSourceReplacement ? try await repository.sourceReplacement() : SourceReplacement(rules: [])
+            try await repository.saveSources(values.map { try replacement.apply($0) })
             await reload()
         } catch { self.error = String(describing: error) }
     }

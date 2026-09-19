@@ -5,7 +5,7 @@ struct ReaderLayoutInput {
     let book: Book
     let chapter: BookChapter
     let rawContent: String
-    let rules: [ReplaceRuleRow]
+    var rules: [ReplaceRuleRow]
     var replaceEnableDefault = true
     var chineseConverterType = 0
     var adaptSpecialStyle = true
@@ -18,13 +18,14 @@ struct ReaderLayoutResult {
 }
 
 enum ReaderLayout {
+    private static let processors = ContentProcessorPool()
     static func build(input: ReaderLayoutInput, size: CGSize, settings: ReaderSettings,
                       didStart: @Sendable () -> Void) throws -> ReaderLayoutResult {
         try Task.checkCancellation()
         didStart()
         let rules = try input.rules.map { try ReaderEntityBridge.decode(ReplaceRule.self, row: $0) }
-        let processor = ContentProcessor(rules: rules, paragraphIndent: settings.paragraphIndent, chineseConverterType: input.chineseConverterType,
-            replaceEnableDefault: input.replaceEnableDefault, adaptSpecialStyle: input.adaptSpecialStyle, cacheDirectory: input.cacheDirectory)
+        let processor = processors.get(book: input.book, rules: rules, configuration: .init(paragraphIndent: settings.paragraphIndent, chineseConverterType: input.chineseConverterType,
+            replaceEnableDefault: input.replaceEnableDefault, adaptSpecialStyle: input.adaptSpecialStyle, cacheDirectory: input.cacheDirectory))
         let title = try processor.title(book: input.book, chapter: input.chapter)
         let content = try processor.getContent(book: input.book, chapter: input.chapter,
             content: input.rawContent, includeTitle: false)

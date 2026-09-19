@@ -4,6 +4,9 @@ import GRDB
 public struct RssRepository: Sendable {
     private let database: AppDatabase
     public init(database: AppDatabase) { self.database = database }
+    public func sourceReplacement() async throws -> SourceReplacement {
+        try await ReplaceRuleRepository(database: database).sourceReplacement()
+    }
     public func service(client: any HttpClient) -> RssService { RssService(client: client, database: database) }
     public func sources() async throws -> [RssSource] {
         try await database.writer.read { try RssSource.fetchAll($0, sql: "SELECT * FROM rssSources ORDER BY customOrder, sourceName") }

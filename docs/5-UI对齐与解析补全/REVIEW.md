@@ -124,3 +124,12 @@
 - removeSameTitleCache 的实际含义是 .nr 用户禁用标记，并非每处理一次就记住已删标题。BookHelp 支持标记写入/删除，Core 和阅读器按缓存目录检查标记，切换即时生效；UI 控制入口按 U6 接入。
 - 新增 Core 6 项与 App 1 项，Core 644/0、AppCore 251/0、generic iOS 构建通过；最后区间错误保护修改后相关 6 项复跑通过。日志 p5-policy-*。
 - scopeSource 与处理器池/热更新继续实现；不会把 scopeSource 单独勾选的书源 JSON 规则应用到正文。
+
+
+## P5-4/7 书源净化与热更新（P5 完成）
+
+- scopeSource 依据实际 Kotlin 作用于书源/RSS JSON 导入，Repository 按 enabled/scopeSource/order 查询。保留原始身份匹配作用范围与排除项；替换后必须仍为单个有效书源，错误包含可定位的规则 ID 或结果类型。
+- 审查补齐 Android importReplaceSource 默认 false，导入页提供开关并保存偏好；未匹配规则直接保留对象，不做无用往返。书源预览/订阅导入均实测，非法替换不入库。
+- ContentProcessor 改为可热更新实例，递归锁保护一次处理与规则更新；32 项有界池按书名/来源/配置复用。规则变更通过 GRDB observation 自动触发阅读器重排，加载期间延后，关闭时取消观察。
+- 修复异步规则读取后旧 reflow 取消新排版的竞争；字体连续修改测试改用显式同步闸门，验证最终仅一次排版，不再要求过期请求必须进入等待。已打开阅读器修改规则的观察测试通过且网络请求保持 1 次。
+- 最终 Core 649/0、AppCore 254/0、generic iOS 构建通过，日志 p5-final-*；详见 docs/spec/content-compat.md。P4 真实门禁仍未完成，不据 P5 完成推导整批完成。

@@ -9,7 +9,9 @@ struct RssSourceListView: View {
     @State private var importText = ""
     init(container: AppContainer) {
         self.container = container
-        _model = State(initialValue: RssSourceListModel(repository: RssRepository(database: container.database), client: container.httpClient))
+        let model = RssSourceListModel(repository: RssRepository(database: container.database), client: container.httpClient)
+        model.useSourceReplacement = UserDefaults.standard.bool(forKey: "importReplaceSource")
+        _model = State(initialValue: model)
     }
     var body: some View {
         List {
@@ -69,6 +71,8 @@ struct RssSourceListView: View {
         .sheet(isPresented: $importing) {
             NavigationStack {
                 Form {
+                    Toggle("导入时应用书源替换规则", isOn: $model.useSourceReplacement)
+                        .onChange(of: model.useSourceReplacement) { _, value in UserDefaults.standard.set(value, forKey: "importReplaceSource") }
                     TextEditor(text: $importText).frame(minHeight: 240)
                     if let error = model.error { Text(error).foregroundStyle(.red) }
                 }

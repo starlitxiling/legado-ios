@@ -19,7 +19,9 @@ struct SourcesView: View {
 
     init(repository: BookSourceRepository, replaceRules: ReplaceRuleRepository,
          httpClient: any ResponseLimitedHttpClient, sourceLogin: SourceLogin, sourceChecker: SourceChecker) {
-        _model = State(initialValue: SourcesViewModel(repository: repository, httpClient: httpClient))
+        let model = SourcesViewModel(repository: repository, httpClient: httpClient)
+        model.useSourceReplacement = UserDefaults.standard.bool(forKey: "importReplaceSource")
+        _model = State(initialValue: model)
         self.replaceRules = replaceRules
         self.repository = repository
         self.httpClient = httpClient
@@ -129,9 +131,10 @@ struct SourcesView: View {
                               confirm: {
                                   await model.confirmImport()
                                   return model.importPreview == nil && model.errorMessage == nil
-                              }, cancel: { model.cancelImport() }, keepEnable: $model.keepEnable)
+                              }, cancel: { model.cancelImport() }, keepEnable: $model.keepEnable, sourceReplacement: $model.useSourceReplacement)
         }
         .task { await model.load() }
+        .onChange(of: model.useSourceReplacement) { _, value in UserDefaults.standard.set(value, forKey: "importReplaceSource") }
         .sheet(isPresented: $showEditor) {
             NavigationStack {
                 BookSourceEditView(source: editingSource, repository: repository, client: httpClient,

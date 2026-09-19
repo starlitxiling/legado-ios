@@ -65,6 +65,8 @@ final class ReaderViewModel {
     private var downloadTask: Task<CachedReaderChapter, Error>?
     private var layoutTask: Task<ReaderLayoutResult, Error>?
     private var prefetchTask: Task<Void, Never>?
+    private var rulesTask: Task<Void, Never>?
+    private var pendingRulesRefresh = false
     private let preDownloadCount: @Sendable () -> Int
     var replaceEnableDefault: () -> Bool = { true }
     var chineseConverterType: () -> Int = { 0 }
@@ -107,6 +109,7 @@ final class ReaderViewModel {
     }
 
     func load(bookURL: String, chapterIndex requestedIndex: Int? = nil) async {
+        rulesTask?.cancel(); rulesTask = nil; pendingRulesRefresh = false
         closedWebDav = false
         pendingWebDavProgress = nil
         let token = beginRequest()
@@ -157,6 +160,7 @@ final class ReaderViewModel {
             let desired = requestedIndex ?? book.durChapterIndex
             let index = chapters.first(where: { $0.index == desired })?.index ?? chapters[0].index
             await openChapter(ChapterRequest(index: index, offset: requestedIndex == nil ? book.durChapterPos : 0), token: token)
+            if generation == token { observeReplaceRules() }
         } catch {
             guard generation == token else { return }
             errorMessage = error.localizedDescription; isLoading = false
@@ -201,7 +205,10 @@ final class ReaderViewModel {
                     failedRequest = nil; isLoading = false
                     await saveProgress()
                     guard token == generation else { return }
-                    prefetchNextChapter()
+                    if pendingRulesRefresh {
+                        pendingRulesRefresh = false
+                        await reflow()
+                    } else { prefetchNextChapter() }
                     return
                 } catch is CancellationError {
                     if Task.isCancelled || token != generation { return }
@@ -268,16 +275,40 @@ final class ReaderViewModel {
         await goToChapter(chapters[chapterPosition - 1].index)
     }
 
+    private func observeReplaceRules() {
+        rulesTask?.cancel()
+        let values = ReplaceRuleRepository(database: database).observeEnabled()
+        rulesTask = Task { [weak self] in
+            do {
+                for try await rules in values {
+                    try Task.checkCancellation()
+                    guard let self else { return }
+                    if self.isLoading { self.pendingRulesRefresh = true }
+                    else if let current = self.layoutInput, current.rules != rules { await self.reflow() }
+                }
+            } catch is CancellationError {
+            } catch {
+                if !Task.isCancelled { self?.errorMessage = error.localizedDescription }
+            }
+        }
+    }
+
     func reflow(size: CGSize? = nil, settings: ReaderSettings? = nil) async {
         previewGeneration = UUID(); nextChapterPagination = nil; prefetchTask?.cancel()
         if let size { self.size = size }
         if let settings { self.settings = settings.normalized }
         let token = generation, layoutToken = UUID()
         layoutGeneration = layoutToken; layoutTask?.cancel()
-        guard !isLoading, let input = layoutInput else { return }
+        guard !isLoading, var input = layoutInput else { return }
         do {
+            input.rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
+            guard token == generation, layoutToken == layoutGeneration else { return }
+            input.chineseConverterType = chineseConverterType()
+            input.replaceEnableDefault = replaceEnableDefault()
+            layoutInput = input
             let result = try await render(input: input, debounce: settings != nil)
             guard token == generation, layoutToken == layoutGeneration else { return }
+            layoutInput = input
             pagination = result.pagination; pageIndex = result.pagination.pageIndex(at: characterOffset)
             chapterTitle = result.title
             prefetchNextChapter()
@@ -315,6 +346,8 @@ final class ReaderViewModel {
         let row = chapters[position], nextURL = position + 1 < chapters.count ? chapters[position + 1].url : nil
         let cache = cache, source = source, client = client, token = generation
         let database = database, size = size, settings = settings
+        let replaceEnabled = replaceEnableDefault(), converterType = chineseConverterType()
+        let adaptStyle = adaptSpecialStyle, directory = cacheDirectory
         let following = Array(chapters.dropFirst(position + 1).prefix(max(0, count - 1)))
         let chapterRows = chapters
         prefetchTask = Task { [weak self] in
@@ -324,8 +357,8 @@ final class ReaderViewModel {
                 let cached = try await cache.content(book: entity, chapter: chapter, nextURL: nextURL, source: source, client: client)
                 let rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
                 let input = ReaderLayoutInput(book: entity, chapter: chapter, rawContent: cached.rawContent, rules: rules,
-                    replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType(),
-                adaptSpecialStyle: adaptSpecialStyle, cacheDirectory: cacheDirectory)
+                    replaceEnableDefault: replaceEnabled, chineseConverterType: converterType,
+                    adaptSpecialStyle: adaptStyle, cacheDirectory: directory)
                 let layout = Task.detached {
                     try ReaderLayout.build(input: input, size: size, settings: settings, didStart: {})
                 }
@@ -422,6 +455,7 @@ final class ReaderViewModel {
     }
 
     func close() async {
+        rulesTask?.cancel(); rulesTask = nil
         _ = beginRequest(); isLoading = false
         await cache.cancelPending()
         await saveProgress()

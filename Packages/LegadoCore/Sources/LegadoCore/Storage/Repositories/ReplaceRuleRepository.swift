@@ -1,3 +1,4 @@
+import Foundation
 import GRDB
 
 public typealias ReplaceRuleRepository = Repository<ReplaceRuleRow>
@@ -6,6 +7,25 @@ public typealias ReplaceRuleRepository = Repository<ReplaceRuleRow>
 private let groupTrimCharacters = "char(9,10,11,12,13,28,29,30,31,32,160,5760,8192,8193,8194,8195,8196,8197,8198,8199,8200,8201,8202,8232,8233,8239,8287,12288)"
 
 extension Repository where Record == ReplaceRuleRow {
+    public func listSourceRules() async throws -> [ReplaceRuleRow] {
+        try await database.writer.read { db in
+            try ReplaceRuleRow.fetchAll(db, sql: "SELECT * FROM replace_rules WHERE isEnabled = 1 AND scopeSource = 1 ORDER BY sortOrder, id")
+        }
+    }
+
+    public func sourceReplacement() async throws -> SourceReplacement {
+        let rules = try await listSourceRules().map {
+            try JSONDecoder().decode(ReplaceRule.self, from: JSONEncoder().encode($0))
+        }
+        return SourceReplacement(rules: rules)
+    }
+
+    public func observeEnabled() -> AsyncValueObservation<[ReplaceRuleRow]> {
+        ValueObservation.tracking { db in
+            try ReplaceRuleRow.fetchAll(db, sql: "SELECT * FROM replace_rules WHERE isEnabled = 1 ORDER BY sortOrder, id")
+        }.removeDuplicates().values(in: database.writer, bufferingPolicy: .bufferingNewest(1))
+    }
+
     public func list(groupName: String) async throws -> [ReplaceRuleRow] {
         try await database.writer.read { db in
             try ReplaceRuleRow.fetchAll(db, sql: """
@@ -47,5 +67,12 @@ extension Repository where Record == ReplaceRuleRow {
             }
             return try ReplaceRuleRow.fetchAll(db, sql: "SELECT * FROM replace_rules ORDER BY sortOrder, id")
         }
+    }
+}
+
+
+extension Repository where Record == BookSourceRow {
+    public func sourceReplacement() async throws -> SourceReplacement {
+        try await ReplaceRuleRepository(database: database).sourceReplacement()
     }
 }

@@ -12,6 +12,7 @@ final class SourcesViewModel {
     var keyword = ""
     var selectedGroup: String?
     var keepEnable = false
+    var useSourceReplacement = false
     var sort: SourceSort = .custom
     var ascending = true
     var selectedURLs: Set<String> = []
@@ -161,8 +162,12 @@ final class SourcesViewModel {
         case .urls: throw ManagementImportError.urlCollection
         case .invalid: throw ManagementImportError.invalidSourceText(String(text.prefix(80)))
         }
+        let replacement = useSourceReplacement ? try await repository.sourceReplacement() : SourceReplacement(rules: [])
         var unique: [String: ImportedBookSource] = [:]
-        for item in imported { unique[item.source.bookSourceUrl!] = item }
+        for item in imported {
+            let source = try replacement.apply(item.source)
+            unique[source.bookSourceUrl!] = ImportedBookSource(source: source)
+        }
         let rows = try unique.values.map {
             try ManagementImport.row($0.source, defaults: BookSourceRow())
         }.sorted { ($0.customOrder, $0.bookSourceUrl) < ($1.customOrder, $1.bookSourceUrl) }

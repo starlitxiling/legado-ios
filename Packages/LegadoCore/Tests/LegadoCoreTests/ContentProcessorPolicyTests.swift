@@ -10,6 +10,38 @@ final class ContentProcessorPolicyTests: XCTestCase {
         return (book, chapter, rule)
     }
 
+    func testEnabledRuleObservationReflectsDatabaseEdits() async throws {
+        let repository = ReplaceRuleRepository(database: try AppDatabase.inMemory())
+        var iterator = repository.observeEnabled().makeAsyncIterator()
+        let initial = try await iterator.next()
+        XCTAssertEqual(initial, [])
+        var row = ReplaceRuleRow(); row.id = 7; row.pattern = "body"; row.replacement = "new"
+        try await repository.insert(row)
+        let inserted = try await iterator.next()
+        XCTAssertEqual(inserted?.first?.replacement, "new")
+        row.isEnabled = false
+        try await repository.update(row)
+        let disabled = try await iterator.next()
+        XCTAssertEqual(disabled, [])
+    }
+
+    func testProcessorPoolSharesByBookAndRefreshesExistingReferences() throws {
+        let (book, chapter, rule) = entities()
+        let pool = ContentProcessorPool(capacity: 2)
+        let processor = pool.get(book: book, rules: [rule])
+        XCTAssertTrue(processor === pool.get(book: book, rules: [rule]))
+        var updated = rule; updated.replacement = "updated"
+        pool.upReplaceRules([updated])
+        XCTAssertEqual(try processor.getContent(book: book, chapter: chapter, content: "body", includeTitle: false).text, "　　updated")
+        var other = book; other.origin = "other"
+        XCTAssertFalse(processor === pool.get(book: other, rules: [updated]))
+        let converted = pool.get(book: book, rules: [updated], configuration: .init(chineseConverterType: 2))
+        XCTAssertFalse(processor === converted)
+        XCTAssertEqual(pool.count, 2)
+        pool.upReplaceRules([])
+        XCTAssertEqual(try converted.getContent(book: book, chapter: chapter, content: "body", includeTitle: false).text, "　　body")
+    }
+
     func testReplacementDefaultsAndExplicitBookOverrides() throws {
         var (book, chapter, rule) = entities()
         let disabled = ContentProcessor(rules: [rule], replaceEnableDefault: false)

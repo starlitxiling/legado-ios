@@ -19,6 +19,7 @@ struct SourceImportSheet: View {
     let confirm: () async -> Bool
     let cancel: () -> Void
     var keepEnable: Binding<Bool>? = nil
+    var sourceReplacement: Binding<Bool>? = nil
     @State private var address = ""
     @State private var text = ""
     @State private var showsFilePicker = false
@@ -47,6 +48,9 @@ struct SourceImportSheet: View {
                             .disabled(isBusy)
                     }
                 } else {
+                    if let sourceReplacement {
+                        Toggle("导入时应用书源替换规则", isOn: sourceReplacement)
+                    }
                     Section("从 URL 下载") {
                         TextField("https://example.com/sources.json", text: $address)
                             .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()

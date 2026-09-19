@@ -3,6 +3,19 @@ import LegadoCore
 @testable import RssCheck
 
 @MainActor final class RssCheckTests: XCTestCase {
+    func testRSSImportUsesSourceReplacement() async throws {
+        let database = try AppDatabase.inMemory()
+        var rule = ReplaceRuleRow(); rule.id = 1; rule.scopeSource = true; rule.scopeContent = false
+        rule.isRegex = false; rule.pattern = "Old"; rule.replacement = "New"
+        try await ReplaceRuleRepository(database: database).insert(rule)
+        let model = RssSourceListModel(repository: RssRepository(database: database), client: ReplayHttpClient())
+        XCTAssertFalse(model.useSourceReplacement)
+        model.useSourceReplacement = true
+        await model.importText(#"{"sourceUrl":"https://rss.test","sourceName":"Old"}"#)
+        XCTAssertNil(model.error)
+        XCTAssertEqual(model.sources.first?.sourceName, "New")
+    }
+
     func testImportGroupsAndEnableRoundTrip() async throws {
         let repository = RssRepository(database: try .inMemory())
         let client = ReplayHttpClient()
