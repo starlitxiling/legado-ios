@@ -11,9 +11,10 @@ public enum BookContent {
     }
 
     public static func load(source: BookSource, book: Book, chapter: BookChapter, client: any HttpClient,
-                            nextChapterURL: String? = nil, processor: ContentProcessor = ContentProcessor(),
+                            nextChapterURL: String? = nil, processor: ContentProcessor? = nil,
                             includeTitle: Bool = true, configuration: WebBookConfiguration = .init()) async throws -> Result {
-        try await cached(source: source, book: book, chapter: chapter, client: client, cookies: CookieStore(),
+        let processor = processor ?? ContentProcessor(adaptSpecialStyle: configuration.adaptSpecialStyle, cacheDirectory: configuration.cacheDirectory)
+        return try await cached(source: source, book: book, chapter: chapter, client: client, cookies: CookieStore(),
             configuration: configuration, processor: processor, includeTitle: includeTitle) {
                 try await load(context: WebBookContext(source: source, client: client, book: book, configuration: configuration),
                     book: book, chapter: chapter, nextChapterURL: nextChapterURL, processor: processor, includeTitle: includeTitle)

@@ -42,7 +42,7 @@ public final class WebBook {
                 now: @escaping () -> Int64 = { Int64(Date().timeIntervalSince1970 * 1000) }) {
         self.source = source
         self.client = (client as? any SourceSessionClientProviding)?.client(for: source) ?? client
-        self.processor = ContentProcessor(rules: replaceRules)
+        self.processor = ContentProcessor(rules: replaceRules, adaptSpecialStyle: configuration.adaptSpecialStyle, cacheDirectory: configuration.cacheDirectory)
         self.now = now
         self.precisionSearch = precisionSearch
         self.tocCountWords = tocCountWords

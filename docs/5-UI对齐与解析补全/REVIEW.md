@@ -114,3 +114,13 @@
 - 20 组词对来自所取 OpenCC 原文件，包括皇后/后来、头发/发展、面条/面包；不宣称与 HanLP 所有版本逐字等同。Core 新增 4 项、App 新增缓存切换行为测试及偏好往返断言。
 - Core 638/0、AppCore 250/0、generic iOS 构建通过，日志 p5-converter-core / p5-converter-appcore / p5-converter-ios。审查确认资源可随 SwiftPM 打包，未使用绝对运行路径。
 - P5 其余六项继续实现，P4 真实门禁与去重决策仍待收口。
+
+
+## P5-2/3/5/6 分段与净化策略
+
+- ContentHelp 按 Kotlin 2bdd3c58b 移植，使用 UTF-16 索引及 Java ASCII 空白语义。提取原文件在本机 JVM 实际运行，只有 Math.random 被固定值替换；22 组句式样本及随机值 0/0.99 的 6 组分支与 Swift 逐字一致。保留上游引号启发式输出，不按主观文风重写。
+- Swift 空闭区间会崩溃而 JVM 允许空 substring，审查/调试修正为半开区间；异常反向区间显式抛错。测试随机数注入保持可重复，正式行为沿用随机分段。
+- 正文按单书 reSegment 配置接入；usehtml 在替换前保护、恢复为独立单行段落。图片书、本地 EPUB 默认关闭替换，单书显式配置优先于全局默认。
+- removeSameTitleCache 的实际含义是 .nr 用户禁用标记，并非每处理一次就记住已删标题。BookHelp 支持标记写入/删除，Core 和阅读器按缓存目录检查标记，切换即时生效；UI 控制入口按 U6 接入。
+- 新增 Core 6 项与 App 1 项，Core 644/0、AppCore 251/0、generic iOS 构建通过；最后区间错误保护修改后相关 6 项复跑通过。日志 p5-policy-*。
+- scopeSource 与处理器池/热更新继续实现；不会把 scopeSource 单独勾选的书源 JSON 规则应用到正文。

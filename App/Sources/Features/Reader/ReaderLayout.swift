@@ -8,6 +8,8 @@ struct ReaderLayoutInput {
     let rules: [ReplaceRuleRow]
     var replaceEnableDefault = true
     var chineseConverterType = 0
+    var adaptSpecialStyle = true
+    var cacheDirectory: URL?
 }
 
 struct ReaderLayoutResult {
@@ -21,11 +23,11 @@ enum ReaderLayout {
         try Task.checkCancellation()
         didStart()
         let rules = try input.rules.map { try ReaderEntityBridge.decode(ReplaceRule.self, row: $0) }
-        let processor = ContentProcessor(rules: rules, paragraphIndent: settings.paragraphIndent, chineseConverterType: input.chineseConverterType)
-        let useReplace = input.book.readConfig?.useReplaceRule ?? input.replaceEnableDefault
-        let title = try processor.title(book: input.book, chapter: input.chapter, useReplace: useReplace)
+        let processor = ContentProcessor(rules: rules, paragraphIndent: settings.paragraphIndent, chineseConverterType: input.chineseConverterType,
+            replaceEnableDefault: input.replaceEnableDefault, adaptSpecialStyle: input.adaptSpecialStyle, cacheDirectory: input.cacheDirectory)
+        let title = try processor.title(book: input.book, chapter: input.chapter)
         let content = try processor.getContent(book: input.book, chapter: input.chapter,
-            content: input.rawContent, includeTitle: false, useReplace: useReplace)
+            content: input.rawContent, includeTitle: false)
         let pagination = try Paginator().paginate(title: title, paragraphs: content.paragraphs,
             size: size, settings: settings, imageBaseURL: URL(string: input.chapter.url ?? "",
                 relativeTo: URL(string: input.chapter.baseUrl ?? input.book.bookUrl ?? ""))?.absoluteURL.absoluteString)

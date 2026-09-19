@@ -20,7 +20,10 @@ struct ProtectedHTML {
         self.fragments = fragments
     }
 
-    func restore(_ text: String) -> String {
-        fragments.reduce(text) { $0.replacingOccurrences(of: $1.0, with: $1.1) }
+    func restore(_ text: String, asParagraphs: Bool = false) -> String {
+        fragments.reduce(text) {
+            let fragment = asParagraphs ? "\n" + $1.1.replacingOccurrences(of: "\n", with: "") + "\n" : $1.1
+            return $0.replacingOccurrences(of: $1.0, with: fragment)
+        }
     }
 }

@@ -68,6 +68,8 @@ final class ReaderViewModel {
     private let preDownloadCount: @Sendable () -> Int
     var replaceEnableDefault: () -> Bool = { true }
     var chineseConverterType: () -> Int = { 0 }
+    private let cacheDirectory: URL
+    private let adaptSpecialStyle: Bool
     var prepareLocalBook: (BookRow) async throws -> BookRow = { $0 }
     var synchronizeWebDav: (BookRow, Bool) async throws -> BookProgress? = { _, _ in nil }
     var pendingWebDavProgress: BookProgress?
@@ -87,6 +89,7 @@ final class ReaderViewModel {
              try await Task.sleep(nanoseconds: 80_000_000)
          }) {
         self.database = database; self.client = client
+        self.cacheDirectory = cacheDirectory; self.adaptSpecialStyle = adaptSpecialStyle
         self.preDownloadCount = preDownloadCount
         cache = ReaderChapterCache(directory: cacheDirectory, threadCount: threadCount, adaptSpecialStyle: adaptSpecialStyle)
         self.settings = settings.normalized; self.now = now
@@ -181,7 +184,8 @@ final class ReaderViewModel {
             }
             let input = ReaderLayoutInput(book: entity, chapter: try ReaderEntityBridge.decode(BookChapter.self, row: row),
                 rawContent: cached.rawContent, rules: rules,
-                replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType())
+                replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType(),
+                adaptSpecialStyle: adaptSpecialStyle, cacheDirectory: cacheDirectory)
             while token == generation {
                 let layoutToken = UUID(); layoutGeneration = layoutToken
                 do {
@@ -320,7 +324,8 @@ final class ReaderViewModel {
                 let cached = try await cache.content(book: entity, chapter: chapter, nextURL: nextURL, source: source, client: client)
                 let rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
                 let input = ReaderLayoutInput(book: entity, chapter: chapter, rawContent: cached.rawContent, rules: rules,
-                    replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType())
+                    replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType(),
+                adaptSpecialStyle: adaptSpecialStyle, cacheDirectory: cacheDirectory)
                 let layout = Task.detached {
                     try ReaderLayout.build(input: input, size: size, settings: settings, didStart: {})
                 }

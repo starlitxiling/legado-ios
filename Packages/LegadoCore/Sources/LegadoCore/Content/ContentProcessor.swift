@@ -15,6 +15,9 @@ public struct ContentProcessor {
 
     public let rules: [ReplaceRule]
     private let clock: () -> TimeInterval
+    private let replaceEnableDefault: Bool
+    private let adaptSpecialStyle: Bool
+    private let cacheDirectory: URL?
     private let chineseConverterType: Int
     private let paragraphIndent: String
     private let onError: (ReplaceRule, Error) -> Void
@@ -33,11 +36,15 @@ public struct ContentProcessor {
     }
     private let disabled = DisabledRules()
     public init(rules: [ReplaceRule] = [], clock: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
-                paragraphIndent: String = "　　", chineseConverterType: Int = 0, onError: @escaping (ReplaceRule, Error) -> Void = { _, _ in },
+                paragraphIndent: String = "　　", chineseConverterType: Int = 0,
+                replaceEnableDefault: Bool = true, adaptSpecialStyle: Bool = true, cacheDirectory: URL? = nil, onError: @escaping (ReplaceRule, Error) -> Void = { _, _ in },
                 disableRule: @escaping (Int64) -> Void = { _ in }) {
         self.rules = rules.enumerated().sorted { a, b in
             a.element.order == b.element.order ? a.offset < b.offset : a.element.order < b.element.order
         }.map(\.element)
+        self.replaceEnableDefault = replaceEnableDefault
+        self.adaptSpecialStyle = adaptSpecialStyle
+        self.cacheDirectory = cacheDirectory
         self.chineseConverterType = chineseConverterType
         self.clock = clock
         self.paragraphIndent = paragraphIndent; self.onError = onError; self.disableRule = disableRule
@@ -47,7 +54,7 @@ public struct ContentProcessor {
         try Task.checkCancellation()
         var title = (chapter.title ?? "").replacingOccurrences(of: "\r", with: "").replacingOccurrences(of: "\n", with: "")
         if chineseConvert { title = try ChineseConverter.convert(title, type: chineseConverterType) }
-        if useReplace && book.readConfig?.useReplaceRule != false {
+        if useReplace && book.useReplaceRule(defaultEnabled: replaceEnableDefault) {
             for rule in rules where rule.scopeTitle && applies(rule, book: book) {
                 do {
                     let changed = try apply(rule, to: title, chapter: chapter, book: book)
@@ -65,25 +72,29 @@ public struct ContentProcessor {
         var removed = false
         var effective: [Int64] = []
         if content != "null" {
-            var candidates = [chapter.title ?? ""]
+            let removeSameTitle = cacheDirectory.map { BookHelp.removeSameTitle(directory: $0, book: book, chapter: chapter) } ?? true
+            var candidates = removeSameTitle ? [chapter.title ?? ""] : []
             var candidateIndex = 0
             while candidateIndex < candidates.count {
                 let candidate = candidates[candidateIndex]
                 candidateIndex += 1
                 if candidate.isEmpty { break }
                 let pattern = "^(?:\\s|\\p{P}|" + NSRegularExpression.escapedPattern(for: book.name ?? "") + ")*"
-                    + NSRegularExpression.escapedPattern(for: candidate)
+                    + (candidateIndex == 1 ? Self.titlePattern(candidate) : NSRegularExpression.escapedPattern(for: candidate))
                     + "[\\t\\x{0B}\\f\\p{Zs}]*(?:(?:\\r\\n|\\r|\\n)\\s*|$)"
                 let regex = try NSRegularExpression(pattern: pattern)
                 if let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
                     text = (text as NSString).substring(from: NSMaxRange(match.range)); removed = true; break
                 }
-                if candidates.count == 1 && useReplace && book.readConfig?.useReplaceRule != false {
+                if candidates.count == 1 && useReplace && book.useReplaceRule(defaultEnabled: replaceEnableDefault) {
                     candidates.append(try title(book: book, chapter: chapter, useReplace: useReplace, chineseConvert: false))
                 }
             }
+            if book.readConfig?.reSegment == true { text = try ContentHelp.reSegment(text, chapterName: chapter.title ?? "") }
             text = try ChineseConverter.convert(text, type: chineseConverterType)
-            if useReplace && book.readConfig?.useReplaceRule != false {
+            let html = try ProtectedHTML(text, enabled: adaptSpecialStyle)
+            text = html.text
+            if useReplace && book.useReplaceRule(defaultEnabled: replaceEnableDefault) {
                 text = text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")
                 for rule in rules where rule.scopeContent && applies(rule, book: book) {
                     do {
@@ -97,6 +108,7 @@ public struct ContentProcessor {
                     }
                 }
             }
+            text = html.restore(text, asParagraphs: true)
         }
         let title = includeTitle ? try title(book: book, chapter: chapter, useReplace: useReplace) : ""
         let combined = includeTitle ? title + "\n" + text : text
@@ -108,6 +120,10 @@ public struct ContentProcessor {
         }
         try Task.checkCancellation()
         return Result(sameTitleRemoved: removed, paragraphs: paragraphs, effectiveRuleIDs: effective)
+    }
+
+    private static func titlePattern(_ title: String) -> String {
+        title.components(separatedBy: .whitespacesAndNewlines).map(NSRegularExpression.escapedPattern).joined(separator: "\\s*")
     }
 
     private func handle(_ error: Error, rule: ReplaceRule) throws {

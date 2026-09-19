@@ -4,6 +4,22 @@ import LegadoCore
 @testable import ReaderCheck
 
 final class ReaderTests: XCTestCase {
+    func testLayoutUsesTitleMarkerAndBookSegmentSetting() throws {
+        var book = Book(); book.bookUrl = "https://reader.test/book"; book.name = "Book"
+        book.readConfig = ReadConfig(); book.readConfig?.reSegment = false
+        var chapter = BookChapter(); chapter.bookUrl = book.bookUrl; chapter.url = "chapter"; chapter.title = "Title"
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        try BookHelp.setRemoveSameTitle(false, directory: directory, book: book, chapter: chapter)
+        let input = ReaderLayoutInput(book: book, chapter: chapter, rawContent: "Title\nbody", rules: [], cacheDirectory: directory)
+        let layout = try ReaderLayout.build(input: input, size: CGSize(width: 320, height: 600), settings: ReaderSettings(), didStart: {})
+        XCTAssertEqual(layout.pagination.text.string.components(separatedBy: "Title").count, 3)
+        book.readConfig?.reSegment = true
+        let segmented = ReaderLayoutInput(book: book, chapter: chapter, rawContent: "第一\n段结束。\n第二段。", rules: [])
+        let result = try ReaderLayout.build(input: segmented, size: CGSize(width: 320, height: 600), settings: ReaderSettings(), didStart: {})
+        XCTAssertTrue(result.pagination.text.string.contains("第一段结束。"))
+    }
+
     @MainActor
     func testRestoredNetworkBookFetchesMissingDirectoryAndReadsSavedChapter() async throws {
         let database = try AppDatabase.inMemory()
