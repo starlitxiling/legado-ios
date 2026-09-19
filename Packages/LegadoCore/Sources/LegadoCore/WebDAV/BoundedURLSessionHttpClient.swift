@@ -18,35 +18,24 @@ extension ReplayHttpClient: ResponseLimitedHttpClient {
 }
 
 public struct BoundedURLSessionHttpClient: ResponseLimitedHttpClient {
-    private let protocolClasses: [AnyClass]
+    private let underlying: URLSessionHttpClient
 
-    public init(protocolClasses: [AnyClass] = []) { self.protocolClasses = protocolClasses }
+    public init(protocolClasses: [AnyClass] = []) { underlying = URLSessionHttpClient(protocolClasses: protocolClasses) }
 
     public func send(_ request: HttpRequest) async throws -> HttpResponse {
-        try await send(request, maximumResponseBytes: 256 * 1024 * 1024)
+        try await underlying.send(request)
+    }
+
+    public func send(_ request: HttpRequest, cookieStore: CookieStore?) async throws -> HttpResponse {
+        try await underlying.send(request, cookieStore: cookieStore)
     }
 
     public func send(_ request: HttpRequest, maximumResponseBytes: Int) async throws -> HttpResponse {
-        guard maximumResponseBytes >= 0 else { throw WebDavError.responseTooLarge }
-        let request = request.resolvingUserAgent(defaultValue: UrlRequestBuilder.defaultUserAgent)
-        let configuration = URLSessionConfiguration.ephemeral
-        configuration.httpCookieStorage = nil
-        configuration.urlCache = nil
-        configuration.timeoutIntervalForRequest = request.timeout
-        configuration.timeoutIntervalForResource = request.callTimeout
-        if !protocolClasses.isEmpty { configuration.protocolClasses = protocolClasses }
-        let transfer = BoundedTransfer(limit: maximumResponseBytes, follow: request.followRedirects)
-        let session = URLSession(configuration: configuration, delegate: transfer, delegateQueue: nil)
-        defer { session.invalidateAndCancel() }
-        var outgoing = URLRequest(url: request.url)
-        outgoing.httpMethod = request.method
-        outgoing.httpBody = request.body
-        outgoing.allHTTPHeaderFields = request.headers
-        return try await transfer.send(outgoing, session: session)
+        try await underlying.send(request, maximumResponseBytes: maximumResponseBytes)
     }
 }
 
-private final class BoundedTransfer: NSObject, URLSessionDataDelegate, @unchecked Sendable {
+final class BoundedTransfer: NSObject, URLSessionDataDelegate, @unchecked Sendable {
     private let lock = NSLock()
     private let limit: Int
     private let follow: Bool
@@ -58,7 +47,7 @@ private final class BoundedTransfer: NSObject, URLSessionDataDelegate, @unchecke
 
     init(limit: Int, follow: Bool) { self.limit = limit; self.follow = follow }
 
-    func send(_ request: URLRequest, session: URLSession) async throws -> HttpResponse {
+    func send(_ request: URLRequest, session: URLSession, delegate: HTTPSessionDelegate) async throws -> HttpResponse {
         try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { continuation in
                 lock.lock()
@@ -70,6 +59,7 @@ private final class BoundedTransfer: NSObject, URLSessionDataDelegate, @unchecke
                 self.continuation = continuation
                 let task = session.dataTask(with: request)
                 self.task = task
+                delegate.register(self, for: task)
                 lock.unlock()
                 task.resume()
             }
@@ -78,7 +68,7 @@ private final class BoundedTransfer: NSObject, URLSessionDataDelegate, @unchecke
         }
     }
 
-    private func finish(_ result: Result<HttpResponse, Error>) {
+    func finish(_ result: Result<HttpResponse, Error>) {
         lock.lock()
         guard !completed else { lock.unlock(); return }
         completed = true

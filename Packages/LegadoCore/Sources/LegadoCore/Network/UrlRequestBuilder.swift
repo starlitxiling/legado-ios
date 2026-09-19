@@ -17,6 +17,9 @@ public enum UrlRequestBuilder {
             for (key, value) in object { headers.setHTTPHeader(key, String(describing: value)) }
         }
         for (key, value) in options.headers { headers.setHTTPHeader(key, value) }
+        let proxyValue = headers.httpHeader("proxy")?.trimmingCharacters(in: .whitespacesAndNewlines)
+        try UrlOptions.validateDnsIpProxyCompatibility(proxy: proxyValue, dnsIp: options.dnsIp)
+        let proxy = try proxyValue.flatMap { $0.isEmpty ? nil : try HttpProxy($0) }
         for key in headers.keys.filter({ $0.caseInsensitiveCompare("proxy") == .orderedSame }) { headers.removeValue(forKey: key) }
         for key in headers.keys.filter({ $0.caseInsensitiveCompare("CookieJar") == .orderedSame }) { headers.removeValue(forKey: key) }
         if let cookie {
@@ -29,6 +32,10 @@ public enum UrlRequestBuilder {
         }
         guard let target = URL(string: address), ["http", "https"].contains(target.scheme?.lowercased() ?? ""),
               target.host != nil else { throw RequestError.invalidURL(address) }
+        var hostAddresses: [String: [String]] = [:]
+        if let dnsIp = options.dnsIp, !dnsIp.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            hostAddresses[target.host!.lowercased()] = try UrlOptions.parseDnsIpAddresses(dnsIp)
+        }
         var body: Data?
         if options.method == "POST" {
             let text = options.body ?? ""
@@ -50,7 +57,7 @@ public enum UrlRequestBuilder {
         return HttpRequest(url: target, method: options.method, headers: headers, body: body,
                            timeout: Double(options.timeout ?? 60_000) / 1000,
                            callTimeout: Double(options.callTimeout ?? 60_000) / 1000,
-                           followRedirects: options.followRedirects ?? true, enabledCookieJar: enabledCookieJar)
+                           followRedirects: options.followRedirects ?? true, enabledCookieJar: enabledCookieJar, proxy: proxy, hostAddresses: hostAddresses)
     }
 
     public static func execute(url: String, options: UrlOptions = UrlOptions(), sourceHeaderJSON: String? = nil,

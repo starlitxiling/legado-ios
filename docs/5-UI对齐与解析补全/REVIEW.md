@@ -133,3 +133,12 @@
 - ContentProcessor 改为可热更新实例，递归锁保护一次处理与规则更新；32 项有界池按书名/来源/配置复用。规则变更通过 GRDB observation 自动触发阅读器重排，加载期间延后，关闭时取消观察。
 - 修复异步规则读取后旧 reflow 取消新排版的竞争；字体连续修改测试改用显式同步闸门，验证最终仅一次排版，不再要求过期请求必须进入等待。已打开阅读器修改规则的观察测试通过且网络请求保持 1 次。
 - 最终 Core 649/0、AppCore 254/0、generic iOS 构建通过，日志 p5-final-*；详见 docs/spec/content-compat.md。P4 真实门禁仍未完成，不据 P5 完成推导整批完成。
+
+
+## P6-1/2/3/5 网络路由与分页
+
+- Header proxy 消费后移除，HTTP/SOCKS4/SOCKS5 显式端口解析与认证校验；SOCKS5 使用 iOS 17 原生配置且禁止直连回退。32 项 LRU 会话池隔离代理凭据和原域名，淘汰只等待在途任务结束。
+- dnsIp/resolveIp 与全局 customHosts 接入传输，显式映射优先；保留逻辑 URL/Host/Cookie，备用 IP 顺序回退。证书按原域名验证，URLSession 不能显式设置 SNI 的限制已记入 network-compat.md。
+- 普通 HTTP 与 WebDAV 共用读取中限额，WebDAV 继续禁止跨来源跳转；跨站认证头/临时 Cookie/Host 清除并重载目标 Cookie。复审发现无限超时哨兵的计时溢出风险，已单独绕过超长计时转换。
+- CustomUrl 属性往返及 Kotlin 分页空项/尾页/页码越界已覆盖。新增离线协议测试验证 IPv6、配置优先级、备用 IP、会话复用/认证隔离/LRU、重定向边界；不使用真实代理或 DNS 网络。
+- Core 660/0、AppCore 254/0、generic iOS 构建通过，日志 p6-routing-*。AppCore 新类型缓存出现旧符号链接错误，清理后全量重建通过。此提交未宣称 P6 上传、origin/serverID 或整个批次完成。

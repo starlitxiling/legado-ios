@@ -28,7 +28,6 @@ struct OtherSettingsView: View {
             Section("网络与图片") {
                 controls.text("User-Agent", "userAgent")
                 controls.text("自定义 Hosts JSON", "customHosts")
-                Text("Hosts 仅保存配置，当前网络层没有自定义 DNS 接口。").font(.footnote)
                 controls.toggle("抗锯齿", "antiAlias")
                 controls.number("图片缓存容量（MB）", "bitmapCacheSize", range: 0...1024)
                 controls.number("保留已读漫画章节（0 不清理）", "imageRetainNum", range: 0...10000)

@@ -64,12 +64,16 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
         if !suffix.isEmpty { result = suffix.replacingOccurrences(of: "@result", with: result) }
         result = try self.engine.interpolateURL(result, bindings: bindings)
         if let page = (bindings["page"] as? NSNumber)?.intValue {
-            let pagePattern = try NSRegularExpression(pattern: "<([^<>]+)>")
+            let pagePattern = try NSRegularExpression(pattern: "<(.*?)>")
             let original = result as NSString
-            for match in pagePattern.matches(in: result, range: NSRange(location: 0, length: original.length)).reversed() {
+            for match in pagePattern.matches(in: result, range: NSRange(location: 0, length: original.length)) {
                 let pages = original.substring(with: match.range(at: 1)).components(separatedBy: ",")
-                guard page > 0 else { throw JsEngineError.exception("page 必须大于 0") }
-                result = (result as NSString).replacingCharacters(in: match.range, with: pages[min(page - 1, pages.count - 1)].trimmingCharacters(in: .whitespacesAndNewlines))
+                let index = page < pages.count ? page.subtractingReportingOverflow(1) : (partialValue: pages.count - 1, overflow: false)
+                guard !index.overflow, pages.indices.contains(index.partialValue) else {
+                    throw JsEngineError.exception("Page index out of bounds: " + String(page))
+                }
+                let selected = pages[index.partialValue].trimmingCharacters(in: CharacterSet(charactersIn: "\u{0}"..."\u{20}"))
+                result = result.replacingOccurrences(of: original.substring(with: match.range), with: selected)
             }
         }
         ruleURL = result
@@ -122,6 +126,9 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
                     requestHeaders = try session.loginHeaders(url: address, headers: requestHeaders)
                 }
                 for (key, value) in options.headers { requestHeaders.setHTTPHeader(key, value) }
+                for key in requestHeaders.keys.filter({ $0.caseInsensitiveCompare("proxy") == .orderedSame }) {
+                    requestHeaders.removeValue(forKey: key)
+                }
                 let cookie = await engine.cookieStore.getCookie(url: source.key ?? address)
                 let response = try await loader.load(.init(url: address, html: html, headers: requestHeaders,
                     cookies: cookie, javaScript: options.webJs ?? jsStr, delayTime: options.webViewDelayTime,
@@ -175,6 +182,7 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
         var values: [String: Any] = ["method": raw && options.method == "HEAD" ? "GET" : options.method, "retry": options.retry]
         if let body = options.body { values["body"] = body }
         if let charset = options.charset { values["charset"] = charset }
+        if let dnsIp = options.dnsIp { values["dnsIp"] = dnsIp }
         if let timeout = options.timeout { values["timeout"] = timeout }
         if let redirects = options.followRedirects { values["followRedirects"] = redirects }
         let requestOptions = try UrlOptions.fromJSON(String(decoding: JSONSerialization.data(withJSONObject: values), as: UTF8.self))

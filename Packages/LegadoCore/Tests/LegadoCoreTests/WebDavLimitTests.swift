@@ -72,14 +72,15 @@ final class WebDavLimitTests: XCTestCase {
         } catch WebDavError.responseLimitUnavailable {}
     }
 
-    func testOrdinaryURLSessionClientBackupDownloadRequiresLimitCapability() async throws {
+    func testOrdinaryURLSessionClientStreamsBackupLimit() async throws {
         let url = URL(string: "https://fixture.invalid/backup.zip")!
+        LimitURLProtocol.declaredLength = false
         let client = WebDavClient(baseURL: url, username: "u", password: "p",
-                                  httpClient: URLSessionHttpClient(protocolClasses: [RejectRequestURLProtocol.self]))
+                                  httpClient: URLSessionHttpClient(protocolClasses: [LimitURLProtocol.self]))
         do {
-            _ = try await WebDavBackupSource(client: client).download(WebDavFile(url: url, displayName: "backup.zip"))
-            XCTFail("普通 URLSessionHttpClient 应在 GET 前被拒绝")
-        } catch WebDavError.responseLimitUnavailable {}
+            _ = try await WebDavBackupSource(client: client, maximumDownloadSize: 4).download(WebDavFile(url: url, displayName: "backup.zip"))
+            XCTFail("Streaming download must enforce its byte limit")
+        } catch WebDavError.responseTooLarge {}
     }
 
     func testURLSessionTransportAcceptsEmptyAndExactBoundaryBodies() async throws {
@@ -100,16 +101,6 @@ private struct UnboundedClient: HttpClient {
         XCTFail("不应发出请求")
         throw WebDavError.invalidURL
     }
-}
-
-private final class RejectRequestURLProtocol: URLProtocol {
-    override class func canInit(with request: URLRequest) -> Bool { true }
-    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
-    override func startLoading() {
-        XCTFail("能力检查失败后不应发出请求")
-        client?.urlProtocol(self, didFailWithError: URLError(.cancelled))
-    }
-    override func stopLoading() {}
 }
 
 private final class LimitURLProtocol: URLProtocol {

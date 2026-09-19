@@ -2,7 +2,7 @@
 
 规格基线为 Kotlin `2bdd3c58b`；网络请求经 `HttpClient` 注入。
 
-- `URLSessionHttpClient` 使用临时会话，关闭系统 Cookie 与缓存，每请求设置空闲超时及资源总超时。
+- `URLSessionHttpClient` 使用最多 32 项的临时会话池，关闭系统 Cookie 与缓存，每请求设置空闲超时及共享重定向链的总超时。
 - `timeout` 为毫秒，映射时换算为秒；总超时复用 `UrlOptions.callTimeout` 派生规则。
 - URLSession 无法分别复刻 OkHttp 的连接、读、写超时；未实现连接超时固定 15 秒。
 - delegate 阻止自动跳转，客户端逐跳发送以等待 Cookie actor；停止跟随保留响应体和当前 URL，最多跟随 20 次。
@@ -29,8 +29,13 @@
 - header 名称按 HTTP 大小写不敏感处理；Kotlin 部分分支按 Content-Type 精确键查找。
 - 默认 User-Agent 固定使用规格中的 Chrome/153.0.0.0；不读取 Android 偏好设置。
 - User-Agent 为精确字符串 null 时删除；其他头的 null 字符串按 Kotlin 保留。
-- `dnsIp` / `resolveIp` 保留在 UrlOptions，执行忽略；代理和 Cronet 没有执行支持。
-- 代理 / Cronet 不属于现有 UrlOptions 模型字段，书源 header 中的代理信息不建立代理连接。
+- `dnsIp` / `resolveIp` 的逗号分隔 IPv4/IPv6 映射仅作用于初始主机；全局 `customHosts` JSON 在请求边界注入，显式 URL 映射优先。通过 IP 直连及 Host 头保留逻辑域名，响应 URL 与 Cookie 仍用逻辑域名；连接错误可顺序尝试备用 IP。
+- HTTPS 直连的证书信任仍按原域名校验，不关闭证书检查。URLSession 不提供显式 SNI 设置，因此要求域名 SNI 才能正确握手的站点仍可能失败；不能宣称与 OkHttp 自定义 DNS 完全一致。
+- `customHosts` 当前只接受 IP 字符串/数组，非法配置明确报错；Android 还接受可解析域名并忽略部分非法条目，这两点保留差异。
+- header 中的 `proxy` 被消费并移除，支持显式端口的 HTTP/SOCKS4/SOCKS5、URI 和旧式认证串。HTTP 按代理挑战提供凭据且只试一次；SOCKS5 使用 iOS 17 原生 ProxyConfiguration 并禁止直连回退，SOCKS4 使用 CFNetwork 字典且不接受认证。
+- 会话池按代理完整配置（包含认证）、HTTPS 原域名及直连模式隔离，LRU 淘汰不取消在途请求。代理与显式 dnsIp 同时出现时报错；代理跳过全局主机映射。Cronet 不实现。
+- 普通 HTTP 与 WebDAV 共用分块限额传输，默认响应上限 256 MiB；指定备份上限在读取时执行。WebDAV 显式限制跳转在原来源内，普通请求跨站跳转清除认证、临时 Cookie 和 Host 后重载目标 Cookie。
+- WKWebView GET 和子资源仍由 WebKit 网络栈处理，未接入上述 DNS/代理配置；proxy 不作为页面请求头发出。POST 预取经过普通 HTTP 层。代理/DNS 回归均使用离线 URLProtocol，不声称完成真实代理握手或真机网络验证。
 - `serverID` 是 WebDAV 凭据选择标识，**保留字段，U6 接入**，不是普通 HTTP 服务器转发配置。
   Kotlin `lib/webdav/WebDav.kt:48-50` 从 AnalyzeUrl 读取该值；`lib/webdav/Authorization.kt:25-30` 据此查询服务器配置中的用户名和密码。
 - U2 普通 HTTP 不使用 serverID；启用 webView 后交给注入的 WebView 服务，单独 webJs 在普通 HTTP 路径忽略。
@@ -69,3 +74,9 @@
 - 搜索读取保存的 searchScope、threadCount、precisionSearch：支持分组、单源、全部，范围无匹配时回退全部启用源；按配置并发，每源整体 30 秒超时。空批次仍回调累计结果，同名同作者合并，按精确匹配、分类包含、书名/作者包含、其他排序，前三类同级按来源数降序。Android 此 socket 入口只在首消息建立搜索任务，第一页搜索完成即关闭，不支持后续页；iOS 保持相同生命周期。每个调试连接拥有独立日志流，不复刻 Android 全局 Debug 回调独占及「调试通道占用中」提示。
 - 自写页面 `/debug.html` 提供书源 URL、关键字、令牌输入和实时日志；令牌不写入浏览器持久化存储，停止或离开页面关闭连接。
 - 验证使用工作区内 SwiftPM、假 HTTP 客户端和可注入会话发送回调，无真实外网请求。iOS 构建、浏览器至设备的真实 TCP 升级和后台切换仍需主会话验证；未运行 xcodebuild 或 XcodeGen。
+
+## 轮次 5 P6 URL 基础
+
+- 分页占位使用 Kotlin `<(.*?)>`，支持空项、尾页回落与 ASCII trim；页码 0/负数仅在命中占位时抛错。
+- CustomUrl 可读取、修改、删除属性，空属性省略 JSON 后缀；非法初始 JSON 按 Kotlin 忽略，写入不可 JSON 编码的对象明确报错。
+- 离线用例覆盖映射优先级、IPv6、备用 IP、逻辑 URL、跨站凭据隔离、WebDAV 跳转边界、代理认证会话隔离及 32 项池上限；无限超时哨兵不进入可能溢出的计时转换。

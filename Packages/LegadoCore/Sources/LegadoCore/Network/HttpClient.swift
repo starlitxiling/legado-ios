@@ -23,13 +23,16 @@ public struct HttpRequest: Sendable, Equatable {
     public var timeout: TimeInterval
     public var callTimeout: TimeInterval
     public var followRedirects: Bool
+    public var confinesRedirectsToOrigin = false
     public var enabledCookieJar: Bool
+    public var proxy: HttpProxy?
+    public var hostAddresses: [String: [String]]
     // 最终客户端移除 "null" 后仍须保留禁止信号，避免下一层传输重新补默认 UA。
     var omitsUserAgent = false
 
     public init(url: URL, method: String = "GET", headers: [String: String] = [:], body: Data? = nil,
                 timeout: TimeInterval = 60, callTimeout: TimeInterval = 60, followRedirects: Bool = true,
-                enabledCookieJar: Bool = false) {
+                enabledCookieJar: Bool = false, proxy: HttpProxy? = nil, hostAddresses: [String: [String]] = [:]) {
         self.url = url
         self.method = method
         self.headers = headers
@@ -38,6 +41,8 @@ public struct HttpRequest: Sendable, Equatable {
         self.callTimeout = callTimeout
         self.followRedirects = followRedirects
         self.enabledCookieJar = enabledCookieJar
+        self.proxy = proxy
+        self.hostAddresses = hostAddresses
     }
 
     func resolvingUserAgent(defaultValue: String) -> HttpRequest {

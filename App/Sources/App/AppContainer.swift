@@ -31,6 +31,7 @@ final class AppContainer {
         ScriptHostBridge.install(database: database)
         let httpClient = PreferenceHttpClient(underlying: httpClient,
             userAgent: { UserDefaults.standard.string(forKey: "userAgent") ?? "" },
+            customHosts: { UserDefaults.standard.string(forKey: "customHosts") ?? "" },
             recordResponse: { request, response in
                 if UserDefaults.standard.bool(forKey: "recordHttpLog") {
                     NSLog("HTTP %@ %d %@", request.method, response.status, response.finalURL.host ?? "")

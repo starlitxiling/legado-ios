@@ -89,7 +89,8 @@ public struct WebDavClient: Sendable {
         guard url.user == nil, url.password == nil else { throw WebDavError.invalidURL }
         var headers = headers
         headers["Authorization"] = authorization
-        let outgoing = HttpRequest(url: url, method: method, headers: headers, body: body)
+        var outgoing = HttpRequest(url: url, method: method, headers: headers, body: body)
+        outgoing.confinesRedirectsToOrigin = true
         let response: HttpResponse
         if let limit = maximumResponseBytes {
             guard limit >= 0 else { throw WebDavError.responseTooLarge }
