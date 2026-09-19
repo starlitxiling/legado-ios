@@ -46,6 +46,27 @@ final class SmokeTests: XCTestCase {
         XCTAssertEqual(safeError(WebBookError.httpStatus(403, "https://secret.invalid/token")), "WebBookError.httpStatus(403)")
     }
 
+    func testExplicitDiagnosticFilePreservesErrorWithoutLeakingToOutput() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let diagnostic = directory.appendingPathComponent("error.txt")
+        let client = ReplayHttpClient()
+        let url = URL(string: "https://example.invalid/search?key=private&page=1")!
+        await client.enqueue(url: url, response: HttpResponse(status: 403, finalURL: url))
+        let options = try SmokeOptions(arguments: ["--source", root.appendingPathComponent("source.json").path,
+            "--keyword", "private", "--error-log", diagnostic.path])
+        var output: [String] = []
+        do {
+            _ = try await runSmoke(options: options, client: client, emit: { output.append($0) })
+            XCTFail("Expected HTTP failure")
+        } catch let failure as SmokeFailure {
+            XCTAssertEqual(failure.errorCase, "WebBookError.httpStatus(403)")
+        }
+        XCTAssertTrue(try String(contentsOf: diagnostic, encoding: .utf8).contains("httpStatus(403"))
+        XCTAssertFalse(output.joined().contains("private"))
+    }
+
     func testFailureRetainsStageWithoutRequestDetails() async throws {
         let client = ReplayHttpClient()
         let url = URL(string: "https://example.invalid/search?key=private&page=1")!

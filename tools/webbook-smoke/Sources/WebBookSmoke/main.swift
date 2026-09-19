@@ -8,10 +8,11 @@ struct SmokeOptions {
     var chapters = 2
     var sourceIndex = 0
     var timeout: Double = 60
+    var errorLogPath: String?
 
     init(arguments: [String]) throws {
         var values: [String: String] = [:]
-        let allowed = ["--source", "--keyword", "--pick", "--chapters", "--source-index", "--timeout"]
+        let allowed = ["--source", "--keyword", "--pick", "--chapters", "--source-index", "--timeout", "--error-log"]
         guard arguments.count.isMultiple(of: 2) else { throw SmokeError.invalidArguments }
         for index in stride(from: 0, to: arguments.count, by: 2) {
             let flag = arguments[index]
@@ -26,6 +27,7 @@ struct SmokeOptions {
               let timeout = Double(values["--timeout"] ?? "60"), timeout.isFinite, timeout > 0 else {
             throw SmokeError.invalidArguments
         }
+        errorLogPath = values["--error-log"]
         sourcePath = path; keyword = key
         self.pick = pick; self.chapters = chapters; self.sourceIndex = sourceIndex; self.timeout = timeout
     }
@@ -143,6 +145,10 @@ func runSmoke(options: SmokeOptions, client: any HttpClient,
         }
         return SmokeReport(searchCount: results.count, chapterCount: chapters.count, contentCount: readable.count)
     } catch {
+        if let path = options.errorLogPath {
+            do { try String(describing: error).write(toFile: path, atomically: true, encoding: .utf8) }
+            catch { emit("Diagnostic write failed: " + safeError(error)) }
+        }
         emit("\(stage)失败，耗时 \(elapsed())")
         throw SmokeFailure(stage: stage, context: context, errorCase: safeError(error))
     }
