@@ -111,7 +111,8 @@ final class EntityCompatibilityTests: XCTestCase {
         files["runtimeSourceCache.json"] = #"[{"key":"v_source","value":"value","deadline":0}]"#
         files["themeConfig.json"] = #"{"preserved":"theme"}"#
         let database = try AppDatabase.inMemory()
-        let importer = BackupImporter(database: database, localDeviceID: "local", now: { 10 })
+        files["cookies.json"] = String(decoding: try BackupAES(password: "test").encrypt(Data(files["cookies.json"]!.utf8)), as: UTF8.self)
+        let importer = BackupImporter(database: database, localDeviceID: "local", now: { 10 }, password: "test")
         let report = try await importer.importArchive(BackupReviewTests.archive(files))
         XCTAssertTrue(report.failures.isEmpty, "\(report.failures)")
         XCTAssertEqual(Set(report.importedFiles), Set(expected))
@@ -122,24 +123,25 @@ final class EntityCompatibilityTests: XCTestCase {
         XCTAssertEqual(highlights.count, 1)
         XCTAssertEqual(highlights.first?.order, 0)
         let currentTheme = Data("[{\"themeName\":\"current\"}]".utf8)
-        let exported = try await BackupExporter(database: database, now: { Date(timeIntervalSince1970: 1) }).export(includeSourceState: true, currentConfigurationFiles: ["themeConfig.json": currentTheme])
+        let exported = try await BackupExporter(database: database, now: { Date(timeIntervalSince1970: 1) }, password: "test").export(includeSourceState: true, currentConfigurationFiles: ["themeConfig.json": currentTheme])
         let archive = try BackupArchive(data: exported)
         XCTAssertEqual(Set(archive.files.keys), Set(expected))
         XCTAssertEqual(archive.files["themeConfig.json"], currentTheme)
         let rule = try GsonJSONDecoder().decode([HighlightRule].self, from: archive.files["highlightRule.json"]!)
         XCTAssertTrue(rule[0].isRegex)
         XCTAssertEqual(rule[0].order, 0)
-        let restored = try await BackupImporter(database: AppDatabase.inMemory(), localDeviceID: "second").importArchive(exported)
+        let restored = try await BackupImporter(database: AppDatabase.inMemory(), localDeviceID: "second", password: "test").importArchive(exported)
         XCTAssertTrue(restored.failures.isEmpty, "\(restored.failures)")
     }
 
     func testInvalidRuntimeCacheAndCookieDoNotPartiallyWrite() async throws {
         let database = try AppDatabase.inMemory()
-        let files = [
+        var files = [
             "runtimeSourceCache.json": #"[{"key":"v_valid","value":"ok","deadline":0},{"key":"not-runtime","value":"bad","deadline":0}]"#,
             "cookies.json": #"[{"url":"https://example.test","cookie":"valid"},{"url":3,"cookie":"bad"}]"#
         ]
-        let report = try await BackupImporter(database: database, localDeviceID: "local").importArchive(BackupReviewTests.archive(files))
+        files["cookies.json"] = String(decoding: try BackupAES(password: "test").encrypt(Data(files["cookies.json"]!.utf8)), as: UTF8.self)
+        let report = try await BackupImporter(database: database, localDeviceID: "local", password: "test").importArchive(BackupReviewTests.archive(files))
         XCTAssertEqual(report.failures.count, 2)
         let caches = try await CacheRepository(database: database).all()
         let cookies = try await CookieRepository(database: database).all()

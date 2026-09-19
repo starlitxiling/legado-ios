@@ -21,7 +21,7 @@ final class BackupViewModel {
     private(set) var exportedFile: URL?
     private(set) var statusMessage: String?
     var newBackupName: String?
-    private let importer: BackupImporter
+    private let localDeviceID: String
     private let didRestore: () -> Void
     private let operationMutex: BackupOperationMutex
 
@@ -31,7 +31,7 @@ final class BackupViewModel {
         self.resourceDirectory = resourceDirectory
         self.operationMutex = operationMutex
         self.preferences = preferences ?? BackupPreferences()
-        importer = BackupImporter(database: database, localDeviceID: localDeviceID, resourceDirectory: resourceDirectory)
+        self.localDeviceID = localDeviceID
         self.didRestore = didRestore
     }
 
@@ -180,7 +180,11 @@ final class BackupViewModel {
                 try Task.checkCancellation()
                 guard data.count <= Self.maximumBytes else { throw WebDavError.responseTooLarge }
                 let archive = try BackupArchive(data: data)
-                self.report = try await self.importer.importArchive(archive, selection: self.preferences.backupSelection)
+                self.preferences.reload()
+                let currentPreferences = self.preferences.currentPreferenceSnapshot()
+                let importer = BackupImporter(database: self.database, localDeviceID: self.localDeviceID,
+                    resourceDirectory: self.resourceDirectory, currentPreferences: currentPreferences)
+                self.report = try await importer.importArchive(archive, selection: self.preferences.backupSelection)
                 if self.report?.importedFiles.contains("themeConfig.json") == true, let themes = try await self.database.backupConfiguration(named: "themeConfig.json") {
                     do { try self.preferences.restoreThemes(themes) }
                     catch { self.errorMessage = "主题列表恢复失败：" + error.localizedDescription }

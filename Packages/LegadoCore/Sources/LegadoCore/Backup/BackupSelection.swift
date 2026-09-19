@@ -42,6 +42,8 @@ public struct BackupSelection: Equatable, Sendable {
     }
 
     public func allowsPreference(_ key: String) -> Bool {
+        // Android stores the backup password in LocalConfig, outside the exported default preferences.
+        if key == "localPassword" { return false }
         if AndroidBackupPreferences.ignoredKeys.contains(key) { return false }
         if ["themeMode", "bookshelfLayout", "showRss", "threadCount"].contains(key), values[key] == true { return false }
         if values["themeConfig"] == true, Self.themeKeys.contains(key) { return false }

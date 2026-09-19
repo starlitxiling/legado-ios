@@ -6,12 +6,14 @@ public struct BackupExporter {
     private let database: AppDatabase
     private let now: () -> Date
     private let timeZone: TimeZone
+    private let password: String?
 
-    public init(database: AppDatabase, now: @escaping () -> Date = Date.init, timeZone: TimeZone = .current) {
-        self.init(database: database, now: now, timeZone: timeZone, resourceDirectory: nil)
+    public init(database: AppDatabase, now: @escaping () -> Date = Date.init, timeZone: TimeZone = .current, password: String? = nil) {
+        self.init(database: database, now: now, timeZone: timeZone, resourceDirectory: nil, password: password)
     }
 
-    public init(database: AppDatabase, now: @escaping () -> Date = Date.init, timeZone: TimeZone = .current, resourceDirectory: URL?) {
+    public init(database: AppDatabase, now: @escaping () -> Date = Date.init, timeZone: TimeZone = .current, resourceDirectory: URL?, password: String? = nil) {
+        self.password = password
         self.resourceDirectory = resourceDirectory
         self.database = database; self.now = now; self.timeZone = timeZone
     }
@@ -42,6 +44,14 @@ public struct BackupExporter {
                        includeSourceState: Bool = false, currentConfigurationFiles: [String: Data] = [:],
                        selection: BackupSelection?) async throws -> Data {
         let selection = selection ?? BackupSelection(values: includeSourceState ? ["backupCookies": false, "backupSourceVariables": false] : [:])
+        let localPassword: String?
+        if let password { localPassword = password }
+        else if case let .string(value)? = preferences["localPassword"] { localPassword = value }
+        else { localPassword = nil }
+        let aes = BackupAES(password: localPassword)
+        for (key, file) in [("backupCookies", "cookies.json"), ("backupSourceVariables", "runtimeSourceCache.json")] {
+            if selection.includes(key) { try BackupAES.requirePassword(localPassword, file: file) }
+        }
         var files: [(String, Data)] = []
         func append<T: Encodable>(_ name: String, _ values: [T], composites: Set<String> = []) throws {
             guard selection.includesFile(name) else { return }
@@ -76,7 +86,6 @@ public struct BackupExporter {
         try append("autoTask.json", await optionalRows(AutoTaskRule.self))
         try append("servers.json", await optionalRows(Server.self))
         try append("searchHistory.json", await optionalRows(SearchKeyword.self))
-        // Android 默认不选择 Cookie 和运行时变量；显式开启时采用 Restore 支持的明文 JSON。
         if selection.includes("backupCookies") || selection.includes("backupSourceVariables") {
             try append("cookies.json", await CookieRepository(database: database).all())
             let timestamp = Int64(now().timeIntervalSince1970 * 1000)
@@ -97,14 +106,19 @@ public struct BackupExporter {
             }
             if let data { files.append((name, data)) }
         }
-        files.append(("config.xml", AndroidPreferencesXML.encode(preferences.filter { selection.allowsPreference($0.key) })))
+        var savedPreferences = preferences.filter { selection.allowsPreference($0.key) }
+        if case let .string(value)? = savedPreferences["webDavPassword"] {
+            savedPreferences["webDavPassword"] = .string(String(decoding: try aes.encrypt(Data(value.utf8)), as: UTF8.self))
+        }
+        files.append(("config.xml", AndroidPreferencesXML.encode(savedPreferences)))
         files.append(("videoConfig.xml", AndroidPreferencesXML.encode(videoPreferences)))
         if let resourceDirectory {
             try BackupResources.collect(root: resourceDirectory, files: &files, preferences: preferences, selection: selection)
         }
         let available = Set(files.map(\.0))
         files = try files.map { (name, data) in
-            (name, try BackupResources.rewrite(data, name: name, root: resourceDirectory, available: available, exporting: true, selection: selection))
+            let rewritten = try BackupResources.rewrite(data, name: name, root: resourceDirectory, available: available, exporting: true, selection: selection)
+            return (name, try ["servers.json", "cookies.json", "runtimeSourceCache.json"].contains(name) ? aes.encrypt(rewritten) : rewritten)
         }
         let order = BackupFileManifest.files
 

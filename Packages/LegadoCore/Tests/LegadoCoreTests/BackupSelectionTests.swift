@@ -18,7 +18,7 @@ final class BackupSelectionTests: XCTestCase {
     func testSelectionControlsActualArchiveFiles() async throws {
         let database = try AppDatabase.inMemory()
         let selection = BackupSelection(values: ["backupSources": true, "backupCookies": false])
-        let data = try await BackupExporter(database: database).export(selection: selection)
+        let data = try await BackupExporter(database: database, password: "test").export(selection: selection)
         let files = try BackupArchive(data: data).files
         XCTAssertNil(files["bookSource.json"])
         XCTAssertNil(files["rssSources.json"])
@@ -28,8 +28,8 @@ final class BackupSelectionTests: XCTestCase {
 
     func testRestoreIgnoreFiltersPreferencesAndCookies() async throws {
         let database = try AppDatabase.inMemory()
-        let data = try await BackupExporter(database: database).export(preferences: ["colorAccent": .int(42), "showRss": .boolean(false), "fontScale": .int(12)], includeSourceState: true)
-        let report = try await BackupImporter(database: database, localDeviceID: "test").importArchive(data,
+        let data = try await BackupExporter(database: database, password: "test").export(preferences: ["colorAccent": .int(42), "showRss": .boolean(false), "fontScale": .int(12)], includeSourceState: true)
+        let report = try await BackupImporter(database: database, localDeviceID: "test", password: "test").importArchive(data,
             selection: BackupSelection(values: ["themeConfig": true, "showRss": true, "ignoreCookies": true]))
         XCTAssertNil(report.preferences?["colorAccent"])
         XCTAssertNil(report.preferences?["showRss"])

@@ -216,3 +216,88 @@ extension BackupReviewFixTests {
         XCTAssertEqual(selectedStyles.first?["textSize"] as? Int, 12)
     }
 }
+
+
+extension BackupReviewFixTests {
+    private func seedEncryptedBackupState(_ database: AppDatabase) async throws {
+        try await database.write { db in
+            try db.execute(sql: "INSERT INTO cookies (url, cookie) VALUES (?, ?)", arguments: ["example.invalid", "session=synthetic"])
+            try db.execute(sql: "INSERT INTO caches (key, value, deadline) VALUES (?, ?, 0)", arguments: ["v_sample", "synthetic"])
+            try db.execute(sql: "INSERT INTO servers (id, name, type, config, sortNumber) VALUES (1, 'synthetic', 'WEBDAV', '{}', 0)")
+        }
+    }
+
+    func testAppEncryptedBackupRoundTripUsesCurrentPassword() async throws {
+        let (_, preferences, database, directory) = try fixture()
+        preferences.set("localPassword", .string("synthetic-password"))
+        preferences.set("webDavPassword", .string("synthetic-webdav"))
+        preferences.backupSelection = BackupSelection(values: ["backupCookies": false, "backupSourceVariables": false])
+        try await seedEncryptedBackupState(database)
+        let model = BackupViewModel(database: database, localDeviceID: "test", resourceDirectory: nil, preferences: preferences, exportDirectory: directory)
+        await model.createBackup(upload: false)
+        XCTAssertNil(model.errorMessage)
+        let data = try Data(contentsOf: XCTUnwrap(model.exportedFile))
+        let archive = try BackupArchive(data: data)
+        for name in ["cookies.json", "runtimeSourceCache.json", "servers.json"] {
+            let encrypted = try XCTUnwrap(archive.files[name])
+            XCTAssertThrowsError(try JSONSerialization.jsonObject(with: encrypted))
+        }
+        try await database.write { db in
+            for table in ["cookies", "caches", "servers"] { try db.execute(sql: "DELETE FROM \(table)") }
+        }
+        await model.restoreLocalData(data)
+        XCTAssertNil(model.errorMessage)
+        let report = try XCTUnwrap(model.report)
+        XCTAssertTrue(report.failures.isEmpty, "\(report.failures)")
+        for name in ["cookies.json", "runtimeSourceCache.json", "servers.json"] {
+            XCTAssertEqual(report.importedCounts[name], 1, name)
+        }
+        XCTAssertEqual(preferences.string("webDavPassword"), "synthetic-webdav")
+        let cookies = try await Repository<CookieRow>(database: database).all()
+        let caches = try await CacheRepository(database: database).all()
+        let servers = try await ServerRepository(database: database).all()
+        XCTAssertEqual(cookies.first?.cookie, "session=synthetic")
+        XCTAssertEqual(caches.first?.value, "synthetic")
+        XCTAssertEqual(servers.first?.name, "synthetic")
+    }
+
+    func testRestoreReloadsPasswordAndIgnoreChangesFromSettings() async throws {
+        let (defaults, preferences, database, directory) = try fixture()
+        preferences.set("localPassword", .string("old-password"))
+        let model = BackupViewModel(database: database, localDeviceID: "test", resourceDirectory: nil, preferences: preferences, exportDirectory: directory)
+        let source = try AppDatabase.inMemory()
+        try await seedEncryptedBackupState(source)
+        for password in ["changed-password", "changed-again"] {
+            let data = try await BackupExporter(database: source).export(preferences: ["localPassword": .string(password), "threadCount": .int(99)], includeSourceState: true)
+            let settings = BackupPreferences(defaults: defaults)
+            settings.set("localPassword", .string(password))
+            settings.set("threadCount", .int(7))
+            settings.backupSelection = BackupSelection(values: ["ignoreCookies": true, "threadCount": true])
+            await model.restoreLocalData(data)
+            XCTAssertNil(model.errorMessage)
+            let report = try XCTUnwrap(model.report)
+            XCTAssertTrue(report.failures.isEmpty, "\(report.failures)")
+            XCTAssertTrue(report.skippedFiles.contains("cookies.json"))
+            XCTAssertNil(report.importedCounts["cookies.json"])
+            XCTAssertEqual(report.importedCounts["runtimeSourceCache.json"], 1)
+            XCTAssertEqual(report.importedCounts["servers.json"], 1)
+            XCTAssertEqual(preferences.string("localPassword"), password)
+            XCTAssertEqual(preferences.integer("threadCount"), 7)
+        }
+    }
+
+    func testRestoreProtectsLatestWebDavPasswordWhenDecryptionFails() async throws {
+        let (defaults, preferences, database, directory) = try fixture()
+        let data = try await BackupExporter(database: database).export(preferences: ["localPassword": .string("archive-password"), "webDavPassword": .string("archive-webdav")])
+        let model = BackupViewModel(database: database, localDeviceID: "test", resourceDirectory: nil, preferences: preferences, exportDirectory: directory)
+        let settings = BackupPreferences(defaults: defaults)
+        settings.set("localPassword", .string("different-password"))
+        settings.set("webDavPassword", .string("latest-webdav"))
+        await model.restoreLocalData(data)
+        XCTAssertNil(model.errorMessage)
+        let report = try XCTUnwrap(model.report)
+        XCTAssertNotNil(report.failures["servers.json"])
+        XCTAssertNil(report.preferences?["webDavPassword"])
+        XCTAssertEqual(preferences.string("webDavPassword"), "latest-webdav")
+    }
+}

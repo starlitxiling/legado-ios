@@ -7,6 +7,7 @@ public struct BackupImportReport {
     public internal(set) var importedFiles: [String] = []
     public internal(set) var importedCounts: [String: Int] = [:]
     public internal(set) var skippedFiles: [String] = []
+    public internal(set) var skippedReasons: [String: String] = [:]
     public internal(set) var failures: [String: String] = [:]
     public internal(set) var discardedFields: [String: [String]] = [:]
 }
@@ -16,13 +17,19 @@ public struct BackupImporter {
     private let database: AppDatabase
     private let localDeviceID: String
     private let now: () -> Int64
+    private let password: String?
+    private let currentPreferences: [String: AndroidPreferenceValue]
 
     /// localDeviceID 由应用持久化身份提供，避免把旧备份的空设备 ID 当成远端设备。
-    public init(database: AppDatabase, localDeviceID: String, now: @escaping () -> Int64 = GsonDecoding.currentTimeMillis) {
-        self.init(database: database, localDeviceID: localDeviceID, now: now, resourceDirectory: nil)
+    public init(database: AppDatabase, localDeviceID: String, now: @escaping () -> Int64 = GsonDecoding.currentTimeMillis, password: String? = nil, currentPreferences: [String: AndroidPreferenceValue] = [:]) {
+        self.init(database: database, localDeviceID: localDeviceID, now: now, resourceDirectory: nil, password: password, currentPreferences: currentPreferences)
     }
 
-    public init(database: AppDatabase, localDeviceID: String, now: @escaping () -> Int64 = GsonDecoding.currentTimeMillis, resourceDirectory: URL?) {
+    public init(database: AppDatabase, localDeviceID: String, now: @escaping () -> Int64 = GsonDecoding.currentTimeMillis, resourceDirectory: URL?, password: String? = nil, currentPreferences: [String: AndroidPreferenceValue] = [:]) {
+        self.currentPreferences = currentPreferences
+        if let password { self.password = password }
+        else if case let .string(value)? = currentPreferences["localPassword"] { self.password = value }
+        else { self.password = nil }
         self.resourceDirectory = resourceDirectory
         self.database = database
         self.localDeviceID = localDeviceID
@@ -49,6 +56,20 @@ public struct BackupImporter {
         order += BackupFileManifest.files.filter { !order.contains($0) }
         var report = BackupImportReport()
         report.skippedFiles = archive.files.keys.filter { !order.contains($0) }.sorted()
+        let aes = BackupAES(password: password)
+        var sourceState: [String: Data] = [:]
+        for name in ["cookies.json", "runtimeSourceCache.json"] {
+            guard let data = archive.files[name], !selection.ignoresFile(name) else { continue }
+            try BackupAES.requirePassword(password, file: name)
+            do {
+                let plain = name == "runtimeSourceCache.json" && BackupAES.isJSONArray(data) ? data : try aes.decrypt(data)
+                try BackupFileManifest.validateSourceState(name, data: plain)
+                sourceState[name] = plain
+            } catch {
+                report.failures[name] = String(describing: error)
+            }
+        }
+        guard report.failures.isEmpty else { return report }
         if let resourceDirectory {
             let restored = try BackupResources.restore(archive, root: resourceDirectory, selection: selection)
             report.importedFiles.append(contentsOf: restored)
@@ -64,7 +85,9 @@ public struct BackupImporter {
             guard let data = archive.files[name] else { continue }
             if selection.ignoresFile(name) { report.skippedFiles.append(name); continue }
             do {
-                let data = try BackupResources.rewrite(data, name: name, root: resourceDirectory, available: available, exporting: false, selection: selection)
+                var data = sourceState[name] ?? data
+                if name == "servers.json", !BackupAES.isJSONArray(data) { data = try aes.decrypt(data) }
+                data = try BackupResources.rewrite(data, name: name, root: resourceDirectory, available: available, exporting: false, selection: selection)
                 let count: Int
                 switch name {
                 case "bookMemo.json", "highlight.json", "highlightRule.json", "sourceSub.json",
@@ -74,6 +97,18 @@ public struct BackupImporter {
                     count = try await BackupFileManifest.importAdditional(name, data: data, database: database, decoder: decoder, now: timestamp, restoredBookURLs: restoredBookURLs)
                 case "config.xml":
                     var values = try AndroidPreferencesXML.decode(data)
+                    if case let .string(value)? = values["webDavPassword"] {
+                        do {
+                            let plain = try aes.decrypt(Data(value.utf8))
+                            guard let decoded = String(data: plain, encoding: .utf8) else { throw BackupAESError.invalidUTF8 }
+                            values["webDavPassword"] = .string(decoded)
+                        } catch {
+                            if case let .string(existing)? = currentPreferences["webDavPassword"],
+                               !existing.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                                values.removeValue(forKey: "webDavPassword")
+                            }
+                        }
+                    }
                     if let root = resourceDirectory {
                         for key in ["readRecordCover", "readRecordCoverDark", "coverFont", "backgroundImage", "backgroundImageNight"] {
                             guard case let .string(path)? = values[key] else { continue }
@@ -158,7 +193,12 @@ public struct BackupImporter {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
-                report.failures[name] = String(describing: error)
+                if name == "highlightRule.json", error is HighlightRuleDecodingError {
+                    report.skippedFiles.append(name)
+                    report.skippedReasons[name] = String(describing: error)
+                } else {
+                    report.failures[name] = String(describing: error)
+                }
             }
         }
         return report

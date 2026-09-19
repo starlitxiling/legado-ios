@@ -1,6 +1,10 @@
 import Foundation
 import GRDB
 
+struct HighlightRuleDecodingError: Error, CustomStringConvertible {
+    let description: String
+}
+
 public enum BackupFileManifest {
     public static let configurationFiles = [
         "directLinkUploadRule.json", "coverRule.json", "readConfig.json", "shareReadConfig.json", "themeConfig.json"
@@ -15,6 +19,27 @@ public enum BackupFileManifest {
 
     static func isRuntimeCacheKey(_ key: String) -> Bool {
         ["v_", "userInfo_", "loginHeader_", "sourceVariable_", "infoMap_"].contains { key.hasPrefix($0) && key.count > $0.count }
+    }
+
+    static func validateSourceState(_ name: String, data: Data) throws {
+        switch name {
+        case "cookies.json":
+            guard let rows = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
+                  rows.allSatisfy({ ($0["url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false && $0["cookie"] is String }) else {
+                throw BackupArchiveError.unsupportedFormat
+            }
+        case "runtimeSourceCache.json":
+            guard case let .array(elements) = try GsonValue.parse(data) else { throw BackupArchiveError.unsupportedFormat }
+            for element in elements {
+                guard case .string(let key)? = element["key"], isRuntimeCacheKey(key),
+                      let value = element["value"], let deadline = element["deadline"] else { throw BackupArchiveError.unsupportedFormat }
+                switch value { case .null, .string: break; default: throw BackupArchiveError.unsupportedFormat }
+                guard case .number(let raw) = deadline, let number = Int64(raw), number >= 0 else {
+                    throw BackupArchiveError.unsupportedFormat
+                }
+            }
+        default: throw BackupArchiveError.unsupportedFormat
+        }
     }
 
     static func importAdditional(_ name: String, data: Data, database: AppDatabase, decoder: GsonJSONDecoder, now: Int64, restoredBookURLs: Set<String> = []) async throws -> Int {
@@ -53,7 +78,10 @@ public enum BackupFileManifest {
             }
             return values.count
         case "highlightRule.json":
-            let values = try decoder.decode([HighlightRule].self, from: data).enumerated().map { index, value in
+            let decoded: [HighlightRule]
+            do { decoded = try decoder.decode([HighlightRule].self, from: data) }
+            catch { throw HighlightRuleDecodingError(description: String(describing: error)) }
+            let values = decoded.enumerated().map { index, value in
                 var value = value
                 value.uuid = (UUID(uuidString: value.uuid) ?? UUID()).uuidString.lowercased()
                 value.group = value.group?.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -87,21 +115,10 @@ public enum BackupFileManifest {
         case "servers.json": return try await save(Server.self)
         case "searchHistory.json": return try await save(SearchKeyword.self)
         case "cookies.json":
-            guard let rows = try JSONSerialization.jsonObject(with: data) as? [[String: Any]],
-                  rows.allSatisfy({ ($0["url"] as? String)?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false && $0["cookie"] is String }) else {
-                throw BackupArchiveError.unsupportedFormat
-            }
+            try validateSourceState(name, data: data)
             return try await save(CookieRow.self)
         case "runtimeSourceCache.json":
-            guard case let .array(elements) = try GsonValue.parse(data) else { throw BackupArchiveError.unsupportedFormat }
-            for element in elements {
-                guard case .string(let key)? = element["key"], isRuntimeCacheKey(key),
-                      let value = element["value"], let deadline = element["deadline"] else { throw BackupArchiveError.unsupportedFormat }
-                switch value { case .null, .string: break; default: throw BackupArchiveError.unsupportedFormat }
-                guard case .number(let raw) = deadline, let number = Int64(raw), number >= 0 else {
-                    throw BackupArchiveError.unsupportedFormat
-                }
-            }
+            try validateSourceState(name, data: data)
             let values = try decoder.decode([Cache].self, from: data).filter { $0.deadline == 0 || $0.deadline > now }
             try await CacheRepository(database: database).upsert(values)
             return values.count

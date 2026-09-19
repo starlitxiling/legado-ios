@@ -6,11 +6,11 @@
 
 - 按顺序恢复 `bookshelf.json`、`bookmark.json`、`bookGroup.json`、`bookSource.json`、`replaceRule.json`、`readRecord.json`。
 - JSON 经现有 Gson 兼容实体解码；书源经过 SourceImporter，复合规则及 readConfig 存为数据库 JSON 文本。
-- RSS（Kotlin 文件名为 `rssSources.json`）、txtTocRule、httpTTS、dictRule、config.xml、媒体与其他文件均跳过并记录文件名。
-- 加密 Cookie、服务器凭据、运行态变量、Android 配置与媒体路径迁移不在本单元实现范围内。
-- `searchHistory.json` 在 Restore.kt:353 导入 SearchKeyword，`highlightRule.json` 在 :319 规范化后整表替换；Swift 尚无对应实体/表，本单元记录跳过，不代表 Kotlin 忽略它们。
+- RSS（`rssSources.json`）、txtTocRule、httpTTS、dictRule 与 config.xml 已支持；未知条目记录跳过。
+- 加密 Cookie、服务器配置、运行态变量与 WebDAV 密码由共享 `BackupAES` 处理；媒体迁移仍由既有资源目录接口控制。
+- `searchHistory.json` 导入 SearchKeyword；`highlightRule.json` 数组经规范化后整表替换，与 Restore.kt:319、:353 对齐。
 - `readRecordDetail.json`、`webSearchEngines.json` 在基线 Restore.kt 中没有恢复入口，因此本单元跳过；不将搜索历史误导入 SearchBook 缓存表。
-- 单个 JSON 解析或落库失败会记入 failures，继续其他文件；同一文件的数据库操作在事务内完成。
+- 一般文件解析或落库失败记入 failures 并继续；高亮规则解析失败记录 skippedReasons 后跳过，保留原表；同一文件落库使用事务。
 - GsonExtensions.fromJsonArray 对整份 List 解码；单条记录失败或出现 null 元素使整文件失败，Swift 同样不逐条跳过。
 
 ## 冲突策略
@@ -37,3 +37,20 @@
 - 下载默认上限 256 MiB，列表大小先检查；使用 ResponseLimitedHttpClient 在响应头及分块读取时限量并取消任务。生产调用方需注入 BoundedURLSessionHttpClient，旧客户端未实现限流接口时拒绝下载。
 - 冒烟环境变量为 LEGADO_WEBDAV_URL、LEGADO_WEBDAV_USER、LEGADO_WEBDAV_PASSWORD；URL 指向 legado 的父目录。
 - 在仓库根运行 `swift run --package-path tools/webdav-smoke WebDavSmoke`；临时备份路径打印后由调用方清理。
+
+## BackupAES 与真实包校验
+
+- `localPassword` 是 BackupAES 口令，不是 ZIP 加密口令；iOS ZIP 仍用 store 模式，Android 也使用不加密的 ZipOutputStream（Backup.kt:441、ZipUtils.kt:85）。
+- 密钥为口令 UTF-8 的 MD5 小写十六进制字符串前 16 字符的 ASCII 字节，模式 AES/ECB/PKCS5Padding；CommonCrypto 的 PKCS7 对 AES 等价（BackupAES.kt:6）。
+- `servers.json` 导出加密，导入先识别明文数组，否则解密再解析；空口令有效（Backup.kt:307、Restore.kt:392）。
+- `cookies.json` 必须解密；`runtimeSourceCache.json` 支持明文数组或解密；两者均要求非空白口令，遵守选择/忽略开关（Backup.kt:229、:316、:323；Restore.kt:230、:243）。
+- Cookie/变量在任何落库或资源恢复前验证；缺口令抛出可辨识的 `BackupError.passwordRequired(file:)`，其他验证错误返回带文件原因的失败报告并停止导入；Android 对应路径抛出异常。
+- `config.xml` 的 `webDavPassword` 导出加密、导入解密；解密失败且本地值非空白时保留本地值，否则使用原文，与 Backup.kt:362、Restore.kt:495 的旧版回退一致。
+- Core 导入器接收 `password` 或 `currentPreferences["localPassword"]`，导出器接收 `password` 或传入偏好的同名键；显式口令优先，缺省为空口令。
+- Android 口令存于独立的 `local` 偏好库（LocalConfig.kt:15、:22），导出只取默认偏好库（Backup.kt:350）；iOS 因此排除映射键 `localPassword`，并非 Kotlin 忽略键表包含此键。
+- App 调用方仍需传入当前偏好/口令及现有 WebDAV 密码；本单元范围不修改 App，不读取全局 UserDefaults。
+- 真实包的 `highlightRule.json` 为单字母字段顶层对象；推测来自不同构建且字段疑似混淆，来源未验证。不解释 a-f；Android 同样无法恢复，iOS 记录解析原因后非致命跳过（Restore.kt:635）。
+- AES 不支持 ZIP 层加密；Android 的服务器/偏好加密异常可回退明文，iOS 导出遇到加密错误直接抛出。
+- 本地校验工具 `tools/backup-import-check` 不依赖 XCTest/网络，导入内存数据库并打印表计数、跳过原因与失败原因；仅失败返回非零；缺口令默认开启 ignoreCookies/ignoreSourceVariables，并明确报告原因；可用 `--ignore-cookies`、`--ignore-source-variables` 显式忽略。
+- 仓库根运行 `swift run --package-path tools/backup-import-check --disable-automatic-resolution --skip-update BackupImportCheck -- .build/fixtures-local/real-backup.zip`；非空口令通过可选环境变量 `LEGADO_BACKUP_PASSWORD` 提供。
+- 离线构建使用本机约定的缓存路径及已解析依赖；Core 与工具保持各自的构建目录，避免并行构建描述冲突；本机已安装 Xcode，可执行完整 XCTest。
