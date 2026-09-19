@@ -21,6 +21,7 @@ final class DownloadCenterModel {
     private(set) var bookNames: [String: String] = [:]
     private(set) var errorMessage: String?
     private(set) var isRefreshing = false
+    private(set) var refreshingBookURLs = Set<String>()
     private(set) var refreshReport: BookshelfRefresh.Report?
     let queue: CacheBook
     private let database: AppDatabase
@@ -85,10 +86,17 @@ final class DownloadCenterModel {
     func refresh(_ rows: [BookRow]? = nil) async {
         guard !isRefreshing else { return }
         isRefreshing = true; errorMessage = nil
-        defer { isRefreshing = false }
-        do { refreshReport = try await BookshelfRefreshService.refresh(database: database, client: client, rows: rows) }
+        defer { isRefreshing = false; refreshingBookURLs = [] }
+        do {
+            refreshReport = try await BookshelfRefreshService.refresh(database: database, client: client, rows: rows,
+                onPrepared: { [weak self] urls in await self?.setRefreshing(urls) },
+                onCompleted: { [weak self] url in await self?.finishedRefreshing(url) })
+        }
         catch { errorMessage = error.localizedDescription }
     }
+
+    private func setRefreshing(_ urls: [String]) { refreshingBookURLs = Set(urls) }
+    private func finishedRefreshing(_ url: String) { refreshingBookURLs.remove(url) }
 
     func export(_ row: BookRow, range: ClosedRange<Int>, epub: Bool, useReplace: Bool) async throws -> URL {
         errorMessage = nil
@@ -141,7 +149,9 @@ final class DownloadCenterModel {
 }
 
 enum BookshelfRefreshService {
-    static func refresh(database: AppDatabase, client: any HttpClient, rows: [BookRow]? = nil) async throws -> BookshelfRefresh.Report {
+    static func refresh(database: AppDatabase, client: any HttpClient, rows: [BookRow]? = nil,
+                        onPrepared: @escaping @Sendable ([String]) async -> Void = { _ in },
+                        onCompleted: @escaping @Sendable (String) async -> Void = { _ in }) async throws -> BookshelfRefresh.Report {
         let repository = BookshelfRepository(database: database)
         let books: [BookRow]
         if let rows { books = rows }
@@ -155,6 +165,7 @@ enum BookshelfRefreshService {
             }
         }
         let eligible = books.filter { $0.canUpdate && $0.type & 256 == 0 && $0.origin != "loc_book" }
+        await onPrepared(eligible.map(\.bookUrl))
         return await BookshelfRefresh.run(bookURLs: eligible.map(\.bookUrl)) { url in
             do {
                 guard let current = try await repository.get(bookUrl: url) else { throw BookshelfEditError.missingBook }
@@ -176,7 +187,9 @@ enum BookshelfRefreshService {
                 if book.bookUrl != previousBook.bookUrl || book.tocUrl != previousBook.tocUrl || book.variable != previousBook.variable {
                     _ = try await SourceChangeTransaction.save(book: book, previous: previousBook, chapters: rows, database: database)
                 } else { try await repository.saveChapterUpdate(bookURL: url, chapters: rows, checkedAt: book.lastCheckTime) }
+                await onCompleted(url)
             } catch {
+                await onCompleted(url)
                 if !(error is CancellationError) && !Task.isCancelled { try await repository.markUpdateFailed(bookURL: url) }
                 throw error
             }

@@ -21,7 +21,9 @@ final class BookshelfViewModel {
     private(set) var isLoading = false
     private(set) var errorMessage: String?
     var selectedGroupID: Int64 = -1
-    var usesGrid = false
+    var folderMode = false
+    private(set) var groupPreviews: [Int64: [BookRow]] = [:]
+    private(set) var groupCounts: [Int64: Int] = [:]
     var sort: BookshelfSort = .lastRead
     var isEmpty: Bool { books.isEmpty && !isLoading && errorMessage == nil }
 
@@ -56,8 +58,20 @@ final class BookshelfViewModel {
             }
             let loadedBooks = try await bookshelf.list(groupID: groupID, sort: effectiveSort)
             guard request == generation, groupID == selectedGroupID else { return }
+            var previews: [Int64: [BookRow]] = [:]
+            var counts: [Int64: Int] = [:]
+            if folderMode && groupID == -100 {
+                for group in loadedGroups where group.show {
+                    let groupBooks = try await bookshelf.list(groupID: group.groupId, sort: BookshelfSort(rawValue: group.bookSort) ?? sort)
+                    previews[group.groupId] = Array(groupBooks.prefix(4))
+                    counts[group.groupId] = groupBooks.count
+                }
+            }
+            guard request == generation, groupID == selectedGroupID else { return }
             books = loadedBooks
-            groups = loadedGroups.filter { $0.show && $0.groupId != -1 }
+            groups = loadedGroups.filter { $0.show }
+            groupPreviews = previews
+            groupCounts = counts
         } catch {
             guard request == generation, groupID == selectedGroupID else { return }
             errorMessage = error.localizedDescription

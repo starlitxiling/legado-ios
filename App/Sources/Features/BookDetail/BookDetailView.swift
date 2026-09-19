@@ -14,6 +14,17 @@ struct BookDetailView: View {
             bookshelf: container.bookshelf, client: container.httpClient))
     }
 
+    init(book: BookRow, container: AppContainer, onRead: ((Book, Int) -> Void)? = nil) {
+        self.container = container
+        self.onRead = onRead
+        var result = SearchBook()
+        result.bookUrl = book.bookUrl; result.origin = book.origin; result.originName = book.originName
+        result.name = book.name; result.author = book.author; result.coverUrl = book.customCoverUrl ?? book.coverUrl
+        let stored = try? DiscoveryStorage.book(book)
+        _model = State(initialValue: BookDetailViewModel(results: [result], sources: container.bookSources,
+            bookshelf: container.bookshelf, client: container.httpClient, initialBook: stored))
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {

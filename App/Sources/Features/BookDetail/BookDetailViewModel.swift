@@ -20,8 +20,10 @@ final class BookDetailViewModel {
     private var generation = 0
 
     init(results: [SearchBook], sources: BookSourceRepository,
-         bookshelf: BookshelfRepository, client: any HttpClient) {
+         bookshelf: BookshelfRepository, client: any HttpClient, initialBook: Book? = nil) {
         self.results = results
+        self.book = initialBook
+        self.isOnBookshelf = initialBook != nil
         self.sources = sources
         self.bookshelf = bookshelf
         self.client = client
@@ -78,7 +80,9 @@ final class BookDetailViewModel {
         guard let url = book?.bookUrl else { return }
         do {
             let saved = try await bookshelf.get(bookUrl: url)
+            let sourceRow = try await sources.get(bookSourceUrl: book?.origin ?? "")
             guard book?.bookUrl == url else { return }
+            source = try sourceRow.map(DiscoveryStorage.source)
             isOnBookshelf = saved.map { $0.type & DiscoveryStorage.hiddenBook == 0 } ?? false
         } catch { errorMessage = error.localizedDescription }
     }

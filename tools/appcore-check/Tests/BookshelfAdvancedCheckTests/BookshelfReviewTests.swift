@@ -5,6 +5,32 @@ import LegadoCore
 
 @MainActor
 final class BookshelfReviewTests: XCTestCase {
+    func testRefreshCallbacksTrackEligibleBooksAndFailures() async throws {
+        actor Events {
+            var prepared: [String] = []
+            var completed: [String] = []
+            func prepare(_ urls: [String]) { prepared = urls }
+            func complete(_ url: String) { completed.append(url) }
+        }
+        let database = try AppDatabase.inMemory()
+        var remote = BookRow(); remote.bookUrl = "remote"; remote.name = "Remote"; remote.origin = "missing"
+        var local = BookRow(); local.bookUrl = "local"; local.name = "Local"; local.origin = "loc_book"; local.type = 256
+        var disabled = BookRow(); disabled.bookUrl = "disabled"; disabled.name = "Disabled"; disabled.canUpdate = false
+        let rows = [remote, local, disabled]
+        try await BookshelfRepository(database: database).upsert(rows)
+        let events = Events()
+        let report = try await BookshelfRefreshService.refresh(database: database, client: ReplayHttpClient(), rows: rows,
+            onPrepared: { await events.prepare($0) }, onCompleted: { await events.complete($0) })
+        let prepared = await events.prepared, completed = await events.completed
+        XCTAssertEqual(prepared, ["remote"])
+        XCTAssertEqual(completed, ["remote"])
+        XCTAssertEqual(report.failures.map(\.bookURL), ["remote"])
+        let model = DownloadCenterModel(database: database, client: ReplayHttpClient())
+        await model.refresh(rows)
+        XCTAssertFalse(model.isRefreshing)
+        XCTAssertTrue(model.refreshingBookURLs.isEmpty)
+    }
+
     private let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=")!
 
     func testPreUpdateMigratesBookURLAndPersistsRefreshedToc() async throws {
