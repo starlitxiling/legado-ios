@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 2026-09-19：按已确认 PLAN.md 执行，P0/P1 已验收，当前批次 1 / P2。
+- 2026-09-19：按已确认 PLAN.md 执行，P0/P1/P2 已验收，当前批次 1 / P3a。
 - 起始提交：`30d180ecf`；P0 已拆为 ff6f50452、f82ddf72c、284834405 三笔本地提交。
 - 真机：已配对 iPhone 16，有线连接，Xcode 26.6 已识别。
 - 用户最新指示：全部由主会话亲自执行，不再启动子代理。已停止全部在途子代理，保留已完成产出。
@@ -19,7 +19,8 @@
 | P7 压缩依赖前置实证 | 完成 | 已收回 | `.build/round5/archive-probe.md` | 3/0 与 generic iOS 构建；尚未接入业务 |
 | P0 拆分提交与轮次 4 总结 | 完成 | 主会话 | `docs/4-收尾与真机验证/SUMMARY.md` | 已验收并拆分提交 |
 | P1 七项解析修复 | 完成 | 主会话 | RuleParityTests / .build/round5/p1-*.log | Core 562/0、AppCore 236/0、CLI 7/0 |
-| 批次 1：P2 / P3a-d / U0 / U9 | 待办 | 主会话 | 按 PLAN.md | P1 后顺序执行 |
+| P2 脚本上下文与 URL 变量宿主 | 完成 | 主会话 | ScriptContextTests / .build/round5/p2-*.log | Core 574/0、AppCore 236/0、CLI 7/0 |
+| 批次 1：P3a-d / U0 / U9 | 待办 | 主会话 | 按 PLAN.md | P2 后顺序执行 |
 | 批次 2-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -28,4 +29,4 @@
 
 ## 下一步
 
-执行 P2：完整脚本实体、URL 脚本变量共享与 infoMap 绑定。全程不推送；WebDAV 凭据只用于读取。
+执行 P3a：UI 与系统宿主方法及 App 回调接线。全程不推送；WebDAV 凭据只用于读取。

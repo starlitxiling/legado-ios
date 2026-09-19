@@ -25,6 +25,7 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
 
     public let url: String
     public let options: UrlOptions
+    private let parser: AnalyzeRule
     private let engine: JsEngine
     private let bindings: [String: Any]
     private let source: Source
@@ -32,8 +33,10 @@ public final class AnalyzeUrlExecutor: @unchecked Sendable {
     private let callTimeout: Int64?
 
     public init(_ rule: String, engine: JsEngine, bindings: [String: Any] = [:],
-                headers: [String: String]? = nil, callTimeout: Int64? = nil) throws {
+                headers: [String: String]? = nil, callTimeout: Int64? = nil, context: AnalyzeRule? = nil) throws {
+        parser = context ?? engine.variableContext ?? AnalyzeRule(ruleData: RuleVariableStore())
         self.engine = engine.networkCopy()
+        self.engine.variableContext = parser
         self.bindings = bindings
         self.source = engine.networkSource
         self.headers = headers ?? engine.networkSource.headers

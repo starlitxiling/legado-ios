@@ -33,20 +33,23 @@ private final class JavaElement: NSObject, JavaElementExport {
 
 /// 规则与平台宿主；网络服务通过独立依赖对象注入。
 public final class JavaHost {
-    private let parser: AnalyzeRule?
+    private weak var parser: AnalyzeRule?
+    private let extraParams: [String: String]
     private let timeZone: TimeZone
     private let logger: (String) -> Void
     private let network: JavaHostNetwork
 
     public init(parser: AnalyzeRule?, timeZone: TimeZone, logger: @escaping (String) -> Void) {
         self.parser = parser
+        self.extraParams = [:]
         self.timeZone = timeZone
         self.logger = logger
         self.network = JavaHostNetwork(engine: JsEngine(timeZone: timeZone, logger: logger))
     }
 
-    init(parser: AnalyzeRule?, timeZone: TimeZone, logger: @escaping (String) -> Void, network: JavaHostNetwork) {
+    init(parser: AnalyzeRule?, timeZone: TimeZone, logger: @escaping (String) -> Void, network: JavaHostNetwork, extraParams: [String: String] = [:]) {
         self.parser = parser
+        self.extraParams = extraParams
         self.timeZone = timeZone
         self.logger = logger
         self.network = network
@@ -180,7 +183,9 @@ public final class JavaHost {
         }
         switch method {
         case "jsonPathRead": return try AnalyzeByJSonPath(value(0) ?? NSNull()).getObject(string(1))
-        case "get": return try analyzer().get(string(0))
+        case "get":
+            if let value = extraParams[string(0)] { return value }
+            return try analyzer().get(string(0))
         case "put":
             try analyzer().put(string(0), value: string(1))
             return string(1)

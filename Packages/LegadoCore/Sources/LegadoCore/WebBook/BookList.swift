@@ -33,7 +33,7 @@ public enum BookList {
             result.bookUrl = book.bookUrl; result.tocUrl = book.tocUrl
             result.name = name; result.author = book.author; result.kind = book.kind
             result.coverUrl = book.coverUrl; result.intro = book.intro; result.wordCount = book.wordCount
-            result.latestChapterTitle = book.latestChapterTitle
+            result.latestChapterTitle = book.latestChapterTitle; result.variable = book.variable
             result.origin = source.bookSourceUrl; result.originName = source.bookSourceName
             result.originOrder = source.customOrder
             result.type = context.bookType
@@ -41,26 +41,40 @@ public enum BookList {
         }
         var results: [SearchBook] = []
         var seen = Set<String>()
+        let listVariables = context.bookStore.store.variables
         for element in elements {
             try Task.checkCancellation()
             try parser.setContent(element)
+            let binding = try JsBookBinding(Book(now: 0))
+            binding.store.replace(with: listVariables)
+            parser.book = binding
             var book = SearchBook(now: 0)
             book.name = WebBookContext.name(try parser.getString(rule.name))
             guard let name = book.name, !name.isEmpty else { continue }
+            binding.name = name
             book.author = WebBookContext.name(try parser.getString(rule.author), author: true)
+            binding.book.author = book.author
             book.kind = try WebBookContext.optional { try parser.getStringList(rule.kind)?.joined(separator: ",") } ?? nil
+            binding.book.kind = book.kind
             guard filter?(name, book.author ?? "", book.kind) ?? true else { continue }
             let url = try WebBookContext.url(parser, rule: rule.bookUrl, base: baseURL)
             book.bookUrl = url.isEmpty ? baseURL : url
             guard seen.insert(book.bookUrl ?? "").inserted else { continue }
+            binding.book.bookUrl = book.bookUrl
             book.origin = source.bookSourceUrl; book.originName = source.bookSourceName
             book.originOrder = source.customOrder
             book.type = context.bookType
+            binding.book.origin = book.origin; binding.book.originName = book.originName
+            binding.book.originOrder = book.originOrder; binding.book.type = book.type
             let cover = try WebBookContext.optional { WebBookContext.absolute(try parser.getString(rule.coverUrl), base: baseURL) } ?? ""
             if !cover.isEmpty { book.coverUrl = cover }
+            binding.book.coverUrl = book.coverUrl
             book.intro = try WebBookContext.optional { HtmlFormatter.formatIntro(try parser.getString(rule.intro)) }
+            binding.book.intro = book.intro
             book.wordCount = try WebBookContext.optional { WebBookContext.wordCount(try parser.getString(rule.wordCount)) }
+            binding.book.wordCount = book.wordCount
             book.latestChapterTitle = try WebBookContext.optional { try parser.getString(rule.lastChapter) }
+            book.variable = try binding.snapshot().variable
             results.append(book)
         }
         return reverse ? Array(results.reversed()) : results

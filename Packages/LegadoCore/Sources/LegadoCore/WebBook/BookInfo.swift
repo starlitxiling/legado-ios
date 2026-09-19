@@ -27,7 +27,9 @@ public enum BookInfo {
                                redirectURL: String? = nil, canReName: Bool = false) async throws -> Result {
         try Task.checkCancellation()
         let rule = context.source.ruleBookInfo ?? BookInfoRule()
-        let parser = try context.parser(body, baseURL: baseURL)
+        context.bookStore.book = book
+        let parser = try context.parser(body, baseURL: baseURL, fromBookInfo: true)
+        parser.book = context.bookStore
         if let initial = rule.`init`, !initial.isEmpty { try parser.setContent(try parser.getElement(initial)) }
         var result = book
         let rename = canReName && !(rule.canReName ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
@@ -36,18 +38,24 @@ public enum BookInfo {
         context.bookStore.name = result.name ?? ""
         let author = WebBookContext.name(try parser.getString(rule.author), author: true)
         if !author.isEmpty && (rename || (result.author ?? "").isEmpty) { result.author = author }
+        context.bookStore.book = result
         let kind = try WebBookContext.optional { try parser.getStringList(rule.kind)?.joined(separator: ",") ?? "" } ?? ""
         if !kind.isEmpty { result.kind = kind }
+        context.bookStore.book = result
         let intro = try WebBookContext.optional { try parser.getString(rule.intro).trimmingCharacters(in: .whitespacesAndNewlines) } ?? ""
         if !intro.isEmpty {
             result.intro = ["<usehtml>", "<md>", "<useweb>"].contains(where: intro.hasPrefix) ? intro : HtmlFormatter.formatIntro(intro)
         }
+        context.bookStore.book = result
         let latest = try WebBookContext.optional { try parser.getString(rule.lastChapter) } ?? ""
         if !latest.isEmpty { result.latestChapterTitle = latest }
+        context.bookStore.book = result
         let words = try WebBookContext.optional { WebBookContext.wordCount(try parser.getString(rule.wordCount)) } ?? ""
         if !words.isEmpty { result.wordCount = words }
+        context.bookStore.book = result
         let cover = try WebBookContext.optional { WebBookContext.absolute(try parser.getString(rule.coverUrl), base: redirectURL ?? baseURL) } ?? ""
         if !cover.isEmpty { result.coverUrl = cover }
+        context.bookStore.book = result
         var downloads: [String] = []
         if book.type & 128 != 0 || context.source.bookSourceType == 3 {
             downloads = try (parser.getStringList(rule.downloadUrls) ?? []).map {
@@ -57,6 +65,7 @@ public enum BookInfo {
         } else {
             result.tocUrl = try WebBookContext.url(parser, rule: rule.tocUrl, base: baseURL, redirect: redirectURL)
         }
+        result.variable = try context.bookStore.snapshot().variable
         result.origin = context.source.bookSourceUrl; result.originName = context.source.bookSourceName
         try Task.checkCancellation()
         return Result(book: result, downloadURLs: downloads)

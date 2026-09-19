@@ -11,8 +11,8 @@ public enum BookChapterList {
         let (listRule, reverse) = WebBookContext.listRule(rule.chapterList)
         guard !listRule.isEmpty else { throw WebBookError.missingRule("chapterList") }
         if let script = rule.preUpdateJs, !script.isEmpty {
-            _ = try context.engine(baseURL: book.tocUrl ?? "").evaluateScript(script,
-                bindings: ["book": ["name": book.name ?? "", "bookUrl": book.bookUrl ?? ""]])
+            let parser = try context.parser("", baseURL: book.tocUrl ?? "")
+            _ = try parser.getString("@js:" + script)
         }
         let firstURL = (book.tocUrl ?? "").isEmpty ? book.bookUrl ?? "" : book.tocUrl ?? ""
         let first = try await context.request(firstURL, baseURL: context.source.bookSourceUrl ?? "")
@@ -49,6 +49,8 @@ public enum BookChapterList {
         if let script = rule.formatJs, !script.isEmpty {
             let engine = try context.engine(baseURL: first.url)
             let values = try chapters.map(WebBookContext.object)
+            let parser = try context.parser("", baseURL: first.url)
+            parser.contextBindings["chapters"] = values
             let titles = try engine.evaluateScript("""
                 var gInt = 0;
                 chapters.map(function(chapter, offset) {
@@ -56,7 +58,7 @@ public enum BookChapterList {
                     try { var result = eval(formatScript); return result == null ? title : String(result); }
                     catch (error) { return title; }
                 });
-                """, bindings: ["chapters": values, "formatScript": script]) as? [String]
+                """, bindings: ["formatScript": script], context: parser) as? [String]
             for index in chapters.indices {
                 try Task.checkCancellation()
                 if let titles, titles.indices.contains(index) { chapters[index].title = titles[index] }
@@ -78,8 +80,11 @@ public enum BookChapterList {
                     try Task.checkCancellation()
                     var chapter = BookChapter()
                     chapter.baseUrl = response.url; chapter.bookUrl = book.bookUrl
+                    let binding = try JsChapterBinding(chapter)
+                    let itemParser = try context.parser(element, baseURL: baseURL, chapterBinding: binding)
                     func value(_ rule: String?) throws -> String {
-                        try context.parser(element, baseURL: baseURL, chapter: chapter).getString(rule)
+                        binding.chapter = chapter
+                        return try itemParser.getString(rule)
                     }
                     chapter.title = try value(rule.chapterName)
                     guard !(chapter.title ?? "").isEmpty else { return }
@@ -99,6 +104,7 @@ public enum BookChapterList {
                     }
                     chapter.isVip = WebBookContext.flag(try value(rule.isVip))
                     chapter.isPay = WebBookContext.flag(try value(rule.isPay))
+                    chapter.variable = try binding.snapshot().variable
                     chapters.append(chapter)
                 }
             }

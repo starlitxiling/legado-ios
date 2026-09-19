@@ -81,7 +81,7 @@ public enum ExploreKinds {
         else if lower.hasPrefix("<js>"), lower.hasSuffix("</js>") { script = String(text.dropFirst(4).dropLast(5)) }
         else { script = nil }
         if let script {
-            let context = WebBookContext(source: source, client: client, cookies: cookies)
+            let context = try WebBookContext(source: source, client: client, cookies: cookies)
             let engine = try context.engine(baseURL: source.bookSourceUrl ?? "")
             let library = engine.libraryInitializer
             let stateJSON = String(decoding: try JSONEncoder().encode(state), as: UTF8.self)

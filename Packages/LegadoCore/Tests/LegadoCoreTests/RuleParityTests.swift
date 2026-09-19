@@ -102,7 +102,7 @@ final class RuleParityTests: XCTestCase {
         ])
         XCTAssertNil(try parser.getStringList("", isURL: true))
         XCTAssertEqual(try parser.getStringList("links", content: ["links": ["other"]], isURL: true), ["https://example.invalid/book/other"])
-        let context = WebBookContext(source: BookSource(), client: ReplayHttpClient())
+        let context = try WebBookContext(source: BookSource(), client: ReplayHttpClient())
         XCTAssertEqual(try context.urls(parser, rule: "links", base: "https://example.invalid/book/current"), [
             "https://example.invalid/book/next", "https://example.invalid/book/current", "data:text/plain,A"
         ])

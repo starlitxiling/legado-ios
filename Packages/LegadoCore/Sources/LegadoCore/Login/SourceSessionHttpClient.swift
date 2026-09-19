@@ -40,6 +40,12 @@ public struct SourceSessionHttpClient: HttpClient, SourceScriptClient, WebViewCo
         try await CookieRepository(database: database).mergeWebViewCookie(url: url, cookie: cookie)
     }
 
+    func configureSourceVariables(_ binding: JsSourceBinding) {
+        let bridge = SourceScriptBridge(source: source, database: database, secrets: secrets)
+        binding.readVariable = { try bridge.read("v_" + $0) }
+        binding.writeVariable = { try bridge.write("v_" + $0, value: $1) }
+    }
+
     func configureSourceBindings(_ engine: JsEngine) {
         let bridge = SourceScriptBridge(source: source, database: database, secrets: secrets)
         engine.sourceBindingInstaller = { [weak engine] in try bridge.install(in: $0, engine: engine) }

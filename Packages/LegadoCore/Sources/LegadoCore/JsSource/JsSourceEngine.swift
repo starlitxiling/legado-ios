@@ -9,12 +9,8 @@ public final class JsSourceEngine {
                 cookies: CookieStore = JsEngine.sharedCookieStore, api: JsSourceApi = JsSourceApi()) throws {
         self.source = source
         self.api = api
-        engine = try WebBookContext(source: source, client: client, cookies: cookies).engine(baseURL: source.bookSourceUrl ?? "")
-        let installer = engine.sourceBindingInstaller
-        engine.sourceBindingInstaller = { [weak engine] context in
-            try installer?(context)
-            api.install(in: context, engine: engine)
-        }
+        engine = try WebBookContext(source: source, client: client, cookies: cookies, sourceAPI: api)
+            .engine(baseURL: source.bookSourceUrl ?? "")
     }
 
     public func callFunction(_ name: String, arguments: [(String, Any)] = [], optional: Bool = false) throws -> String? {

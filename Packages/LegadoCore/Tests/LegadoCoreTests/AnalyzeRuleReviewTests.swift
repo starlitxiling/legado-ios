@@ -42,13 +42,13 @@ final class AnalyzeRuleReviewTests: XCTestCase {
     // 规格 §7.1、§8.3；Kotlin AnalyzeRule.kt:585、826-834，缺失字段保留缓存值。
     func testCachedTemplateRetainsMissingReplacementFields() throws {
         let parser = AnalyzeRule(content: "document", ruleData: RuleVariableStore())
-        parser.put("n", value: "x##x##A###")
+        try parser.put("n", value: "x##x##A###")
         XCTAssertEqual(try parser.getString("@get:{n}"), "A")
-        parser.put("n", value: "y")
+        try parser.put("n", value: "y")
         XCTAssertEqual(try parser.getString("@get:{n}"), "")
-        parser.put("n", value: "yy##y")
+        try parser.put("n", value: "yy##y")
         XCTAssertEqual(try parser.getString("@get:{n}"), "A")
-        parser.put("n", value: "yy##y##B")
+        try parser.put("n", value: "yy##y##B")
         XCTAssertEqual(try parser.getString("@get:{n}"), "B")
         XCTAssertEqual(try parser.getString("other@get:{n}"), "otherBB")
     }
@@ -86,7 +86,7 @@ final class AnalyzeRuleReviewTests: XCTestCase {
         parser.setLocal("n", value: "A&amp;B &copy; &#65; &#x1F600; &apos; &unknown; &amp;lt; &amp")
         XCTAssertEqual(try parser.getString("@get:{n}"), "A&B © A 😀 &apos; &unknown; &lt; &amp")
         XCTAssertEqual(try parser.getStringList("@get:{n}"), ["A&amp;B &copy; &#65; &#x1F600; &apos; &unknown; &amp;lt; &amp"])
-        XCTAssertEqual(try parser.getString("@get:{n}", unescape: false), parser.get("n"))
+        XCTAssertEqual(try parser.getString("@get:{n}", unescape: false), try parser.get("n"))
     }
 }
 

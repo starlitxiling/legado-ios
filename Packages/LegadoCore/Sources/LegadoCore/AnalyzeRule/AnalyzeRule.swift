@@ -15,7 +15,7 @@ public final class AnalyzeRule {
     public private(set) var isJSON = false
     private let engines: [RuleMode: any SelectorEngine]
     private let chapter: (any RuleVariableStorage)?
-    private let book: (any RuleVariableStorage)?
+    var book: (any RuleVariableStorage)?
     private let ruleData: (any RuleVariableStorage)?
     private let source: (any RuleVariableStorage)?
     private var locals: [String: String] = [:]
@@ -69,33 +69,42 @@ public final class AnalyzeRule {
     /// 规格 §8.2：本地空值仍会遮蔽宿主变量；nil 移除绑定。
     public func setLocal(_ key: String, value: String?) { locals[key] = value }
 
-    /// 规格 §9.1：只向脚本暴露列出的局部绑定，实体暂提供名称骨架。
+    var sourceAPI: JsSourceApi? { (source as? JsSourceBinding)?.api }
+
+    public var contextBindings: [String: Any] = [:]
+
     var scriptBindings: [String: Any] {
-        var values: [String: Any] = ["src": JsEngine.nativeValue(content) ?? NSNull(),
-            "book": book.map { ["name": $0.name] as Any } ?? NSNull(),
-            "chapter": chapter.map { ["title": $0.name] as Any } ?? NSNull(),
-            "source": source.map { ["name": $0.name] as Any } ?? NSNull(),
-            "title": chapter.map { $0.name as Any } ?? NSNull()]
-        for key in ["paraIndex", "paraData", "page"] {
-            if let value = locals[key] { values[key] = key == "page" ? Int32(value).map { $0 as Any } ?? value : value }
+        get throws {
+            var values: [String: Any] = ["src": JsEngine.nativeValue(content) ?? NSNull(),
+                "book": book.map { ["name": $0.name] as Any } ?? NSNull(),
+                "chapter": chapter.map { ["title": $0.name] as Any } ?? NSNull(),
+                "source": source.map { ["name": $0.name] as Any } ?? NSNull(),
+                "title": chapter.map { $0.name as Any } ?? NSNull()]
+            for (key, store) in [("book", book), ("chapter", chapter), ("source", source)] {
+                if let entity = store as? any JsEntityBinding { values[key] = try entity.scriptObject() }
+            }
+            values.merge(contextBindings) { _, new in new }
+            for key in ["paraIndex", "paraData", "page"] {
+                if let value = locals[key] { values[key] = key == "page" ? Int32(value).map { $0 as Any } ?? value : value }
+            }
+            return values
         }
-        return values
     }
 
     /// 规格 §8.2：名称优先于变量；宿主空串继续向下查找。
-    public func get(_ key: String) -> String {
+    public func get(_ key: String) throws -> String {
         if let value = locals[key] { return value }
         if key == "bookName", let book { return book.name }
         if key == "title", let chapter { return chapter.name }
         for store in [chapter, book, ruleData, source] {
-            if let value = store?.value(for: key), !value.isEmpty { return value }
+            if let value = try store?.value(for: key), !value.isEmpty { return value }
         }
         return ""
     }
 
     /// 规格 §8.1：只写入第一个存在的宿主。
-    public func put(_ key: String, value: String?) {
-        [chapter, book, ruleData, source].compactMap { $0 }.first?.setValue(value, for: key)
+    public func put(_ key: String, value: String?) throws {
+        try [chapter, book, ruleData, source].compactMap { $0 }.first?.setValue(value, for: key)
     }
 
     /// 规格 §2.1：JS 与 WebJS 分别扫描全串；冒号仅在对象入口生效。
@@ -228,7 +237,7 @@ public final class AnalyzeRule {
             if operation == .string || operation == .stringList, !(content is JsonPathObject),
                let object = JsEngine.nativeValue(content) as? [String: Any], let first = segments.first {
                 guard content is JSValue || content is JsObject else { return object[first.rule] }
-                for key in first.putMap.keys.sorted() { put(key, value: try getString(first.putMap[key])) }
+                for key in first.putMap.keys.sorted() { try put(key, value: getString(first.putMap[key])) }
                 let replacement = try first.makeUpRule(content, context: self)
                 let value: Any?
                 if first.mode == .js || first.mode == .json {
@@ -246,7 +255,7 @@ public final class AnalyzeRule {
             }
             var result: Any? = content
             for segment in segments {
-                for key in segment.putMap.keys.sorted() { put(key, value: try getString(segment.putMap[key])) }
+                for key in segment.putMap.keys.sorted() { try put(key, value: getString(segment.putMap[key])) }
                 let replacement = operation == .elements ? nil : try segment.makeUpRule(result, context: self)
                 guard let current = result, !(current is NSNull) else { continue }
                 let rule = replacement?.rule ?? segment.rule

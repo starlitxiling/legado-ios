@@ -9,15 +9,26 @@ public final class JsSourceApi {
 
     public init() {}
 
+    func value(for key: String) -> String? {
+        lock.lock(); defer { lock.unlock() }
+        return values[key]
+    }
+
+    func setValue(_ value: String?, for key: String) {
+        lock.lock(); defer { lock.unlock() }
+        values[key] = value
+    }
+
     func install(in context: JSContext, engine: JsEngine? = nil) {
-        if context.objectForKeyedSubscript("__sourceRead")?.isUndefined == false { return }
+        if context.objectForKeyedSubscript("__sourceRead")?.isUndefined == false {
+            installMethods(in: context, engine: engine)
+            return
+        }
         let get: @convention(block) (String) -> String? = { key in
-            self.lock.lock(); defer { self.lock.unlock() }
-            return self.values[key]
+            self.value(for: key)
         }
         let put: @convention(block) (String, JSValue) -> Bool = { key, value in
-            self.lock.lock(); defer { self.lock.unlock() }
-            self.values[key] = value.isNull || value.isUndefined ? nil : value.toString()
+            self.setValue(value.isNull || value.isUndefined ? nil : value.toString(), for: key)
             return true
         }
         context.setObject(get, forKeyedSubscript: "__sourceRead" as NSString)

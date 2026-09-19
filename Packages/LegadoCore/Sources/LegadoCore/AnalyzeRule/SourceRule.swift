@@ -60,7 +60,7 @@ public final class SourceRule {
         for parameter in parameters.reversed() {
             switch parameter {
             case .literal(let value): fragments.append(value)
-            case .get(let key): fragments.append(context.get(key))
+            case .get(let key): fragments.append(try context.get(key))
             case .capture(let index, let literal):
                 if let values = JsEngine.nativeValue(result) as? [Any] { fragments.append(index < values.count && !(values[index] is NSNull) ? ruleText(values[index]) : "") }
                 else { fragments.append(literal) }

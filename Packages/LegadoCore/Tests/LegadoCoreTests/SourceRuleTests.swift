@@ -29,9 +29,9 @@ final class SourceRuleTests: XCTestCase {
     // 规格 L122、L131、L258：缓存参数每次读取新变量；空列表模板保留当前内容。
     func testCachedTemplatesAndEmptyListRule() throws {
         let parser = AnalyzeRule(content: "a\nb", ruleData: RuleVariableStore())
-        parser.put("n", value: "A")
+        try parser.put("n", value: "A")
         XCTAssertEqual(try parser.getString("@get:{n}"), "A")
-        parser.put("n", value: "B")
+        try parser.put("n", value: "B")
         XCTAssertEqual(try parser.getString("@get:{n}"), "B")
         XCTAssertEqual(try parser.getStringList("@get:{missing}"), ["a", "b"])
     }

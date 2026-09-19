@@ -64,7 +64,7 @@ public final class WebBook {
         guard let url = source.searchUrl, !url.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw WebBookError.missingRule("searchUrl")
         }
-        let context = WebBookContext(source: source, client: client, cookies: cookies)
+        let context = try WebBookContext(source: source, client: client, cookies: cookies, sourceAPI: jsSourceApi)
         let response = try await context.request(url, baseURL: source.bookSourceUrl ?? "",
                                                  bindings: ["key": key, "page": page])
         return try await BookList.analyze(context: context, body: response.body, baseURL: response.url,
@@ -76,7 +76,7 @@ public final class WebBook {
 
     public func explore(url: String, page: Int = 1) async throws -> [SearchBook] {
         if isJsSource { return try jsSourceEngine().explore(url: url, page: page) }
-        let context = WebBookContext(source: source, client: client, cookies: cookies)
+        let context = try WebBookContext(source: source, client: client, cookies: cookies, sourceAPI: jsSourceApi)
         let response = try await context.request(url, baseURL: source.bookSourceUrl ?? "", bindings: ["page": page])
         return try await BookList.analyze(context: context, body: response.body, baseURL: response.url, isSearch: false)
     }
@@ -97,7 +97,7 @@ public final class WebBook {
 
     public func bookInfoDetails(_ book: Book, canReName: Bool = false) async throws -> BookInfo.Result {
         if isJsSource { return try jsSourceEngine().bookInfo(book, canReName: canReName) }
-        let context = WebBookContext(source: source, client: client, book: book, cookies: cookies)
+        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi)
         let response = try await context.request(book.bookUrl ?? "", baseURL: source.bookSourceUrl ?? "")
         return try await BookInfo.analyzeDetails(context: context, book: book, body: response.body,
             baseURL: book.bookUrl ?? "", redirectURL: response.url, canReName: canReName)
@@ -110,10 +110,11 @@ public final class WebBook {
             book.latestChapterTitle = chapters.last?.title
             return chapters
         }
-        let context = WebBookContext(source: source, client: client, book: book, cookies: cookies)
+        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi)
         let chapters: [BookChapter]
         if isJsSource { chapters = try jsSourceEngine().chapters(book: book) }
         else { chapters = try await BookChapterList.load(context: context, book: book, tocCountWords: tocCountWords) }
+        if !isJsSource { book.variable = try context.bookStore.snapshot().variable }
         let timestamp = now()
         if book.totalChapterNum < chapters.count {
             book.lastCheckCount = chapters.count - book.totalChapterNum
@@ -134,7 +135,7 @@ public final class WebBook {
             return BookContent.Result(chapter: chapter, rawContent: raw, text: processed.text,
                 paragraphs: processed.paragraphs, imageStyle: book.readConfig?.imageStyle ?? (source.bookSourceType == 2 ? "FULL" : nil), payAction: nil)
         }
-        let context = WebBookContext(source: source, client: client, book: book, cookies: cookies)
+        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi)
         return try await BookContent.load(context: context, book: book, chapter: chapter,
             nextChapterURL: nextChapterUrl, processor: processor, includeTitle: includeTitle)
     }
@@ -144,7 +145,7 @@ public final class WebBook {
         guard let action = source.ruleContent?.payAction, !action.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
             throw WebBookError.missingRule("payAction")
         }
-        let context = WebBookContext(source: source, client: client, book: book, cookies: cookies)
+        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies, sourceAPI: jsSourceApi)
         let base = WebBookContext.absolute(chapter.url ?? "", base: chapter.baseUrl ?? book.tocUrl ?? "")
         let engine = try context.engine(baseURL: base)
         let bindings: [String: Any] = ["book": try WebBookContext.object(book),
@@ -165,25 +166,40 @@ final class WebBookContext {
     let source: BookSource
     let book: Book?
     let client: any HttpClient
-    let bookStore: RuleVariableStore
-    let sourceStore: RuleVariableStore
+    let bookStore: JsBookBinding
+    let sourceStore: JsSourceBinding
+    private var chapterStores: [String: JsChapterBinding] = [:]
     let cookies: CookieStore
     let limiter = ConcurrentRateLimiter.shared
 
-    init(source: BookSource, client: any HttpClient, book: Book? = nil, cookies: CookieStore = CookieStore()) {
+    init(source: BookSource, client: any HttpClient, book: Book? = nil, cookies: CookieStore = CookieStore(),
+         sourceAPI: JsSourceApi = JsSourceApi()) throws {
         self.source = source; self.client = client; self.book = book
         self.cookies = cookies
-        let values = book?.variable.flatMap { $0.data(using: .utf8) }
-            .flatMap { try? JSONDecoder().decode([String: String].self, from: $0) } ?? [:]
-        bookStore = RuleVariableStore(values, name: book?.name ?? "")
-        sourceStore = RuleVariableStore(name: source.bookSourceName ?? "")
+        bookStore = try JsBookBinding(book ?? Book(now: 0))
+        sourceStore = JsSourceBinding(source, api: sourceAPI)
+        (client as? any SourceScriptClient)?.configureSourceVariables(sourceStore)
+    }
+
+    func chapterBinding(_ chapter: BookChapter) throws -> JsChapterBinding {
+        let key = "\(chapter.index)|\(chapter.url ?? "")"
+        if let binding = chapterStores[key] { return binding }
+        let binding = try JsChapterBinding(chapter)
+        chapterStores[key] = binding
+        return binding
     }
 
     func engine(baseURL: String) throws -> JsEngine {
         let engine = JsEngine(baseUrl: baseURL, httpClient: client, cookieStore: cookies,
             networkSource: .init(key: source.bookSourceUrl, enabledCookieJar: source.enabledCookieJar ?? true,
                                  concurrentRate: source.concurrentRate), rateLimiter: limiter)
-        (client as? any SourceScriptClient)?.configureSourceBindings(engine)
+        engine.bindings["source"] = try sourceStore.scriptObject()
+        if book != nil { engine.bindings["book"] = try bookStore.scriptObject() }
+        if let session = client as? any SourceScriptClient { session.configureSourceBindings(engine) }
+        else {
+            let api = sourceStore.api
+            engine.sourceBindingInstaller = { [weak engine] context in api.install(in: context, engine: engine) }
+        }
         if let header = source.header, !header.isEmpty {
             let text = header.hasPrefix("@js:") ? ruleText(try engine.evaluateScript(String(header.dropFirst(4)))) : header
             engine.networkSource.headers = try JSONDecoder().decode([String: String].self, from: Data(text.utf8))
@@ -197,30 +213,29 @@ final class WebBookContext {
         return engine
     }
 
-    func parser(_ body: Any, baseURL: String, chapter: BookChapter? = nil, nextChapterURL: String? = nil) throws -> AnalyzeRule {
-        let js = try engine(baseURL: baseURL)
-        if let book {
-            var value = try Self.object(book); value["name"] = bookStore.name
-            js.bindings["book"] = value
-        }
-        if let chapter { js.bindings["chapter"] = try Self.object(chapter) }
-        js.bindings["source"] = try Self.object(source)
-        js.bindings["nextChapterUrl"] = nextChapterURL ?? ""
-        let chapterStore = chapter.map { RuleVariableStore(name: $0.title ?? "") }
+    func parser(_ body: Any, baseURL: String, chapter: BookChapter? = nil, nextChapterURL: String? = nil,
+                chapterBinding: JsChapterBinding? = nil, fromBookInfo: Bool = false,
+                engine: JsEngine? = nil) throws -> AnalyzeRule {
+        let js = try engine ?? self.engine(baseURL: baseURL)
+        js.bindings.removeValue(forKey: "book")
+        let chapterStore = try chapterBinding ?? chapter.map { try self.chapterBinding($0) }
         let parser = AnalyzeRule(content: body, engines: [.default: AnalyzeByJSoup(), .xpath: AnalyzeByXPath(),
-            .json: AnalyzeByJSonPath(), .js: js], chapter: chapterStore, book: bookStore, source: sourceStore)
+            .json: AnalyzeByJSonPath(), .js: js], chapter: chapterStore, book: book == nil ? nil : bookStore,
+            ruleData: bookStore, source: sourceStore)
+        parser.contextBindings = ["nextChapterUrl": nextChapterURL ?? "", "fromBookInfo": fromBookInfo,
+                                  "isFromBookInfo": fromBookInfo]
         parser.setBaseUrl(baseURL)
         parser.setRedirectUrl(baseURL)
+        js.variableContext = parser
         return parser
     }
 
-    func request(_ url: String, baseURL: String, bindings: [String: Any] = [:],
+    func request(_ url: String, baseURL: String, bindings: [String: Any] = [:], chapter: BookChapter? = nil,
                  webJs: String? = nil, sourceRegex: String? = nil, forceWebView: Bool = false) async throws -> AnalyzeUrlExecutor.Response {
         try Task.checkCancellation()
-        var values = bindings
-        if let book { values["book"] = try Self.object(book) }
-        values["source"] = try Self.object(source)
-        let executor = try AnalyzeUrlExecutor(url, engine: engine(baseURL: baseURL), bindings: values)
+        let js = try engine(baseURL: baseURL)
+        let parser = try parser("", baseURL: baseURL, chapter: chapter, engine: js)
+        let executor = try AnalyzeUrlExecutor(url, engine: js, bindings: bindings, context: parser)
         var response = try await executor.getStrResponse(jsStr: webJs, sourceRegex: sourceRegex, forceWebView: forceWebView)
         if let session = client as? any SourceScriptClient {
             let checked = try await session.checkResponse(StrResponse(raw: response.raw, body: response.body))

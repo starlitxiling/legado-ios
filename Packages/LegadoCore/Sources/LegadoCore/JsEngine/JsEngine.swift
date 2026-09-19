@@ -25,6 +25,7 @@ final class JsSession {
 
 /// 一条规则流水线共享上下文；独立入口及宿主嵌套求值隔离上下文。
 public final class JsEngine: SelectorEngine {
+    public weak var variableContext: AnalyzeRule?
     public var baseUrl: String
     public var bindings: [String: Any]
     public var libraryInitializer: ((JSContext) throws -> Void)?
@@ -66,7 +67,7 @@ public final class JsEngine: SelectorEngine {
     }
 
     public func evaluate(_ rule: String, content: Any, operation: RuleOperation, context: AnalyzeRule) throws -> Any? {
-        var values = context.scriptBindings
+        var values = try context.scriptBindings
         values["baseUrl"] = context.scriptBaseUrl ?? baseUrl
         values["result"] = content
         values.merge(bindings) { _, new in new }
@@ -77,7 +78,9 @@ public final class JsEngine: SelectorEngine {
             context.scriptSession = session
         }
         for (key, value) in values { session.context.setObject(session.host.bridge(value), forKeyedSubscript: key as NSString) }
-        try sourceBindingInstaller?(session.context)
+        if let sourceBindingInstaller { try sourceBindingInstaller(session.context) }
+        else { context.sourceAPI?.install(in: session.context, engine: self) }
+        freezeEntities(in: session.context)
         return try run(rule, in: session)
     }
 
@@ -106,19 +109,23 @@ public final class JsEngine: SelectorEngine {
     }
 
     private func makeSession(bindings: [String: Any], javaMapBindings: Set<String> = [], parser: AnalyzeRule? = nil, url: Bool = false) throws -> JsSession {
+        let parser = parser ?? variableContext
         guard let context = JSContext() else { throw JsEngineError.unavailable }
         defer { context.exception = nil }
         let networkEngine = networkCopy()
         networkEngine.baseUrl = bindings["baseUrl"] as? String ?? parser?.scriptBaseUrl ?? baseUrl
-        let host = JavaHost(parser: parser, timeZone: timeZone, logger: logger, network: JavaHostNetwork(engine: networkEngine))
+        let host = JavaHost(parser: parser, timeZone: timeZone, logger: logger, network: JavaHostNetwork(engine: networkEngine),
+                            extraParams: url ? bindings["extraParams"] as? [String: String] ?? [:] : [:])
         host.install(in: context)
         var values: [String: Any] = ["result": NSNull(), "src": NSNull(), "baseUrl": baseUrl,
             "source": NSNull(), "book": NSNull(), "chapter": NSNull(), "chapters": NSNull(),
-            "title": NSNull(), "nextChapterUrl": NSNull(), "rssArticle": NSNull(), "fromBookInfo": false]
+            "title": NSNull(), "nextChapterUrl": NSNull(), "rssArticle": NSNull(), "fromBookInfo": false, "isFromBookInfo": false]
         if url {
             values = ["baseUrl": baseUrl, "page": NSNull(), "key": NSNull(), "speakText": NSNull(),
                       "speakSpeed": NSNull(), "book": NSNull(), "source": NSNull(), "result": NSNull(), "infoMap": NSNull()]
-        } else { values.merge(self.bindings) { _, new in new } }
+        }
+        if let parser { values.merge(try parser.scriptBindings) { _, new in new } }
+        values.merge(self.bindings) { _, new in new }
         values.merge(bindings) { _, new in new }
         for (key, value) in values { context.setObject(host.bridge(value), forKeyedSubscript: key as NSString) }
         for key in javaMapBindings {
@@ -136,16 +143,34 @@ public final class JsEngine: SelectorEngine {
             let mapped = adapt?.call(withArguments: [context.objectForKeyedSubscript(key)!])
             context.setObject(mapped, forKeyedSubscript: key as NSString)
         }
-        try sourceBindingInstaller?(context)
+        if let sourceBindingInstaller { try sourceBindingInstaller(context) }
+        else { parser?.sourceAPI?.install(in: context, engine: self) }
         try libraryInitializer?(context)
+        freezeEntities(in: context)
         if let exception = context.exception { throw JsEngineError.exception(exception.toString()) }
         return JsSession(context: context, host: host)
+    }
+
+    private func freezeEntities(in context: JSContext) {
+        context.evaluateScript("""
+        (function() {
+            function freeze(value) {
+                if (value == null || typeof value !== 'object' || Object.isFrozen(value)) return;
+                Object.keys(value).forEach(function(key) { freeze(value[key]); });
+                Object.freeze(value);
+            }
+            [book, source, typeof chapter === 'undefined' ? null : chapter,
+             typeof chapters === 'undefined' ? null : chapters,
+             typeof rssArticle === 'undefined' ? null : rssArticle].forEach(freeze);
+        })();
+        """)
     }
 
     func networkCopy() -> JsEngine {
         let copy = JsEngine(baseUrl: baseUrl, bindings: bindings, timeZone: timeZone, logger: logger,
                             httpClient: httpClient, cookieStore: cookieStore, cacheManager: cacheManager,
                             networkSource: networkSource, rateLimiter: rateLimiter, downloadStore: downloadStore)
+        copy.variableContext = variableContext
         copy.libraryInitializer = libraryInitializer
         copy.sourceBindingInstaller = sourceBindingInstaller
         copy.networkConcurrency = networkConcurrency
@@ -162,19 +187,19 @@ public final class JsEngine: SelectorEngine {
             if let extra = bindings["extraParams"] as? [String: String] {
                 for (key, value) in extra { values[key] = key == "page" ? Int32(value).map { $0 as Any } ?? value : value }
             }
-            return Self.nativeValue(try run(script, in: makeSession(bindings: values, url: true)))
+            return Self.nativeValue(try run(script, in: makeSession(bindings: values, javaMapBindings: values["infoMap"] is [String: Any] ? ["infoMap"] : [], url: true)))
         }
     }
 
     /// 规格 §10.2：URL 模板的 result 为 null，分页等值由调用方显式绑定。
     public func interpolateURL(_ rule: String, bindings: [String: Any]) throws -> String {
         return try autoreleasepool {
-            var values = bindings.filter { ["page", "key", "speakText", "speakSpeed", "book", "source", "infoMap"].contains($0.key) }
+            var values = bindings.filter { ["page", "key", "speakText", "speakSpeed", "book", "source", "infoMap", "extraParams"].contains($0.key) }
             if let extra = bindings["extraParams"] as? [String: String] {
                 for (key, value) in extra { values[key] = key == "page" ? Int32(value).map { $0 as Any } ?? value : value }
             }
             values["infoMap"] = bindings["infoMap"] ?? NSNull()
-            let session = try makeSession(bindings: values, url: true)
+            let session = try makeSession(bindings: values, javaMapBindings: values["infoMap"] is [String: Any] ? ["infoMap"] : [], url: true)
             let analyzer = RuleAnalyzer(rule, code: true)
             return try analyzer.innerRule(start: "{{", end: "}}") { script in
                 let value = try self.run(script, in: session)

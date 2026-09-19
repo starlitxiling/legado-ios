@@ -34,7 +34,7 @@ public struct CoverSearchRule: Codable, Equatable {
         source.bookSourceUrl = searchUrl; source.bookSourceName = "CoverRule"
         source.concurrentRate = concurrentRate; source.loginUrl = loginUrl; source.loginUi = loginUi
         source.header = header; source.jsLib = jsLib; source.enabledCookieJar = enabledCookieJar ?? false
-        let context = WebBookContext(source: source, client: client, book: book)
+        let context = try WebBookContext(source: source, client: client, book: book)
         let response = try await context.request(searchUrl, baseURL: searchUrl, bindings: ["key": book.name ?? ""])
         let parser = try context.parser(response.body, baseURL: response.url)
         let value = try parser.getString(coverRule, isURL: true)

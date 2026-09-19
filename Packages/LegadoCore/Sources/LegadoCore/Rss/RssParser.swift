@@ -18,7 +18,7 @@ public struct RssParser {
     }
 
     public func parse(_ body: String, source: RssSource, sort: String = "", baseURL: String,
-                      engine: JsEngine? = nil, debugLog: ((String) -> Void)?) throws -> RssPage {
+                      engine: JsEngine? = nil, debugLog: ((String) -> Void)?, variables: RuleVariableStore = RuleVariableStore()) throws -> RssPage {
         guard let rule = source.ruleArticles?.trimmingCharacters(in: .whitespacesAndNewlines), !rule.isEmpty else {
             debugLog?("⇒列表规则为空, 使用默认规则解析")
             let delegate = FeedXMLDelegate(source: source, sort: sort, baseURL: baseURL)
@@ -35,7 +35,6 @@ public struct RssParser {
             }
             return RssPage(articles: delegate.articles, nextPageURL: nil)
         }
-        let variables = RuleVariableStore()
         let parser = Self.analyzer(body, baseURL: baseURL, engine: engine, ruleData: variables)
         debugLog?("┌获取列表")
         let items = try parser.getElements(rule.hasPrefix("-") ? String(rule.dropFirst()) : rule)
@@ -55,17 +54,26 @@ public struct RssParser {
             for key in Array(variables.variables.keys) { variables.setValue(nil, for: key) }
             for (key, value) in listVariables { variables.setValue(value, for: key) }
             try parser.setContent(item)
+            var article = RssArticle(origin: source.sourceUrl)
+            article.sort = sort; article.type = source.type
+            func bindArticle() throws {
+                article.variable = try variables.json(or: article.variable)
+                parser.contextBindings["rssArticle"] = try WebBookContext.object(article)
+            }
+            try bindArticle()
             log("┌获取标题")
             let title = try parser.getString(source.ruleTitle)
             log("└\(title)")
-            var article = RssArticle(origin: source.sourceUrl, title: title)
-            article.sort = sort; article.type = source.type
+            article.title = title
+            try bindArticle()
             log("┌获取时间")
             article.pubDate = try parser.getString(source.rulePubDate)
             log("└\(article.pubDate ?? "")")
+            try bindArticle()
             log("┌获取描述")
             article.description = source.ruleDescription?.isEmpty == false ? try parser.getString(source.ruleDescription) : nil
             log(article.description.map { "└\($0)" } ?? "└描述规则为空，将会解析内容页")
+            try bindArticle()
             log("┌获取图片url")
             do {
                 let image = try parser.getString(source.ruleImage)
@@ -77,6 +85,7 @@ public struct RssParser {
                 engine?.logger("RSS 图片规则失败：\(error)")
                 log("└\(error.localizedDescription)")
             }
+            try bindArticle()
             log("┌获取文章链接")
             article.link = Self.absolute(try parser.getString(source.ruleLink), base: baseURL)
             log("└\(article.link)")
@@ -95,9 +104,11 @@ public struct RssParser {
 
     static func analyzer(_ body: Any, baseURL: String, engine: JsEngine?, ruleData: RuleVariableStore? = nil) -> AnalyzeRule {
         var engines: [RuleMode: any SelectorEngine] = [.default: AnalyzeByJSoup(), .xpath: AnalyzeByXPath(), .json: AnalyzeByJSonPath()]
-        engines[.js] = engine ?? JsEngine(baseUrl: baseURL)
+        let js = engine ?? JsEngine(baseUrl: baseURL)
+        engines[.js] = js
         let parser = AnalyzeRule(content: body, engines: engines, ruleData: ruleData)
         parser.scriptBaseUrl = baseURL
+        js.variableContext = parser
         return parser
     }
 }

@@ -62,9 +62,9 @@ public protocol RuleVariableStorage: AnyObject {
     /// 规格 §8.2：书名或章节标题；空串仍遮蔽同名变量。
     var name: String { get }
     /// 规格 §8.2：读取原值，保留缺失与空串的区别。
-    func value(for key: String) -> String?
+    func value(for key: String) throws -> String?
     /// 规格 §8.1：宿主负责持久化、大变量存储与 nil 删除。
-    func setValue(_ value: String?, for key: String)
+    func setValue(_ value: String?, for key: String) throws
 }
 
 /// 规格 §8：内存变量容器，可在多个解析器之间共享。

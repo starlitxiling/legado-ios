@@ -36,7 +36,7 @@ public actor ImageDownloader {
             if validate(data) { return data }
             try FileManager.default.removeItem(at: path)
         }
-        let context = WebBookContext(source: source, client: client, book: book, cookies: cookies)
+        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies)
         let engine = try context.engine(baseURL: source.bookSourceUrl ?? "")
         var bindings: [String: Any] = ["source": try WebBookContext.object(source), "src": url]
         if let book { bindings["book"] = try WebBookContext.object(book) }

@@ -22,3 +22,15 @@
 - setContent 拒绝 nil/NSNull，失败不覆盖旧内容，成功重置 DOM 缓存。XPath/JSONPath 当前实现按次解析，无持久缓存；通过三类内容切换验证新内容生效。
 - 新增 RuleParityTests 13 项，包含对象释放和宿主调用路径。Core 全量 562/0，AppCore 236/0，CLI 7/0；CLI 中完整语料 134/142，8 unsupported，基线无回退。
 - 所有断言期望根据上述固定 Kotlin 源码推导，本次未运行 Android Kotlin 端；iOS 构建在批次 1 合并门禁执行。
+
+
+## P2
+
+- 主会话先以 5 项集成测试复现 8 处失败，最终增加 12 项行为测试。完整实体绑定共享变量存储，字段只读，source 方法复用既有登录和持久化实现。
+- 搜索 URL 变量随 SearchBook、详情 Book 和章节结果返回；目录条目隔离变量，正文 URL、分页与标题共享章节变量。RSS 列表/正文接入文章实体和 URL 变量；目录格式脚本获得完整 book/source/chapters。
+- URL executor 强持有 parser，JavaHost 与网络副本弱持有，消除 parser/session/host 环；释放测试覆盖真实脚本执行。extraParams 仅覆盖当前 URL 的读取，不污染共享存储；infoMap 支持 get。
+- 按已确认计划，URL 使用规则的 chapter/book/ruleData/source 全链。固定 Kotlin AnalyzeUrl 原版仅 chapter/ruleData，属于计划明确要求的扩展；extraParams 优先级仍遵循 Kotlin。fromBookInfo 保留原名，并兼容 isFromBookInfo 别名。
+- 变量 JSON 损坏会明确报错；RuleVariableStorage 和 AnalyzeRule get/put 允许传递持久化错误，调用方同步使用 try。无新增依赖。
+- 全量发现只读保护提前于发现页初始化会阻止持久化方法安装，已调整顺序并通过既有回归。复查修复请求初始化重复求值 header 的问题。
+- Core 574/0、AppCore 236/0、CLI 7/0；完整语料 134/142（8 unsupported），js 7/7。AppCore/CLI 首次受 SwiftPM 旧构建清单影响漏编新文件，刷新 manifest 时间戳后完整重建通过。
+- iOS 构建及真机检查仍按批次门禁执行，本项未宣称完成真机验收。

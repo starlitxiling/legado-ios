@@ -148,7 +148,7 @@ public enum ConformanceRunner {
         if operation != "AnalyzeRule.getElements" && projection != nil { throw Skip(reason: "该入口尚未实现投影 \(projection!)") }
         switch operation {
         case "AnalyzeRule.evalJS": return .string(ruleText(try parser.evaluateScript(input.rule, result: nil)))
-        case "AnalyzeRule.get": return .string(parser.get(input.rule))
+        case "AnalyzeRule.get": return .string(try parser.get(input.rule))
         case "AnalyzeRule.getString": return .string(try parser.getString(input.rule))
         case "AnalyzeRule.getStringList":
             guard let result = try parser.getStringList(input.rule) else { throw Skip(reason: "schema 尚无 null 字符串列表结果") }

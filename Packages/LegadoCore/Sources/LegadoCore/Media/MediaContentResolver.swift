@@ -81,7 +81,7 @@ public enum MediaContentResolver {
                                     client: any HttpClient, cookies: CookieStore = CookieStore()) async throws -> MediaResource {
         let client = (client as? any SourceSessionClientProviding)?.client(for: source) ?? client
         let base = WebBookContext.absolute(chapter.url ?? "", base: chapter.baseUrl ?? book.tocUrl ?? source.bookSourceUrl ?? "")
-        let context = WebBookContext(source: source, client: client, book: book, cookies: cookies)
+        let context = try WebBookContext(source: source, client: client, book: book, cookies: cookies)
         let engine = try context.engine(baseURL: base)
         let bindings: [String: Any] = ["book": try WebBookContext.object(book),
             "chapter": try WebBookContext.object(chapter), "source": try WebBookContext.object(source)]

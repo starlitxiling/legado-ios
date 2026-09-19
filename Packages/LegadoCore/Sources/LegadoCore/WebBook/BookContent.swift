@@ -36,7 +36,7 @@ public enum BookContent {
         }
         let base = chapter.baseUrl ?? book.tocUrl ?? context.source.bookSourceUrl ?? ""
         func request(_ url: String, baseURL: String) async throws -> AnalyzeUrlExecutor.Response {
-            try await context.request(url, baseURL: baseURL, bindings: ["chapter": try WebBookContext.object(chapter)],
+            try await context.request(url, baseURL: baseURL, chapter: chapter,
                 webJs: rule.webJs, sourceRegex: rule.sourceRegex, forceWebView: mediaWebView)
         }
         let firstURL = WebBookContext.absolute(chapter.url ?? "", base: base)
@@ -80,6 +80,7 @@ public enum BookContent {
                 } else { updated.title = title }
             }
         }
+        updated.variable = try context.chapterBinding(chapter).snapshot().variable
         guard chapter.isVolume || !content.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw WebBookError.emptyContent }
         try Task.checkCancellation()
         return try finish(content, chapter: updated)

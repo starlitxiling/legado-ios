@@ -22,8 +22,12 @@ public struct RssService: Sendable {
     public func articles(source: RssSource, sort: String, url: String, page: Int = 1,
                          existing: [RssArticle] = [], debugLog: ((String) -> Void)?) async throws -> RssPage {
         let engine = try engine(source: source, baseURL: source.sourceUrl)
+        let variables = RuleVariableStore()
+        let parser = RssParser.analyzer("", baseURL: source.sourceUrl, engine: engine, ruleData: variables)
         let response = try await request(url, source: source, engine: engine, page: page, debugLog: debugLog)
-        var result = try RssParser().parse(response.body, source: source, sort: sort, baseURL: response.url, engine: engine, debugLog: debugLog)
+        withExtendedLifetime(parser) {}
+        var result = try RssParser().parse(response.body, source: source, sort: sort, baseURL: response.url,
+                                         engine: engine, debugLog: debugLog, variables: variables)
         if source.ruleNextPage?.uppercased() == "PAGE" { result.nextPageURL = url }
         var seen = Set(existing.map(\.identity))
         result.articles = result.articles.filter { seen.insert($0.identity).inserted }
@@ -42,7 +46,9 @@ public struct RssService: Sendable {
         guard let rule = source.ruleContent, !rule.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return .url(article.link) }
         let engine = try engine(source: source, baseURL: article.link)
         engine.bindings["rssArticle"] = try JSONSerialization.jsonObject(with: JSONEncoder().encode(article))
-        let variables = RuleVariableStore(article.variable.flatMap { try? JSONDecoder().decode([String: String].self, from: Data($0.utf8)) } ?? [:])
+        let variables = try RuleVariableStore(json: article.variable)
+        let urlParser = RssParser.analyzer("", baseURL: article.link, engine: engine, ruleData: variables)
+        defer { withExtendedLifetime(urlParser) {} }
         var queue = [article.link]
         var visited = Set<String>()
         var contents: [String] = []
@@ -52,6 +58,7 @@ public struct RssService: Sendable {
             guard visited.insert(url).inserted else { continue }
             guard visited.count <= 100 else { throw RssError.paginationLimit }
             let firstPage = contents.isEmpty
+            engine.variableContext = urlParser
             let response = try await request(url, source: source, engine: engine,
                                              debugLog: firstPage ? debugLog : nil, logResponseURL: true)
             visited.insert(response.url)

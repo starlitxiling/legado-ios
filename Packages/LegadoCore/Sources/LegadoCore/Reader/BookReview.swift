@@ -13,11 +13,10 @@ public final class BookReview {
                         paragraphData: String = "", page: Int = 1) async throws -> [ReaderReviewItem] {
         guard let rule = source.ruleReview, rule.enabled,
               let url = rule.reviewDetailUrl, !url.isEmpty else { return [] }
-        let context = WebBookContext(source: source, client: client, book: book)
+        let context = try WebBookContext(source: source, client: client, book: book)
         let base = chapter.url ?? book.bookUrl ?? source.bookSourceUrl ?? ""
         let response = try await context.request(url, baseURL: base,
-            bindings: ["chapter": try WebBookContext.object(chapter), "paraIndex": String(paragraphIndex),
-                       "paraData": paragraphData, "page": page])
+            bindings: ["paraIndex": String(paragraphIndex), "paraData": paragraphData, "page": page], chapter: chapter)
         let parser = try context.parser(response.body, baseURL: response.url, chapter: chapter)
         parser.setLocal("paraIndex", value: String(paragraphIndex))
         parser.setLocal("paraData", value: paragraphData)
@@ -28,9 +27,9 @@ public final class BookReview {
     public func summary(book: Book, chapter: BookChapter) async throws -> ReaderReviewSummary {
         guard let rule = source.ruleReview, rule.enabled,
               let url = rule.reviewSummaryUrl, !url.isEmpty else { return ReaderReviewSummary() }
-        let context = WebBookContext(source: source, client: client, book: book)
+        let context = try WebBookContext(source: source, client: client, book: book)
         let response = try await context.request(url, baseURL: chapter.url ?? book.bookUrl ?? "",
-            bindings: ["chapter": try WebBookContext.object(chapter)])
+            chapter: chapter)
         return try ReaderReviewEvaluator.summary(body: response.body, rule: rule,
             parser: context.parser(response.body, baseURL: response.url, chapter: chapter))
     }
