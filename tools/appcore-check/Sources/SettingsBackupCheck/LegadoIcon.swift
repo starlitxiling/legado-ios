@@ -1,0 +1,1 @@
+../../../../App/Sources/Shared/Components/LegadoIcon.swift

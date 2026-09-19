@@ -34,6 +34,8 @@ struct ThemePalette: Equatable {
     let isEInk: Bool
     var allowsAnimation: Bool { !isEInk }
     func pageAnimation(_ savedMode: Int) -> Int { isEInk ? 4 : savedMode }
+    var onPrimary: ARGBColor { ARGBColor(primary.isDark ? 0xFFFFFFFF : 0xFF000000) }
+    var onAccent: ARGBColor { ARGBColor(accent.isDark ? 0xFFFFFFFF : 0xFF000000) }
     var textPrimary: ARGBColor { ARGBColor(isEInk ? 0xFF000000 : isNight ? 0xFFFFFFFF : 0xDE000000) }
     var textSecondary: ARGBColor { ARGBColor(isEInk ? 0xFF000000 : isNight ? 0xB3FFFFFF : 0x8A000000) }
     var card: ARGBColor { ARGBColor(isEInk ? 0xFFFFFFFF : isNight ? 0xFF303030 : 0xFFF5F5F5) }

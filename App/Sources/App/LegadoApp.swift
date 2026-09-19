@@ -19,6 +19,22 @@ struct AppStartupView: View {
     @State private var theme = ThemeStore(preferences: .shared)
 
     var body: some View {
+        displayedContent
+            .modifier(ScriptHostModifier())
+            .modifier(ThemeEnvironmentModifier(store: theme))
+            .task { appDelegate.openDatabase() }
+    }
+
+    @ViewBuilder private var displayedContent: some View {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("-component-gallery") { ComponentGalleryView() }
+        else { startupContent }
+        #else
+        startupContent
+        #endif
+    }
+
+    private var startupContent: some View {
         Group {
             if let container = appDelegate.container {
                 RootTabView(container: container)
@@ -34,9 +50,6 @@ struct AppStartupView: View {
                 ProgressView("正在打开书库")
             }
         }
-        .modifier(ScriptHostModifier())
-        .modifier(ThemeEnvironmentModifier(store: theme))
-        .task { appDelegate.openDatabase() }
     }
 }
 

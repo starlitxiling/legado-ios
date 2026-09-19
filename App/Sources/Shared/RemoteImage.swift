@@ -8,6 +8,7 @@ import LegadoCore
     var book: Book? = nil
     var isCover = true
     var isReadRecord = false
+    var placeholderTitle: String? = nil
     @Environment(\.themeColors) private var themeColors
     @Environment(\.colorScheme) private var colorScheme
     @Environment(AppContainer.self) private var container
@@ -39,8 +40,12 @@ import LegadoCore
                     RoundedRectangle(cornerRadius: 8).fill(themeColors.accent.opacity(0.08))
                     if model.state == .loading { ProgressView() }
                     else {
-                        Image(systemName: isCover ? "book.closed" : "photo")
-                            .font(.title).foregroundStyle(.secondary)
+                        if let placeholderTitle {
+                            Text(String(placeholderTitle.prefix(1))).font(.system(size: 28)).foregroundStyle(themeColors.textSecondary)
+                        } else {
+                            Image(systemName: isCover ? "book.closed" : "photo")
+                                .font(.title).foregroundStyle(themeColors.textSecondary)
+                        }
                     }
                 }
                 .accessibilityLabel(model.state == .failed ? "图片加载失败" : "图片占位")

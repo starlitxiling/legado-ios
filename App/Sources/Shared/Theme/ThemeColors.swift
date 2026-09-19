@@ -6,6 +6,8 @@ struct ThemeColors {
     var accent: Color { palette.accent.color }
     var background: Color { palette.background.color }
     var bottomBackground: Color { palette.bottomBackground.color }
+    var onPrimary: Color { palette.onPrimary.color }
+    var onAccent: Color { palette.onAccent.color }
     var textPrimary: Color { palette.textPrimary.color }
     var textSecondary: Color { palette.textSecondary.color }
     var card: Color { palette.card.color }

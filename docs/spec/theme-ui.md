@@ -23,3 +23,20 @@ rtk proxy swift test --package-path tools/appcore-check --filter ThemeStoreTests
 ```
 
 主题测试覆盖四预设精确色值、模式及偏好更新、墨水屏不破坏保存值、ARGB 透明度、Android 主题字段往返和非法配置原子性。StartupUITests 提供实际页面切换与截图；Android 同屏图片需使用真实 Android 运行环境采集，不能用仿绘图代替。
+
+
+## 通用组件
+
+Shared/Components 包含 LegadoTitleBar、RefreshProgressBar、CapsuleSearchField、DetailSeekBar、LabelsBar、CoverImage、BadgeView、SelectActionBar、LoadingView、EmptyText 和 ReadStyleCircle。尺寸依据轮次 5 计划，全部读取 ThemeColors；墨水屏进度条固定显示，加载图标使用静态沙漏，工具栏以描边提示且在 iOS 26 隐藏玻璃背景。
+
+LegadoTitleBar 放在页面 toolbar 中；页面仍使用 legadoNavigationTitle 保持系统标题与无障碍导航信息。CoverImage 复用 RemoteImage 加载链，保持 3:4，失败占位显示书名首字。LabelsBar 在可用宽度内测量文字并流式换行，长标签截断但无障碍仍保留全文。
+
+LegadoIcon.symbol(for:) 覆盖计划的 39 个 Android 图标名，未知名返回 nil。ComponentMetrics 集中标签排布、角标 99+ 上限和进度归一化。组件画廊仅在 DEBUG 构建且携带 `-component-gallery` 启动参数时出现，不进入正式用户导航。
+
+在 iOS 工作树根目录运行，无需环境变量：
+
+```sh
+rtk proxy swift test --package-path tools/appcore-check --filter ComponentMetricsTests
+```
+
+ComponentIconTests 在 iOS 检查所有映射符号可用；ComponentUITests 实际测试搜索提交/清空、全选与墨水屏切换，并生成 components*.png。
