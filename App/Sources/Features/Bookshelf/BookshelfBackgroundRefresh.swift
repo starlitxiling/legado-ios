@@ -25,7 +25,8 @@ final class BookshelfBackgroundRefresh {
         let database = database, client = client
         let work = Task {
             do {
-                let report = try await BookshelfRefreshService.refresh(database: database, client: client)
+                let report = try await BookshelfRefreshService.refresh(database: database, client: client,
+                    onlyUpdateRead: UserDefaults.standard.bool(forKey: "onlyUpdateRead"))
                 task.setTaskCompleted(success: !report.cancelled && report.failures.isEmpty)
             } catch { task.setTaskCompleted(success: false) }
         }

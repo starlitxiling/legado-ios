@@ -24,6 +24,9 @@ final class BookshelfViewModel {
     var folderMode = false
     private(set) var groupPreviews: [Int64: [BookRow]] = [:]
     private(set) var groupCounts: [Int64: Int] = [:]
+    private(set) var recentBook: BookRow?
+    private(set) var shelfBookCount = 0
+    private(set) var readingCount = 0
     var sort: BookshelfSort = .lastRead
     var isEmpty: Bool { books.isEmpty && !isLoading && errorMessage == nil }
 
@@ -57,6 +60,7 @@ final class BookshelfViewModel {
             default: effectiveSort = sort
             }
             let loadedBooks = try await bookshelf.list(groupID: groupID, sort: effectiveSort)
+            let allBooks = groupID == -1 ? loadedBooks : try await bookshelf.list(groupID: -1, sort: .lastRead)
             guard request == generation, groupID == selectedGroupID else { return }
             var previews: [Int64: [BookRow]] = [:]
             var counts: [Int64: Int] = [:]
@@ -72,6 +76,14 @@ final class BookshelfViewModel {
             groups = loadedGroups.filter { $0.show }
             groupPreviews = previews
             groupCounts = counts
+            shelfBookCount = allBooks.count
+            readingCount = allBooks.filter { $0.durChapterIndex > 0 || $0.durChapterPos > 0 }.count
+            recentBook = allBooks.max {
+                let firstStarted = $0.durChapterIndex > 0 || $0.durChapterPos > 0
+                let secondStarted = $1.durChapterIndex > 0 || $1.durChapterPos > 0
+                if firstStarted != secondStarted { return !firstStarted }
+                return $0.durChapterTime < $1.durChapterTime
+            }
         } catch {
             guard request == generation, groupID == selectedGroupID else { return }
             errorMessage = error.localizedDescription

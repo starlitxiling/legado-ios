@@ -20,6 +20,9 @@ struct BookshelfView: View {
     @State private var showingGroups = false
     @State private var editingGroupID: Int64?
     @State private var showingCacheExport = false
+    @State private var showingImportList = false
+    @State private var showingExportList = false
+    @State private var exportBooks: [BookRow] = []
     @State private var detailBook: BookRow?
     @State private var showingDetail = false
     @State private var bookSheet: BookSheet?
@@ -27,9 +30,9 @@ struct BookshelfView: View {
     @State private var resumeBook: BookRow?
     @State private var showingResume = false
 
-    init(bookshelf: any BookshelfReading, groups: any BookGroupReading, preferences: AppPreferences = .shared) {
+    init(bookshelf: any BookshelfReading, groups: any BookGroupReading, preferences: AppPreferences? = nil) {
         _model = State(initialValue: BookshelfViewModel(bookshelf: bookshelf, groups: groups))
-        _preferences = State(initialValue: preferences)
+        _preferences = State(initialValue: preferences ?? .shared)
     }
 
     private var layout: BookshelfLayout { BookshelfLayout(rawValue: preferences.integer("bookshelfLayout")) ?? .list }
@@ -106,11 +109,22 @@ struct BookshelfView: View {
                 Menu {
                     Button("更新目录") { Task { await updateChapters() } }.disabled(container.downloads.isRefreshing)
                     NavigationLink("添加本地") { LocalImportView(database: container.database) }
+                    NavigationLink("远程书籍") { RemoteBooksView(database: container.database, client: container.httpClient, groupID: model.selectedGroupID) }
                     Button("添加网址") { showingAddURL = true }
                     Button(selecting ? "结束管理" : "书架管理") { selecting.toggle(); selected.removeAll() }
                     Button("缓存 / 导出") { showingCacheExport = true }
                     Button("分组管理") { editingGroupID = nil; showingGroups = true }
                     Button("书架布局") { showingLayout = true }
+                    Button("导出书单") {
+                        Task {
+                            do {
+                                exportBooks = folderRoot ? try await container.bookshelf.list() : model.books
+                                showingExportList = true
+                            } catch { actionError = error.localizedDescription }
+                        }
+                    }
+                    Button("导入书单") { showingImportList = true }
+                    NavigationLink("日志") { AppLogView() }
                 } label: { Label("书架菜单", systemImage: "ellipsis") }
                 .accessibilityIdentifier("bookshelf.menu")
             }
@@ -119,10 +133,13 @@ struct BookshelfView: View {
             await refreshBooks()
             if !appliedStartupSettings {
                 appliedStartupSettings = true
-                if preferences.boolean("defaultToRead"), let book = model.books.max(by: { $0.durChapterTime < $1.durChapterTime }), book.durChapterTime > 0 {
+                if preferences.boolean("defaultToRead"), let book = model.recentBook, book.durChapterTime > 0 {
                     resumeBook = book; showingResume = true
                 }
-                if preferences.boolean("auto_refresh") { await updateChapters() }
+                if preferences.boolean("auto_refresh") {
+                    await container.downloads.refresh(onlyUpdateRead: preferences.boolean("onlyUpdateRead"))
+                    await refreshBooks()
+                }
             }
         }
         .navigationDestination(isPresented: $showingResume) {
@@ -133,8 +150,12 @@ struct BookshelfView: View {
         .onChange(of: preferences.integer("bookshelfSort")) { _, _ in Task { await refreshBooks() } }
         .onChange(of: folderStyle) { _, folders in model.selectedGroupID = folders ? -100 : -1 }
         .sheet(isPresented: $showingLayout) { BookshelfLayoutSettingsView(preferences: preferences) }
+        .sheet(isPresented: $showingImportList, onDismiss: { Task { await refreshBooks() } }) {
+            BookshelfBookListView(database: container.database, client: container.httpClient, groupID: model.selectedGroupID)
+        }
+        .sheet(isPresented: $showingExportList) { BookshelfBookListExportView(books: exportBooks) }
         .sheet(isPresented: $showingCacheExport) {
-            BookshelfCacheSelectionView(repository: container.bookshelf, downloads: container.downloads)
+            BookshelfCacheSelectionView(repository: container.bookshelf, downloads: container.downloads, groupID: folderRoot ? -1 : model.selectedGroupID)
         }
         .sheet(isPresented: $showingGroups, onDismiss: { Task { await refreshBooks() } }) {
             NavigationStack {
@@ -183,12 +204,17 @@ struct BookshelfView: View {
 
     private func updateChapters() async {
         guard !container.databaseLifecycle.isSuspended else { return }
-        if preferences.boolean("onlyUpdateRead") {
-            do {
-                let books = try await container.bookshelf.all().filter { $0.totalChapterNum - $0.durChapterIndex - 1 <= 0 }
-                await container.downloads.refresh(books)
-            } catch { actionError = error.localizedDescription }
-        } else { await container.downloads.refresh() }
+        do {
+            let onlyRead = preferences.boolean("onlyUpdateRead") || model.groups.first { $0.groupId == model.selectedGroupID }?.onlyUpdateRead == true
+            let books = folderRoot ? try await container.bookshelf.list() : model.books
+            await container.downloads.refresh(books.filter {
+                !onlyRead || BookshelfBookMetrics(total: $0.totalChapterNum, chapter: $0.durChapterIndex, position: $0.durChapterPos).unread == 0
+            })
+            if let report = container.downloads.refreshReport {
+                AppLogStore.shared.append("Bookshelf refresh: \(report.updated.count) updated, \(report.failures.count) failed")
+                for failure in report.failures { AppLogStore.shared.append(String(describing: failure)) }
+            }
+        } catch { actionError = error.localizedDescription }
         await refreshBooks()
     }
 
@@ -273,13 +299,13 @@ struct BookshelfView: View {
     }
 
     @ViewBuilder private var shelfHeader: some View {
-        if preferences.boolean("showBookshelfRecentReading"), let recent = model.books.max(by: { $0.durChapterTime < $1.durChapterTime }), recent.durChapterTime > 0 {
+        if preferences.boolean("showBookshelfRecentReading"), let recent = model.recentBook {
             Button { open(recent) } label: {
                 Label("最近阅读：" + recent.name, systemImage: "clock.arrow.circlepath").font(.system(size: 13)).lineLimit(1)
             }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16).padding(.vertical, 6)
         }
         if preferences.boolean("showBookshelfStats") {
-            Text("共 \(model.books.count) 本，已读 \(model.books.filter { $0.durChapterTime > 0 }.count) 本")
+            Text("共 \(model.shelfBookCount) 本，在读 \(model.readingCount) 本")
                 .font(.system(size: 13)).foregroundStyle(themeColors.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16)
         }

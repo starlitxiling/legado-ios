@@ -40,6 +40,7 @@ final class BookshelfLayoutTests: XCTestCase {
         for index in 0..<6 {
             var book = BookRow(); book.bookUrl = "book:" + String(index); book.name = "Book" + String(index)
             book.type = 8; book.group = index < 4 ? 2 : 0; book.durChapterTime = Int64(100 - index)
+            if index == 5 { book.durChapterPos = 1 }
             try await shelf.insert(book)
         }
         let model = BookshelfViewModel(bookshelf: shelf, groups: groups)
@@ -54,5 +55,8 @@ final class BookshelfLayoutTests: XCTestCase {
         await model.load()
         XCTAssertEqual(model.books.count, 4)
         XCTAssertTrue(model.groupPreviews.isEmpty)
+        XCTAssertEqual(model.shelfBookCount, 6)
+        XCTAssertEqual(model.readingCount, 1)
+        XCTAssertEqual(model.recentBook?.bookUrl, "book:5")
     }
 }

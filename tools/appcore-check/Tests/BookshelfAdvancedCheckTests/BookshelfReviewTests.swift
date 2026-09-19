@@ -207,6 +207,9 @@ final class BookshelfReviewTests: XCTestCase {
         try await BookshelfRepository(database: db).upsert([unread, finished])
         let report = try await BookshelfRefreshService.refresh(database: db, client: ReplayHttpClient())
         XCTAssertEqual(report.failures.map(\.bookURL), ["finished"], "已读到末章才进入刷新，不依赖阅读时间")
+        let globalReport = try await BookshelfRefreshService.refresh(database: db, client: ReplayHttpClient(),
+            rows: [unread, finished], onlyUpdateRead: true)
+        XCTAssertEqual(globalReport.failures.map(\.bookURL), ["finished"])
     }
 
     func testReview6CoverFailureStillExportsAndRecordsWarning() async throws {

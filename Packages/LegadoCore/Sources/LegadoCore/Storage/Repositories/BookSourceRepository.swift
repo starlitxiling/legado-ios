@@ -3,6 +3,12 @@ import GRDB
 public typealias BookSourceRepository = Repository<BookSourceRow>
 
 extension Repository where Record == BookSourceRow {
+    public func enabledURLs() async throws -> [String] {
+        try await database.writer.read { db in
+            try String.fetchAll(db, sql: "SELECT bookSourceUrl FROM book_sources WHERE enabled = 1 ORDER BY customOrder, bookSourceUrl")
+        }
+    }
+
     public func get(bookSourceUrl: String) async throws -> BookSourceRow? {
         try await database.writer.read { db in try BookSourceRow.fetchOne(db, key: bookSourceUrl) }
     }

@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 2026-09-20：P0、批次 1、P5/P6/U1 已完成；当前批次 2 / U2，P4 真实门禁与去重取舍待收口。
+- 2026-09-20：P0、批次 1、P5/P6/U1/U2 已完成；当前批次 2 / U3，P4 真实门禁与去重取舍待收口。
 - 起始提交：`30d180ecf`；P0 已拆为 ff6f50452、f82ddf72c、284834405 三笔本地提交。
 - 真机：已配对 iPhone 16，有线连接，Xcode 26.6 已识别。
 - 用户最新指示：全部由主会话亲自执行，不再启动子代理。已停止全部在途子代理，保留已完成产出。
@@ -31,7 +31,7 @@
 | 批次 2：P5 | 完成 | 主会话 | docs/spec/content-compat.md | Core 649/0、AppCore 254/0、iOS 构建通过 |
 | 批次 2：P6 | 完成 | 主会话 | docs/spec/network-compat.md | Core 667/0、AppCore 256/0、iOS 构建通过 |
 | 批次 2：U1 | 完成 | 主会话 | RootTabView / MainTabObserver | 模拟器 UI 4 项及回调 1 项通过，iOS 构建通过 |
-| 批次 2：U2 | 在途 | 主会话 | BookshelfLayout / BookshelfBookView | AppCore 260/0；七布局/文件夹 UI 与 iOS 构建通过，菜单待补 |
+| 批次 2：U2 | 完成 | 主会话 | BookshelfLayout / 书单与远程入口 | Core 667/0、AppCore 268/0；模拟器 UI 3 项与 iOS 构建通过 |
 | 批次 2 其余及批次 3-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -40,6 +40,6 @@
 
 ## 下一步
 
-最近提交 d1874e653（U1 四入口导航）；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6 已完成，继续 U2-U3。全程不推送；WebDAV 凭据只用于读取。
+最近提交 4e3fae5a0（U2 布局基础），菜单收口已验证待提交；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6 已完成，继续 U3。全程不推送；WebDAV 凭据只用于读取。
 
 P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。

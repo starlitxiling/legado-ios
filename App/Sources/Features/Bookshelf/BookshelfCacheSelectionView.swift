@@ -4,6 +4,7 @@ import LegadoCore
 struct BookshelfCacheSelectionView: View {
     let repository: BookshelfRepository
     let downloads: DownloadCenterModel
+    let groupID: Int64
     @State private var books: [BookRow] = []
     @State private var error: String?
     @Environment(\.dismiss) private var dismiss
@@ -20,7 +21,7 @@ struct BookshelfCacheSelectionView: View {
             .legadoNavigationTitle("缓存 / 导出")
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("关闭") { dismiss() } } }
             .task {
-                do { books = try await repository.list() }
+                do { books = try await repository.list(groupID: groupID) }
                 catch { self.error = error.localizedDescription }
             }
         }

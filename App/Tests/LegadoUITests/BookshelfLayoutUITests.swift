@@ -2,6 +2,38 @@ import XCTest
 
 final class BookshelfLayoutUITests: XCTestCase {
     @MainActor
+    func testBookListAndRemoteAndLogMenuEntries() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery"]
+        app.launch()
+        XCTAssertTrue(app.buttons["bookshelf.menu"].waitForExistence(timeout: 15))
+        app.buttons["bookshelf.menu"].tap()
+        app.buttons["导出书单"].tap()
+        XCTAssertTrue(app.navigationBars["导出书单"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["分享书单文件"].exists)
+        app.buttons["关闭"].tap()
+        app.buttons["bookshelf.menu"].tap()
+        app.buttons["导入书单"].tap()
+        let input = app.textViews["bookshelf.booklist.input"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        input.tap()
+        input.typeText(#"[{"name":"Sample Book 01","author":"Sample Author"}]"#)
+        app.buttons["导入"].tap()
+        XCTAssertTrue(app.staticTexts["已处理 1 / 1，失败 0"].waitForExistence(timeout: 5))
+        app.buttons["关闭"].tap()
+        app.buttons["bookshelf.menu"].tap()
+        app.buttons["远程书籍"].tap()
+        XCTAssertTrue(app.navigationBars["远程书籍"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["默认 WebDAV"].exists)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["bookshelf.menu"].tap()
+        app.buttons["日志"].tap()
+        XCTAssertTrue(app.navigationBars["日志"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts["Book list import: 1/1, failures: 0, cancelled: false"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testAllSevenLayoutsAndRelaunchPersistence() {
         continueAfterFailure = false
         let app = XCUIApplication()

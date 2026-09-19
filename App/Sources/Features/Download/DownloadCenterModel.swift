@@ -83,12 +83,12 @@ final class DownloadCenterModel {
         progress = await queue.snapshot()
     }
 
-    func refresh(_ rows: [BookRow]? = nil) async {
+    func refresh(_ rows: [BookRow]? = nil, onlyUpdateRead: Bool = false) async {
         guard !isRefreshing else { return }
         isRefreshing = true; errorMessage = nil
         defer { isRefreshing = false; refreshingBookURLs = [] }
         do {
-            refreshReport = try await BookshelfRefreshService.refresh(database: database, client: client, rows: rows,
+            refreshReport = try await BookshelfRefreshService.refresh(database: database, client: client, rows: rows, onlyUpdateRead: onlyUpdateRead,
                 onPrepared: { [weak self] urls in await self?.setRefreshing(urls) },
                 onCompleted: { [weak self] url in await self?.finishedRefreshing(url) })
         }
@@ -150,6 +150,7 @@ final class DownloadCenterModel {
 
 enum BookshelfRefreshService {
     static func refresh(database: AppDatabase, client: any HttpClient, rows: [BookRow]? = nil,
+                        onlyUpdateRead: Bool = false,
                         onPrepared: @escaping @Sendable ([String]) async -> Void = { _ in },
                         onCompleted: @escaping @Sendable (String) async -> Void = { _ in }) async throws -> BookshelfRefresh.Report {
         let repository = BookshelfRepository(database: database)
@@ -161,10 +162,10 @@ enum BookshelfRefreshService {
             let mask = groups.filter { $0.groupId > 0 }.reduce(Int64(0)) { $0 | $1.groupId }
             books = all.filter { book in
                 let matching = groups.filter { $0.groupId != -1 && $0.groupId != -100 && BookGroupMembership.contains(book, groupID: $0.groupId, customMask: mask) }
-                return matching.isEmpty || matching.contains { $0.enableRefresh && (!$0.onlyUpdateRead || book.totalChapterNum - book.durChapterIndex - 1 <= 0) }
+                return matching.isEmpty || matching.contains { $0.enableRefresh && (!$0.onlyUpdateRead || hasFinished(book)) }
             }
         }
-        let eligible = books.filter { $0.canUpdate && $0.type & 256 == 0 && $0.origin != "loc_book" }
+        let eligible = books.filter { $0.canUpdate && $0.type & 256 == 0 && $0.origin != "loc_book" && (!onlyUpdateRead || hasFinished($0)) }
         await onPrepared(eligible.map(\.bookUrl))
         return await BookshelfRefresh.run(bookURLs: eligible.map(\.bookUrl)) { url in
             do {
@@ -194,5 +195,9 @@ enum BookshelfRefreshService {
                 throw error
             }
         }
+    }
+
+    private static func hasFinished(_ book: BookRow) -> Bool {
+        book.totalChapterNum <= 1 || book.durChapterIndex >= book.totalChapterNum - 1
     }
 }

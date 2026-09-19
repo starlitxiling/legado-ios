@@ -34,7 +34,7 @@ final class AppContainer {
             customHosts: { UserDefaults.standard.string(forKey: "customHosts") ?? "" },
             recordResponse: { request, response in
                 if UserDefaults.standard.bool(forKey: "recordHttpLog") {
-                    NSLog("HTTP %@ %d %@", request.method, response.status, response.finalURL.host ?? "")
+                    AppLogStore.shared.append("HTTP \(request.method) \(response.status) \(response.finalURL.host ?? "")")
                 }
             })
         let browserInteraction = BrowserInteraction()
