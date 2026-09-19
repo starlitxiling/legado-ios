@@ -11,7 +11,7 @@ final class StartupUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["正在打开书库"].exists)
         XCTAssertTrue(app.navigationBars["书架"].exists)
         openSettings(app)
-        XCTAssertTrue(app.navigationBars["设置"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["我的"].waitForExistence(timeout: 5))
     }
 
     @MainActor
@@ -52,16 +52,61 @@ final class StartupUITests: XCTestCase {
     }
 
     @MainActor
-    private func openSettings(_ app: XCUIApplication) {
-        let settings = app.tabBars.buttons["设置"]
-        if settings.exists {
-            settings.tap()
-        } else {
-            app.tabBars.buttons.element(boundBy: app.tabBars.buttons.count - 1).tap()
-            let settingsRow = app.tables.staticTexts["设置"]
-            XCTAssertTrue(settingsRow.waitForExistence(timeout: 5))
-            settingsRow.tap()
+    func testFourIconTabsAndMovedSearchAndSources() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments += ["-showDiscovery", "YES", "-showRss", "YES", "-defaultHomePage", "bookshelf", "-auto_refresh", "NO", "-defaultToRead", "NO"]
+        app.launch()
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
+        XCTAssertEqual(app.tabBars.buttons.count, 4)
+        for name in ["发现", "订阅", "我的", "书架"] {
+            app.tabBars.buttons[name].tap()
+            XCTAssertTrue(app.navigationBars[name].waitForExistence(timeout: 5))
         }
+        app.buttons["bookshelf.search"].tap()
+        XCTAssertTrue(app.navigationBars["搜索"].waitForExistence(timeout: 5))
+        openSettings(app)
+        app.buttons["书源管理"].tap()
+        XCTAssertTrue(app.navigationBars["书源"].waitForExistence(timeout: 5))
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "u1-source-entry"
+        attachment.lifetime = .keepAlways
+        add(attachment)
+    }
+
+    @MainActor
+    func testHiddenTabsKeepMyPageAndBookshelfReachable() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launch()
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
+        openSettings(app)
+        let settings = app.staticTexts["其他设置"]
+        for _ in 0..<4 where !settings.isHittable { app.swipeUp() }
+        XCTAssertTrue(settings.isHittable)
+        settings.tap()
+        let discovery = app.switches["显示发现"], rss = app.switches["显示订阅"]
+        XCTAssertTrue(discovery.waitForExistence(timeout: 5))
+        if discovery.value as? String == "1" { discovery.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap() }
+        if rss.value as? String == "1" { rss.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap() }
+        XCTAssertEqual(discovery.value as? String, "0")
+        XCTAssertEqual(rss.value as? String, "0")
+        XCTAssertEqual(app.tabBars.buttons.count, 2)
+        app.tabBars.buttons["书架"].tap()
+        XCTAssertTrue(app.navigationBars["书架"].waitForExistence(timeout: 5))
+        openSettings(app)
+        XCTAssertTrue(app.navigationBars["其他设置"].waitForExistence(timeout: 5))
+        discovery.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        rss.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertEqual(app.tabBars.buttons.count, 4)
+
+    }
+
+    @MainActor
+    private func openSettings(_ app: XCUIApplication) {
+        let settings = app.tabBars.buttons["我的"]
+        XCTAssertTrue(settings.waitForExistence(timeout: 5))
+        settings.tap()
     }
 
 }

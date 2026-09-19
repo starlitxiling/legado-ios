@@ -150,3 +150,11 @@
 - 新增添加网址入口，sourceForBookURL 消费 origin 并执行模式/域名回退；模式扫描只取必要两列，不将 4198 个完整书源加载入内存。已有 URL 合并分组不请求网络；同名同作者迁移在事务中保存目录、进度和用户封面，两项 App 测试通过。
 - WebDavClient.fromPath 从 serverID 查询 ServerRepository；Reader 本地恢复选择该客户端，dav/davs 与 URL 参数正确去壳。恢复保持书籍身份且已有文件不重复请求，缺少/无效 ID 与跨配置来源均明确拒绝。保持比 Android 更严格的来源边界。
 - Core 667/0、AppCore 256/0、generic iOS 构建通过，日志 p6-final-*。UI 入口已编译；其视觉交互随 U1-U3 模拟器/真机检查。仍保留并明确记录 SNI、WebKit 路由及 customHosts 可解析域名等平台差异。
+
+
+## U1 四入口主界面
+
+- 底栏收为书架/发现/订阅/我的四个纯图标，保留中文无障碍名称与稳定测试 ID。搜索移到书架导航栏，书源管理成为我的首项；各页独立 NavigationStack，隐藏发现/订阅保留稳定字符串选择。
+- UIKit delegate 观察器保留 SwiftUI 原 delegate 并转发可选回调，重复选择书架触发回顶，发现回到收起状态；移除观察器恢复原 delegate。主题控制选中和未选中图标颜色，原生底栏仍沿用对应 iOS 系统外观。
+- 模拟器冷启动、四入口/搜索/书源管理、四主题/E-Ink 三项 UI 测试通过；实际开关将底栏 4→2→4 且导航栈保留的测试单独复跑通过。启动参数无法替代 NSNumber 偏好输入，测试改为操作设置开关；XCTest 的开关整行中心点没有改变值，改点实际控件并断言开关值。
+- MainTabObserver 的重复选择/原 delegate 转发/可见索引测试通过，generic iOS 构建通过。日志 u1-navigation / u1-hidden-tabs / u1-ios；截图 assets/u1-source-entry.png。未将模拟器验证写作真机验证。

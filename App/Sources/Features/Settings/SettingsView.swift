@@ -15,6 +15,12 @@ struct SettingsView: View {
     var body: some View {
         @Bindable var model = model
         Form {
+            Section {
+                NavigationLink("书源管理") {
+                    SourcesView(repository: container.bookSources, replaceRules: container.replaceRules,
+                        httpClient: ImportHttpClient(), sourceLogin: container.sourceLogin, sourceChecker: container.sourceChecker)
+                }
+            }
             Section("WebDAV 账号") {
                 TextField("服务器地址", text: $model.address)
                     .keyboardType(.URL).textInputAutocapitalization(.never).autocorrectionDisabled()
@@ -48,7 +54,7 @@ struct SettingsView: View {
                 NavigationLink("关于") { AboutView() }
             }
         }
-        .legadoNavigationTitle("设置")
+        .legadoNavigationTitle("我的")
         .onAppear { preferences.reload() }
     }
 }

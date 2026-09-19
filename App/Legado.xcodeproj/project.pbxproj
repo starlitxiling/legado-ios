@@ -105,6 +105,7 @@
 		907BEC56385D35DE0A5E49E6 /* ReaderAdvancedLogic.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FDF9DA9E9B9DCD1F7251B50 /* ReaderAdvancedLogic.swift */; };
 		91A1023ECDC5A41D50BFDDB2 /* SourceDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 418A038DE870B650425AA662 /* SourceDebugView.swift */; };
 		91A1AF6FB6E4350E09F94568 /* ReplaceRuleEditModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 733628309F03E6BAF9DE2E62 /* ReplaceRuleEditModel.swift */; };
+		91AF6A3C5DC4DC984DB20EF5 /* MainTabObserver.swift in Sources */ = {isa = PBXBuildFile; fileRef = E5401E8D70229E6822795C05 /* MainTabObserver.swift */; };
 		9541816064C9716FAC3AFD79 /* TocViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A53458DD44D59B741AC92A0A /* TocViewModel.swift */; };
 		971962BEFA2D236D113D1ED4 /* ServerSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4E0849AE95AEBE335017958E /* ServerSettingsView.swift */; };
 		974CF3ACBFFA989AB60F8930 /* launcher1@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = B6F29A594559068C02ACC3BE /* launcher1@2x.png */; };
@@ -139,6 +140,7 @@
 		C26AA4931AF6C58FDA1F4613 /* SourcesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32042FEEDA8756F3411B6099 /* SourcesViewModel.swift */; };
 		C3A0A34BEA044D106EB70820 /* CoverBitmapCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00E95A04CD517187A688DBAE /* CoverBitmapCache.swift */; };
 		C5011E138666157D6047F334 /* ReaderPagePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DA1B349684094DCE7AC4DBC /* ReaderPagePresentation.swift */; };
+		CA5A68DB5D2B856F8CD8CE43 /* MainTabObserverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9FEFBF08FC95E4685444BFB /* MainTabObserverTests.swift */; };
 		CACF8BE0BF20A4DEE8D1F0DF /* SourceManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442546BF735BD01595D3D17C /* SourceManagement.swift */; };
 		CAE2FE3C7326C1C22CDA45FE /* RssViewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99E1FF2F6E823698773096CE /* RssViewModels.swift */; };
 		CB3A6BCC213AA06E6E941F77 /* ReplaceRuleEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E71EF59B96EA56C0BF709761 /* ReplaceRuleEditView.swift */; };
@@ -338,11 +340,13 @@
 		D6DF47EDCFE860F0EC7D7BC0 /* FormLoginView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FormLoginView.swift; sourceTree = "<group>"; };
 		D829F575CCC788B5AD1C8C22 /* AppLaunchTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLaunchTests.swift; sourceTree = "<group>"; };
 		D9A2CE373D65E074429DD6A6 /* CurrentBackupConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrentBackupConfiguration.swift; sourceTree = "<group>"; };
+		D9FEFBF08FC95E4685444BFB /* MainTabObserverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabObserverTests.swift; sourceTree = "<group>"; };
 		DDD1861C5310FD79DA9FAA71 /* BackupLifecycleModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupLifecycleModifier.swift; sourceTree = "<group>"; };
 		DE1C8FFC939387C90DDC1B16 /* VerificationCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerificationCodeView.swift; sourceTree = "<group>"; };
 		DE90190A4590FA1D29514069 /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
 		DF3EA1D6F04C6FA121825195 /* BackupOperationMutex.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupOperationMutex.swift; sourceTree = "<group>"; };
 		E1F8E67706B2E20C9F894373 /* BrowserModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserModel.swift; sourceTree = "<group>"; };
+		E5401E8D70229E6822795C05 /* MainTabObserver.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabObserver.swift; sourceTree = "<group>"; };
 		E60A074AD55EACB85FDC970B /* BookshelfViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookshelfViewModel.swift; sourceTree = "<group>"; };
 		E6EE02A6079CCB8003AF1BFA /* ExploreViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExploreViewModel.swift; sourceTree = "<group>"; };
 		E71EF59B96EA56C0BF709761 /* ReplaceRuleEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplaceRuleEditView.swift; sourceTree = "<group>"; };
@@ -627,6 +631,7 @@
 				06486326DF6BEE11419AC184 /* AppContainer.swift */,
 				15969DF786FBE4DD3BA2C7F4 /* DatabaseLifecycleCoordinator.swift */,
 				69B0FA4E7E352B19E043F6E1 /* LegadoApp.swift */,
+				E5401E8D70229E6822795C05 /* MainTabObserver.swift */,
 				31526CB607D20D26CB94F0D5 /* RootTabView.swift */,
 			);
 			path = App;
@@ -638,6 +643,7 @@
 				D829F575CCC788B5AD1C8C22 /* AppLaunchTests.swift */,
 				B2033C42C23EE40D313F06E9 /* BookshelfViewModelTests.swift */,
 				82A1DD950CA037760684AB64 /* ComponentIconTests.swift */,
+				D9FEFBF08FC95E4685444BFB /* MainTabObserverTests.swift */,
 				0D6C00C28C2894CA2B4A6B95 /* SourceRegressionTests.swift */,
 			);
 			name = LegadoTests;
@@ -1029,6 +1035,7 @@
 				E8568779FEC939D9B0791502 /* AppLaunchTests.swift in Sources */,
 				97B1570EDCE52C33C44BE843 /* BookshelfViewModelTests.swift in Sources */,
 				6A7B8FCCD9F20B98225B871C /* ComponentIconTests.swift in Sources */,
+				CA5A68DB5D2B856F8CD8CE43 /* MainTabObserverTests.swift in Sources */,
 				7E8792D1486514D04BA97F86 /* SourceRegressionTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -1104,6 +1111,7 @@
 				9CA3B9B71ED456FA37D169EA /* LegadoIcon.swift in Sources */,
 				886F3E1529EAE75A52D5A47C /* LocalImportView.swift in Sources */,
 				480B1B431A91660B8226569A /* LocalImportViewModel.swift in Sources */,
+				91AF6A3C5DC4DC984DB20EF5 /* MainTabObserver.swift in Sources */,
 				10F11A7280B2480198724D8F /* MangaReaderModel.swift in Sources */,
 				28A34093EE25A5530EFAEDC5 /* MangaReaderView.swift in Sources */,
 				F96E8E70ACA29B4B8895A421 /* MediaBookLibrary.swift in Sources */,

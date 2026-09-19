@@ -27,6 +27,7 @@ struct BookshelfView: View {
 
     var body: some View {
         @Bindable var model = model
+        ScrollViewReader { scroll in
         VStack(spacing: 0) {
             if selecting { selectionActions }
             if let actionError { Text(actionError).foregroundStyle(.red).font(.caption) }
@@ -59,13 +60,21 @@ struct BookshelfView: View {
                 }
                 .refreshable { await updateChapters() }
             } else {
-                List(model.books, id: \.bookUrl) { book in bookSummary(book) }
+                List(model.books, id: \.bookUrl) { book in bookSummary(book).id(book.bookUrl) }
                     .refreshable { await updateChapters() }
             }
             }
         }
+        .onReceive(NotificationCenter.default.publisher(for: MainTabObserver.reselectedNotification)) { event in
+            if event.object as? String == "bookshelf", let first = model.books.first { scroll.scrollTo(first.bookUrl, anchor: .top) }
+        }
+        }
         .legadoNavigationTitle("书架")
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                NavigationLink { SearchView(container: container) } label: { Label("搜索", systemImage: "magnifyingglass") }
+                    .accessibilityIdentifier("bookshelf.search")
+            }
             ToolbarItem(placement: .topBarTrailing) {
                 NavigationLink {
                     LocalImportView(database: container.database)

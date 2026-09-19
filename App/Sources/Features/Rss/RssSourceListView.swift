@@ -47,7 +47,7 @@ struct RssSourceListView: View {
             }
             if let error = model.error { Text(error).foregroundStyle(.red) }
         }
-        .legadoNavigationTitle("RSS")
+        .legadoNavigationTitle("订阅")
         .toolbar {
             ToolbarItemGroup(placement: .primaryAction) {
                 NavigationLink { RssFavoritesView(repository: model.repository, client: model.client) } label: { Image(systemName: "star") }

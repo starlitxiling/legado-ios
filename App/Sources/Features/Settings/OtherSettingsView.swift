@@ -16,10 +16,10 @@ struct OtherSettingsView: View {
                 controls.toggle("启动时继续阅读", "defaultToRead")
                 controls.toggle("显示发现", "showDiscovery")
                 controls.toggle("发现页快速滚动", "showDiscoveryFastScroller")
-                controls.toggle("显示 RSS", "showRss")
+                controls.toggle("显示订阅", "showRss")
                 Picker("默认首页", selection: controls.string("defaultHomePage")) {
                     Text("书架").tag("bookshelf"); Text("发现").tag("explore")
-                    Text("RSS").tag("rss"); Text("设置").tag("my")
+                    Text("订阅").tag("rss"); Text("我的").tag("my")
                 }
                 Picker("语言", selection: controls.string("language")) {
                     Text("跟随系统").tag("auto"); Text("简体中文").tag("zh"); Text("繁体中文").tag("tw"); Text("英语").tag("en")
