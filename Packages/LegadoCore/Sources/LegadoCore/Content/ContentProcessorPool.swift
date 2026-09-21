@@ -2,6 +2,7 @@ import Foundation
 
 public final class ContentProcessorPool {
     public struct Configuration: Hashable, Sendable {
+        public var manualReplace: Bool
         public var paragraphIndent: String
         public var chineseConverterType: Int
         public var replaceEnableDefault: Bool
@@ -9,7 +10,8 @@ public final class ContentProcessorPool {
         public var cacheDirectory: URL?
 
         public init(paragraphIndent: String = "　　", chineseConverterType: Int = 0,
-                    replaceEnableDefault: Bool = true, adaptSpecialStyle: Bool = true, cacheDirectory: URL? = nil) {
+                    replaceEnableDefault: Bool = true, adaptSpecialStyle: Bool = true, cacheDirectory: URL? = nil, manualReplace: Bool = false) {
+            self.manualReplace = manualReplace
             self.paragraphIndent = paragraphIndent
             self.chineseConverterType = chineseConverterType
             self.replaceEnableDefault = replaceEnableDefault
@@ -43,7 +45,7 @@ public final class ContentProcessorPool {
         else {
             processor = ContentProcessor(rules: rules, paragraphIndent: configuration.paragraphIndent,
                 chineseConverterType: configuration.chineseConverterType, replaceEnableDefault: configuration.replaceEnableDefault,
-                adaptSpecialStyle: configuration.adaptSpecialStyle, cacheDirectory: configuration.cacheDirectory)
+                adaptSpecialStyle: configuration.adaptSpecialStyle, cacheDirectory: configuration.cacheDirectory, manualReplace: configuration.manualReplace)
             processors[key] = processor
         }
         order.removeAll { $0 == key }; order.append(key)

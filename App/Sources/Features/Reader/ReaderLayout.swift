@@ -6,6 +6,7 @@ struct ReaderLayoutInput {
     let chapter: BookChapter
     var rawContent: String
     var rules: [ReplaceRuleRow]
+    var manualReplace = false
     var replaceEnableDefault = true
     var chineseConverterType = 0
     var adaptSpecialStyle = true
@@ -25,7 +26,7 @@ enum ReaderLayout {
         didStart()
         let rules = try input.rules.map { try ReaderEntityBridge.decode(ReplaceRule.self, row: $0) }
         let processor = processors.get(book: input.book, rules: rules, configuration: .init(paragraphIndent: settings.paragraphIndent, chineseConverterType: input.chineseConverterType,
-            replaceEnableDefault: input.replaceEnableDefault, adaptSpecialStyle: input.adaptSpecialStyle, cacheDirectory: input.cacheDirectory))
+            replaceEnableDefault: input.replaceEnableDefault, adaptSpecialStyle: input.adaptSpecialStyle, cacheDirectory: input.cacheDirectory, manualReplace: input.manualReplace))
         let title = try processor.title(book: input.book, chapter: input.chapter)
         let content = try processor.getContent(book: input.book, chapter: input.chapter,
             content: input.rawContent, includeTitle: false)

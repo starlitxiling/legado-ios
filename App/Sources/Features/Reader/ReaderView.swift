@@ -33,6 +33,7 @@ struct ReaderView: View {
     @State private var autoRead = AutoReadController()
     @State private var networkMonitor: NWPathMonitor?
     @State private var networkAvailable: Bool?
+    @State private var confirmsCloudOverwrite = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
 
@@ -48,6 +49,7 @@ struct ReaderView: View {
             adaptSpecialStyle: UserDefaults.standard.object(forKey: "adaptSpecialStyle") as? Bool ?? true, preDownloadCount: {
                 UserDefaults.standard.object(forKey: "preDownloadNum") as? Int ?? 2
             })
+        model.manualReplace = { UserDefaults.standard.bool(forKey: "manualReplaceRule") }
         model.chineseConverterType = { UserDefaults.standard.integer(forKey: "chineseConverterType") }
         model.replaceEnableDefault = { UserDefaults.standard.object(forKey: "replaceEnableDefault") as? Bool ?? true }
         @MainActor func webDavClient() throws -> WebDavClient? {
@@ -86,6 +88,16 @@ struct ReaderView: View {
                 return exiting ? nil : result.remoteProgress
             }
             let uploaded = try await sync.upload(book, now: now)
+            try await BookProgressSync.save(uploaded, replacing: book, database: database)
+            return nil
+        }
+        model.manualWebDav = { book, overwrite in
+            guard let dav = try webDavClient() else {
+                throw NSError(domain: "ReaderWebDav", code: 1, userInfo: [NSLocalizedDescriptionKey: "请先在备份与恢复中设置 WebDAV。"])
+            }
+            let sync = BookProgressSync(client: dav, directory: AppPreferences.shared.string("webDavDir"))
+            if !overwrite { return try await sync.pull(book) }
+            let uploaded = try await sync.upload(book, now: Int64(Date().timeIntervalSince1970 * 1000))
             try await BookProgressSync.save(uploaded, replacing: book, database: database)
             return nil
         }
@@ -221,7 +233,10 @@ struct ReaderView: View {
             networkMonitor = monitor
             monitor.start(queue: DispatchQueue(label: "Legado.reader.webdav.network"))
         }
-        .alert("发现更新的阅读进度", isPresented: Binding(get: { model.pendingWebDavProgress != nil }, set: { if !$0 { model.pendingWebDavProgress = nil } }), presenting: model.pendingWebDavProgress) { progress in
+        .confirmationDialog("用当前阅读位置覆盖云端进度？", isPresented: $confirmsCloudOverwrite) {
+            Button("覆盖云端进度", role: .destructive) { Task { await model.requestCloudProgress(overwrite: true) } }
+        }
+        .alert("云端阅读进度", isPresented: Binding(get: { model.pendingWebDavProgress != nil }, set: { if !$0 { model.pendingWebDavProgress = nil } }), presenting: model.pendingWebDavProgress) { progress in
             Button("跳转") {
                 Task { await model.acceptWebDavProgress(progress) }
             }
@@ -282,7 +297,7 @@ struct ReaderView: View {
             Task { await model.updateReadConfig { $0.useReplaceRule = enabled } }
         case .toc: showsControls = false; showsChapters = true
         case .search: showPanel("search")
-        case .sync: Task { await model.syncWebDavProgress() }
+        case .sync: Task { await model.requestCloudProgress(overwrite: false) }
         case .readAloud: readAloud.toggle()
         }
     }
@@ -334,6 +349,7 @@ struct ReaderView: View {
         case "highlights": showsHighlights = true
         case "reviews": showsReviews = true
         case "custom": customButton()
+        case "coverProgress": confirmsCloudOverwrite = true
         default: actionSheet = ReaderActionSheet(key: key)
         }
     }
@@ -357,6 +373,9 @@ struct ReaderView: View {
         case "image": if let url = previewImageURL { ReaderImagePreview(url: url, model: model) }
         case "preview": ReaderReplacePreviewView(model: model)
         case "memo": if let book = model.book { ReaderMemoView(bookURL: book.bookUrl, database: container.database) }
+        case "effectiveReplaces": ReaderManualReplaceView(model: model, repository: container.replaceRules)
+        case "simulatedReading": ReaderSimulatedView(model: model)
+        case "updateToc", "charset": ReaderTextParsingView(model: model, database: container.database)
         case "autoSpeed":
             NavigationStack {
                 Form {

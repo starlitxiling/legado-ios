@@ -80,6 +80,14 @@ public struct BookProgressSync: Sendable {
         public let remoteProgress: BookProgress?
     }
 
+    public func pull(_ book: BookRow) async throws -> BookProgress? {
+        let remote: BookProgress
+        do { remote = try JSONDecoder().decode(BookProgress.self, from: await client.get(progressURL(book), maximumResponseBytes: 1024 * 1024)) }
+        catch WebDavError.httpStatus(404) { return nil }
+        guard remote.name == book.name, remote.author == book.author else { throw BookProgressSyncError.identityMismatch }
+        return remote
+    }
+
     public func synchronizeReading(_ book: BookRow, now: Int64) async throws -> ReadingResult {
         let remote: BookProgress?
         do {
@@ -117,4 +125,8 @@ public struct BookProgressSync: Sendable {
                                    original.bookUrl, original.syncTime, original.durChapterTime, original.durChapterIndex, original.durChapterPos])
         }
     }
+}
+
+public enum BookProgressSyncError: Error, Equatable {
+    case identityMismatch
 }

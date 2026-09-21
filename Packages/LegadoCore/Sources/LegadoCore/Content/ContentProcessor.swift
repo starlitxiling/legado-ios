@@ -34,6 +34,7 @@ public final class ContentProcessor {
         }.map(\.element)
     }
     private let clock: () -> TimeInterval
+    private let manualReplace: Bool
     private let replaceEnableDefault: Bool
     private let adaptSpecialStyle: Bool
     private let cacheDirectory: URL?
@@ -61,8 +62,9 @@ public final class ContentProcessor {
     public init(rules: [ReplaceRule] = [], clock: @escaping () -> TimeInterval = { ProcessInfo.processInfo.systemUptime },
                 paragraphIndent: String = "　　", chineseConverterType: Int = 0,
                 replaceEnableDefault: Bool = true, adaptSpecialStyle: Bool = true, cacheDirectory: URL? = nil, onError: @escaping (ReplaceRule, Error) -> Void = { _, _ in },
-                disableRule: @escaping (Int64) -> Void = { _ in }) {
+                disableRule: @escaping (Int64) -> Void = { _ in }, manualReplace: Bool = false) {
         self.storedRules = Self.sorted(rules)
+        self.manualReplace = manualReplace
         self.replaceEnableDefault = replaceEnableDefault
         self.adaptSpecialStyle = adaptSpecialStyle
         self.cacheDirectory = cacheDirectory
@@ -76,7 +78,7 @@ public final class ContentProcessor {
         try Task.checkCancellation()
         var title = (chapter.title ?? "").replacingOccurrences(of: "\r", with: "").replacingOccurrences(of: "\n", with: "")
         if chineseConvert { title = try ChineseConverter.convert(title, type: chineseConverterType) }
-        if useReplace && book.useReplaceRule(defaultEnabled: replaceEnableDefault) {
+        if useReplace && replacementEnabled(book) {
             for rule in rules where rule.scopeTitle && applies(rule, book: book) {
                 do {
                     let changed = try apply(rule, to: title, chapter: chapter, book: book)
@@ -109,7 +111,7 @@ public final class ContentProcessor {
                 if let match = regex.firstMatch(in: text, range: NSRange(text.startIndex..., in: text)) {
                     text = (text as NSString).substring(from: NSMaxRange(match.range)); removed = true; break
                 }
-                if candidates.count == 1 && useReplace && book.useReplaceRule(defaultEnabled: replaceEnableDefault) {
+                if candidates.count == 1 && useReplace && replacementEnabled(book) {
                     candidates.append(try title(book: book, chapter: chapter, useReplace: useReplace, chineseConvert: false))
                 }
             }
@@ -117,7 +119,7 @@ public final class ContentProcessor {
             text = try ChineseConverter.convert(text, type: chineseConverterType)
             let html = try ProtectedHTML(text, enabled: adaptSpecialStyle)
             text = html.text
-            if useReplace && book.useReplaceRule(defaultEnabled: replaceEnableDefault) {
+            if useReplace && replacementEnabled(book) {
                 text = text.components(separatedBy: .newlines).map { $0.trimmingCharacters(in: .whitespaces) }.joined(separator: "\n")
                 for rule in rules where rule.scopeContent && applies(rule, book: book) {
                     do {
@@ -156,8 +158,17 @@ public final class ContentProcessor {
         if case ContentProcessorError.regexTimeout = error, disabled.insert(rule.id) { disableRule(rule.id) }
     }
 
+    private func replacementEnabled(_ book: Book) -> Bool {
+        if manualReplace {
+            return rules.contains { ($0.scopeTitle || $0.scopeContent) && applies($0, book: book) }
+        }
+        return book.useReplaceRule(defaultEnabled: replaceEnableDefault)
+    }
+
     private func applies(_ rule: ReplaceRule, book: Book) -> Bool {
-        guard rule.isEnabled && !disabled.contains(rule.id) else { return false }
+        guard !disabled.contains(rule.id) else { return false }
+        if manualReplace { return book.readConfig?.manualReplaceRuleIds?.contains(rule.id) == true }
+        guard rule.isEnabled else { return false }
         let name = book.name ?? "", origin = book.origin ?? ""
         if let excluded = rule.excludeScope, Self.like(excluded, containsPattern: name) || Self.like(excluded, containsPattern: origin) { return false }
         guard let scope = rule.scope, !scope.isEmpty else { return true }

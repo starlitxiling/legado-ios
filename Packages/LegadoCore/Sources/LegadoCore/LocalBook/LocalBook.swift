@@ -144,7 +144,7 @@ public enum LocalBook {
         guard isLocal(book), let url = fileURL(book) else { throw LocalBookError.unsupportedFile }
         switch url.pathExtension.lowercased() {
         case "txt": return try TextFileParser(url: url, charset: book.charset).content(chapter: chapter)
-        case "epub": return try EpubParserCache.shared.parser(for: url).content(chapter: chapter)
+        case "epub": return try EpubParserCache.shared.parser(for: url).content(chapter: chapter, deletingTags: book.readConfig?.delTag ?? 0)
         case "mobi", "azw3", "azw": return try MobiParserCache.shared.parser(for: url).content(chapter: chapter)
         case "umd": return try UmdParserCache.shared.parser(for: url).content(chapter: chapter)
         case "pdf": return try PdfFile(url: url).content(chapter: chapter)

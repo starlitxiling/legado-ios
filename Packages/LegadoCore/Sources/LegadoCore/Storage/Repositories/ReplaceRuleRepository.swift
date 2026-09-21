@@ -20,6 +20,12 @@ extension Repository where Record == ReplaceRuleRow {
         return SourceReplacement(rules: rules)
     }
 
+    public func observeAll() -> AsyncValueObservation<[ReplaceRuleRow]> {
+        ValueObservation.tracking { db in
+            try ReplaceRuleRow.fetchAll(db, sql: "SELECT * FROM replace_rules ORDER BY sortOrder, id")
+        }.removeDuplicates().values(in: database.writer, bufferingPolicy: .bufferingNewest(1))
+    }
+
     public func observeEnabled() -> AsyncValueObservation<[ReplaceRuleRow]> {
         ValueObservation.tracking { db in
             try ReplaceRuleRow.fetchAll(db, sql: "SELECT * FROM replace_rules WHERE isEnabled = 1 ORDER BY sortOrder, id")

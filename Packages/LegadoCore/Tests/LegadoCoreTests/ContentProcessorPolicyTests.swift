@@ -10,6 +10,24 @@ final class ContentProcessorPolicyTests: XCTestCase {
         return (book, chapter, rule)
     }
 
+    func testManualRulesOverrideEnableAndScopeAndEmptySelectionDisablesReplacement() throws {
+        var (book, chapter, rule) = entities()
+        book.readConfig = ReadConfig(); book.readConfig?.useReplaceRule = false
+        book.readConfig?.manualReplaceRuleIds = [rule.id]
+        rule.isEnabled = false; rule.scope = "Other"; rule.excludeScope = "Book"
+        chapter.title = "body"
+        let processor = ContentProcessor(rules: [rule], manualReplace: true)
+        XCTAssertEqual(try processor.title(book: book, chapter: chapter), "clean")
+        XCTAssertEqual(try processor.getContent(book: book, chapter: chapter, content: "body text", includeTitle: false).text, "　　clean text")
+        book.readConfig?.manualReplaceRuleIds = []
+        XCTAssertEqual(try processor.title(book: book, chapter: chapter), "body")
+        XCTAssertEqual(try processor.getContent(book: book, chapter: chapter, content: "body text", includeTitle: false).text, "　　body text")
+        book.readConfig?.manualReplaceRuleIds = [99]
+        XCTAssertEqual(try processor.title(book: book, chapter: chapter), "body")
+        book.readConfig?.manualReplaceRuleIds = [rule.id]
+        XCTAssertEqual(try ContentProcessor(rules: [rule]).title(book: book, chapter: chapter), "body")
+    }
+
     func testEnabledRuleObservationReflectsDatabaseEdits() async throws {
         let repository = ReplaceRuleRepository(database: try AppDatabase.inMemory())
         var iterator = repository.observeEnabled().makeAsyncIterator()

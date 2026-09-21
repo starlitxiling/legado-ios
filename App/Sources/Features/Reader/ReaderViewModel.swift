@@ -70,12 +70,14 @@ final class ReaderViewModel {
     private var rulesTask: Task<Void, Never>?
     private var pendingRulesRefresh = false
     private let preDownloadCount: @Sendable () -> Int
+    var manualReplace: () -> Bool = { false }
     var replaceEnableDefault: () -> Bool = { true }
     var chineseConverterType: () -> Int = { 0 }
     private let cacheDirectory: URL
     private var adaptSpecialStyle: Bool
     var prepareLocalBook: (BookRow) async throws -> BookRow = { $0 }
     var synchronizeWebDav: (BookRow, Bool) async throws -> BookProgress? = { _, _ in nil }
+    var manualWebDav: (BookRow, Bool) async throws -> BookProgress? = { _, _ in nil }
     var pendingWebDavProgress: BookProgress?
     private(set) var closedWebDav = false
     private var synchronizingWebDav = false
@@ -102,6 +104,11 @@ final class ReaderViewModel {
     }
 
     var chapterPosition: Int { chapters.firstIndex(where: { $0.index == chapterIndex }) ?? 0 }
+    var availableChapterCount: Int {
+        guard var entity else { return chapters.count }
+        entity.totalChapterNum = chapters.count
+        return entity.simulatedTotalChapterNum(now: Date(timeIntervalSince1970: Double(now()) / 1000))
+    }
 
     private func beginRequest() -> UUID {
         previewGeneration = UUID(); nextChapterPagination = nil
@@ -186,6 +193,7 @@ final class ReaderViewModel {
             guard let position = latest.firstIndex(where: { $0.index == request.index }) else { throw ReaderError.emptyChapters }
             guard token == generation else { return }
             chapters = latest
+            guard position < availableChapterCount else { throw ReaderError.chapterLocked }
             let chapter = try ReaderEntityBridge.decode(BookChapter.self, row: latest[position])
             let nextURL = position + 1 < latest.count ? latest[position + 1].url : nil
             let cache = cache, client = client, source = source
@@ -193,13 +201,13 @@ final class ReaderViewModel {
             downloadTask = task
             let cached = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
             try Task.checkCancellation()
-            let rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
+            let rules = try await ReplaceRuleRepository(database: database).list()
             guard let row = try await ChapterRepository(database: database).get(bookUrl: entity.bookUrl ?? "", index: request.index) else {
                 throw ReaderError.emptyChapters
             }
             let input = ReaderLayoutInput(book: entity, chapter: try ReaderEntityBridge.decode(BookChapter.self, row: row),
                 rawContent: cached.rawContent, rules: rules,
-                replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType(),
+                manualReplace: manualReplace(), replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType(),
                 adaptSpecialStyle: adaptSpecialStyle, cacheDirectory: cacheDirectory)
             while token == generation {
                 let layoutToken = UUID(); layoutGeneration = layoutToken
@@ -290,7 +298,7 @@ final class ReaderViewModel {
     }
 
     func nextChapter() async {
-        guard chapterPosition + 1 < chapters.count else { return }
+        guard chapterPosition + 1 < availableChapterCount else { return }
         await goToChapter(chapters[chapterPosition + 1].index)
     }
 
@@ -301,7 +309,7 @@ final class ReaderViewModel {
 
     private func observeReplaceRules() {
         rulesTask?.cancel()
-        let values = ReplaceRuleRepository(database: database).observeEnabled()
+        let values = ReplaceRuleRepository(database: database).observeAll()
         rulesTask = Task { [weak self] in
             do {
                 for try await rules in values {
@@ -325,11 +333,12 @@ final class ReaderViewModel {
         layoutGeneration = layoutToken; layoutTask?.cancel()
         guard !isLoading, var input = layoutInput else { return }
         do {
-            input.rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
+            input.rules = try await ReplaceRuleRepository(database: database).list()
             guard token == generation, layoutToken == layoutGeneration else { return }
             if let entity { input.book = entity }
             input.adaptSpecialStyle = adaptSpecialStyle
             input.chineseConverterType = chineseConverterType()
+            input.manualReplace = manualReplace()
             input.replaceEnableDefault = replaceEnableDefault()
             layoutInput = input
             let result = try await render(input: input, debounce: settings != nil)
@@ -368,23 +377,23 @@ final class ReaderViewModel {
         let previewToken = UUID(); previewGeneration = previewToken; nextChapterPagination = nil
         let count = min(100, max(0, preDownloadCount()))
         if count > 0 { scheduleChapterUpdate() }
-        guard count > 0, let entity, chapterPosition + 1 < chapters.count else { return }
+        guard count > 0, let entity, chapterPosition + 1 < availableChapterCount else { return }
         let position = chapterPosition + 1
         let row = chapters[position], nextURL = position + 1 < chapters.count ? chapters[position + 1].url : nil
         let cache = cache, source = source, client = client, token = generation
         let database = database, size = size, settings = settings
-        let replaceEnabled = replaceEnableDefault(), converterType = chineseConverterType()
+        let replaceEnabled = replaceEnableDefault(), converterType = chineseConverterType(), manual = manualReplace()
         let adaptStyle = adaptSpecialStyle, directory = cacheDirectory
-        let following = Array(chapters.dropFirst(position + 1).prefix(max(0, count - 1)))
+        let following = Array(chapters.prefix(availableChapterCount).dropFirst(position + 1).prefix(max(0, count - 1)))
         let chapterRows = chapters
         prefetchTask = Task { [weak self] in
             do {
                 try Task.checkCancellation()
                 let chapter = try ReaderEntityBridge.decode(BookChapter.self, row: row)
                 let cached = try await cache.content(book: entity, chapter: chapter, nextURL: nextURL, source: source, client: client)
-                let rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
+                let rules = try await ReplaceRuleRepository(database: database).list()
                 let input = ReaderLayoutInput(book: entity, chapter: chapter, rawContent: cached.rawContent, rules: rules,
-                    replaceEnableDefault: replaceEnabled, chineseConverterType: converterType,
+                    manualReplace: manual, replaceEnableDefault: replaceEnabled, chineseConverterType: converterType,
                     adaptSpecialStyle: adaptStyle, cacheDirectory: directory)
                 let layout = Task.detached {
                     try ReaderLayout.build(input: input, size: size, settings: settings, didStart: {})
@@ -522,6 +531,7 @@ final class ReaderViewModel {
     func applyBehavior(_ configuration: ReaderBehaviorConfiguration) async {
         configuration.save()
         adaptSpecialStyle = configuration.boolean("adaptSpecialStyle")
+        await cache.updateSpecialStyle(adaptSpecialStyle)
         var updated = ReaderSettings.load()
         updated.isEInk = settings.isEInk
         await reflow(settings: updated)
@@ -542,6 +552,12 @@ final class ReaderViewModel {
             }
             guard token == generation else { return }
             self.book = saved; entity = try ReaderEntityBridge.decode(Book.self, row: saved)
+            if chapterPosition >= availableChapterCount {
+                if availableChapterCount > 0 { await goToChapter(chapters[availableChapterCount - 1].index) }
+                else { errorMessage = ReaderError.chapterLocked.localizedDescription }
+                return
+            }
+            errorMessage = nil
             await reflow()
         } catch { errorMessage = error.localizedDescription }
     }
@@ -574,7 +590,47 @@ final class ReaderViewModel {
         } catch { errorMessage = error.localizedDescription }
     }
 
+    func reverseContent() async {
+        guard let entity, let input = layoutInput else { return }
+        do {
+            if try BookHelp.content(directory: cacheDirectory, book: entity, chapter: input.chapter) == nil {
+                try BookHelp.save(input.rawContent, directory: cacheDirectory, book: entity, chapter: input.chapter)
+            }
+            if let reversed = try BookHelp.reverseContent(directory: cacheDirectory, book: entity, chapter: input.chapter) { await editContent(reversed) }
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func requestCloudProgress(overwrite: Bool) async {
+        guard let book, !synchronizingWebDav else { return }
+        let token = generation
+        synchronizingWebDav = true
+        defer {
+            synchronizingWebDav = false
+            let waiters = webDavWaiters; webDavWaiters = []
+            for waiter in waiters { waiter.resume() }
+        }
+        do {
+            await saveProgress()
+            guard let current = try await BookshelfRepository(database: database).get(bookUrl: book.bookUrl) else { return }
+            let progress = try await manualWebDav(current, overwrite)
+            if token == generation, !closedWebDav {
+                pendingWebDavProgress = progress
+                if !overwrite && progress == nil { errorMessage = "云端没有这本书的阅读进度。" }
+            }
+        } catch { if token == generation { errorMessage = error.localizedDescription } }
+    }
+
     func refreshContent() async {
+        if let entity, LocalBook.isLocal(entity) {
+            let position = chapterIndex, offset = characterOffset, token = beginRequest()
+            await cache.cancelPending()
+            do {
+                try BookHelp.clearCache(directory: cacheDirectory, book: entity,
+                    chapters: chapters.map { try ReaderEntityBridge.decode(BookChapter.self, row: $0) })
+                await openChapter(ChapterRequest(index: position, offset: offset), token: token)
+            } catch { errorMessage = error.localizedDescription; isLoading = false }
+            return
+        }
         guard let entity, let source, let input = layoutInput else { await retry(); return }
         let token = generation
         do {
@@ -596,11 +652,11 @@ final class ReaderViewModel {
     func directoryPresentation() async throws -> (chapters: [BookChapterRow], nodes: [LocalBookTocNode]) {
         guard let entity else { return ([], []) }
         let rows = chapters
-        let rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
-        let converter = chineseConverterType(), replace = replaceEnableDefault()
+        let rules = try await ReplaceRuleRepository(database: database).list()
+        let converter = chineseConverterType(), replace = replaceEnableDefault(), manual = manualReplace()
         let task = Task.detached {
             let processor = ContentProcessor(rules: try rules.map { try ReaderEntityBridge.decode(ReplaceRule.self, row: $0) },
-                chineseConverterType: converter, replaceEnableDefault: replace)
+                chineseConverterType: converter, replaceEnableDefault: replace, manualReplace: manual)
             let chapters = try rows.map { row in
                 try Task.checkCancellation()
                 var row = row
@@ -680,7 +736,7 @@ final class ReaderViewModel {
     func searchText(_ query: String, progress: (Int, Int) -> Void) async throws -> [ReaderSearchMatch] {
         guard let entity, !query.isEmpty else { return [] }
         let token = generation, chapters = chapters
-        let rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
+        let rules = try await ReplaceRuleRepository(database: database).list()
         var matches: [ReaderSearchMatch] = []
         for (position, row) in chapters.enumerated() {
             try Task.checkCancellation()
@@ -688,7 +744,7 @@ final class ReaderViewModel {
             let chapter = try ReaderEntityBridge.decode(BookChapter.self, row: row)
             let cached = try await cache.content(book: entity, chapter: chapter, nextURL: chapters.dropFirst(position + 1).first?.url, source: source, client: client)
             let input = ReaderLayoutInput(book: entity, chapter: chapter, rawContent: cached.rawContent, rules: rules,
-                replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType(),
+                manualReplace: manualReplace(), replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType(),
                 adaptSpecialStyle: adaptSpecialStyle, cacheDirectory: cacheDirectory)
             let settings = settings, size = size
             let rendered = try await Task.detached { try ReaderLayout.build(input: input, size: size, settings: settings, didStart: {}) }.value

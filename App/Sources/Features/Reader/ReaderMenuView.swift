@@ -1,4 +1,5 @@
 import SwiftUI
+import LegadoCore
 
 struct ReaderMenuView: View {
     let model: ReaderViewModel
@@ -19,7 +20,7 @@ struct ReaderMenuView: View {
         let config = model.settings.configuration
         return (ARGBColor(hex: model.settings.theme == .night ? config.bgStrNight : config.bgStr) ?? ARGBColor(0xFFEEEEEE)).color
     }
-    private let implemented = Set(["bookmark", "editContent", "pageAnim", "getProgress", "replace", "sameTitleRemoved", "reSegment", "log", "help"])
+    private let implemented = Set(["effectiveReplaces", "bookmark", "editContent", "pageAnim", "getProgress", "coverProgress", "reverseContent", "simulatedReading", "replace", "sameTitleRemoved", "reSegment", "delRubyTag", "delHTag", "updateToc", "log", "help"])
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
@@ -48,6 +49,7 @@ struct ReaderMenuView: View {
                     }
                     Button("书签列表") { show("bookmarks") }
                     Button("批注") { show("highlights") }
+                    if model.readerBook.flatMap(LocalBook.fileURL)?.pathExtension.lowercased() == "txt" { Button("设置编码") { show("charset") } }
                     if model.supportsReviews { Button("段评") { show("reviews") } }
                     Button("收起", action: close)
                 } label: { Image(systemName: "ellipsis").frame(width: 28, height: 36) }.accessibilityLabel("更多")
@@ -69,7 +71,7 @@ struct ReaderMenuView: View {
                     Button("上一章") { action(.previousChapter) }.disabled(model.chapterPosition == 0)
                     Slider(value: progress, in: 0...Double(max(1, progressCount - 1)), step: 1)
                         .disabled(progressCount <= 1).accessibilityLabel("阅读进度")
-                    Button("下一章") { action(.nextChapter) }.disabled(model.chapterPosition + 1 >= model.chapters.count)
+                    Button("下一章") { action(.nextChapter) }.disabled(model.chapterPosition + 1 >= model.availableChapterCount)
                 }.font(.system(size: 14))
                 HStack {
                     bottom("目录", icon: "list.bullet") { action(.toc) }
@@ -86,7 +88,7 @@ struct ReaderMenuView: View {
         .onChange(of: menuConfig) { _, _ in partition = .load(selection: false) }
     }
     private var progressCount: Int {
-        max(1, configuration.string("progressBarBehavior") == "chapter" ? model.chapters.count : model.pagination?.pages.count ?? 1)
+        max(1, configuration.string("progressBarBehavior") == "chapter" ? model.availableChapterCount : model.pagination?.pages.count ?? 1)
     }
     private var progress: Binding<Double> {
         Binding(get: { Double(configuration.string("progressBarBehavior") == "chapter" ? model.chapterPosition : model.pageIndex) }, set: { value in
@@ -124,6 +126,18 @@ struct ReaderMenuView: View {
         switch key {
         case "bookmark": Button(title) { action(.bookmark) }
         case "sameTitleRemoved": Button(title) { Task { await model.toggleRemoveSameTitle() } }
+        case "reverseContent": Button(title) { Task { await model.reverseContent() } }
+        case "updateToc": if model.readerBook.flatMap(LocalBook.fileURL)?.pathExtension.lowercased() == "txt" { Button(title) { show(key) } }
+        case "delRubyTag", "delHTag":
+            if model.readerBook.flatMap(LocalBook.fileURL)?.pathExtension.lowercased() == "epub" {
+                let flag: Int64 = key == "delRubyTag" ? 4 : 2
+                Toggle(title, isOn: Binding(get: { (model.readerBook?.readConfig?.delTag ?? 0) & flag != 0 }, set: { enabled in
+                    Task {
+                        await model.updateReadConfig { config in config.delTag = enabled ? config.delTag | flag : config.delTag & ~flag }
+                        await model.refreshContent()
+                    }
+                }))
+            }
         case "reSegment": Toggle(title, isOn: Binding(get: { model.readerBook?.readConfig?.reSegment ?? false }, set: { value in Task { await model.updateReadConfig { $0.reSegment = value } } }))
         case "pageAnim":
             Menu(title) {

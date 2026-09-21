@@ -73,6 +73,32 @@ final class ReaderInterfaceUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["第一章 启航"].exists)
     }
 
+    @MainActor
+    func testManualReplacementAndSimulatedReadingMenus() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-detail-gallery", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO", "-doubleHorizontalPage", "0", "-manualReplaceRule", "NO", "-readerMenuConfig", #"{"primary":["effectiveReplaces","simulatedReading"],"more":["bookmark","highlightRule","editContent","pageAnim","getProgress","coverProgress","reverseContent","replace","sameTitleRemoved","reSegment","delRubyTag","delHTag","imageStyle","reimportSource","updateToc","log","help"]}"#]
+        app.launch()
+        XCTAssertTrue(app.buttons["detail.read"].waitForExistence(timeout: 15))
+        app.buttons["detail.read"].tap()
+        XCTAssertTrue(app.otherElements["reader.body"].waitForExistence(timeout: 15))
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        app.buttons["更多"].tap()
+        let manual = app.buttons["手动替换"]
+        XCTAssertTrue(manual.waitForExistence(timeout: 5)); manual.tap()
+        XCTAssertTrue(app.switches["手动替换"].waitForExistence(timeout: 5))
+        snapshot(app, "u6-reader-manual-replace")
+        app.buttons["保存"].tap()
+        XCTAssertTrue(app.buttons["更多"].waitForExistence(timeout: 5)); app.buttons["更多"].tap()
+        let simulated = app.buttons["模拟追读"]
+        XCTAssertTrue(simulated.waitForExistence(timeout: 5)); simulated.tap()
+        XCTAssertTrue(app.switches["模拟追读"].waitForExistence(timeout: 5))
+        snapshot(app, "u6-reader-simulated")
+        app.buttons["取消"].tap()
+        XCTAssertTrue(app.buttons["收起"].waitForExistence(timeout: 5)); app.buttons["收起"].tap()
+        XCTAssertTrue(app.otherElements["reader.body"].exists)
+    }
+
     @MainActor private func snapshot(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)

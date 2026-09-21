@@ -5,6 +5,37 @@ import LegadoCore
 
 final class ReaderTests: XCTestCase {
     @MainActor
+    func testSimulatedReadingStopsAtUnlockedChapterAndCanBeDisabled() async throws {
+        let database = try AppDatabase.inMemory()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var row = BookRow(); row.bookUrl = "https://simulated.test/book"; row.name = "Simulated"; row.totalChapterNum = 3
+        try await BookshelfRepository(database: database).insert(row)
+        let book = try ReaderEntityBridge.decode(Book.self, row: row)
+        var chapters: [BookChapterRow] = []
+        for index in 0..<3 {
+            var chapter = BookChapterRow(); chapter.bookUrl = row.bookUrl; chapter.index = index; chapter.url = "\(index)"; chapter.title = "Chapter \(index)"
+            chapters.append(chapter)
+            try BookHelp.save("Body", directory: directory, book: book, chapter: ReaderEntityBridge.decode(BookChapter.self, row: chapter))
+        }
+        try await ChapterRepository(database: database).replaceAll(bookUrl: row.bookUrl, chapters: chapters)
+        let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: directory, preDownloadCount: { 0 })
+        await model.load(bookURL: row.bookUrl)
+        await model.updateReadConfig { $0.readSimulating = true; $0.startChapter = 0; $0.dailyChapters = 1 }
+        XCTAssertEqual(model.availableChapterCount, 1)
+        await model.nextChapter()
+        XCTAssertEqual(model.chapterIndex, 0)
+        await model.goToChapter(2)
+        XCTAssertEqual(model.chapterIndex, 0)
+        XCTAssertNotNil(model.errorMessage)
+        await model.updateReadConfig { $0.readSimulating = false }
+        await model.goToChapter(2)
+        XCTAssertEqual(model.chapterIndex, 2)
+        XCTAssertNil(model.errorMessage)
+        await model.close()
+    }
+
+    @MainActor
     func testSpreadCrossesChaptersAndSearchOpensMatchedOffset() async throws {
         let database = try AppDatabase.inMemory()
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -65,6 +96,20 @@ final class ReaderTests: XCTestCase {
         await model.editContent("Edited text")
         XCTAssertTrue(model.pagination?.text.string.contains("Edited text") == true)
         XCTAssertEqual(try BookHelp.content(directory: directory, book: book, chapter: entityChapter), "Edited text")
+        await model.reverseContent()
+        XCTAssertTrue(model.pagination?.text.string.contains("txet detidE") == true)
+        await model.reverseContent()
+        XCTAssertEqual(model.rawContent, "Edited text")
+        var rule = ReplaceRuleRow(); rule.id = 19; rule.pattern = "Edited"; rule.replacement = "Manual"
+        rule.isEnabled = false; rule.scope = "Elsewhere"; rule.excludeScope = "Actions"
+        try await ReplaceRuleRepository(database: database).insert(rule)
+        model.manualReplace = { true }
+        await model.updateReadConfig { $0.manualReplaceRuleIds = [19] }
+        XCTAssertTrue(model.pagination?.text.string.contains("Manual text") == true)
+        let results = try await model.searchText("Manual") { _, _ in }
+        XCTAssertEqual(results.count, 1)
+        await model.updateReadConfig { $0.manualReplaceRuleIds = [] }
+        XCTAssertTrue(model.pagination?.text.string.contains("Edited text") == true)
         await model.toggleBookmark()
         XCTAssertEqual(model.bookmarks.count, 1)
         await model.toggleBookmark()

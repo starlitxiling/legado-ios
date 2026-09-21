@@ -14,12 +14,18 @@ actor ReaderChapterCache {
     }
 
     private let directory: URL
-    private let configuration: WebBookConfiguration
+    private var configuration: WebBookConfiguration
     private var pending: [String: Download] = [:]
 
     init(directory: URL, threadCount: Int = 32, adaptSpecialStyle: Bool = true) {
         self.directory = directory
         configuration = .init(cacheDirectory: directory, threadCount: threadCount, adaptSpecialStyle: adaptSpecialStyle)
+    }
+
+    func updateSpecialStyle(_ enabled: Bool) {
+        guard configuration.adaptSpecialStyle != enabled else { return }
+        cancelPending()
+        configuration.adaptSpecialStyle = enabled
     }
 
     var pendingConsumerCount: Int { pending.values.reduce(0) { $0 + $1.consumers.count } }
@@ -102,12 +108,13 @@ actor ReaderChapterCache {
     }
 }
 enum ReaderError: LocalizedError {
-    case missingBook, missingSource, emptyChapters
+    case missingBook, missingSource, emptyChapters, chapterLocked
     var errorDescription: String? {
         switch self {
         case .missingBook: return "书架中找不到这本书。"
         case .missingSource: return "正文尚未缓存，且找不到对应书源。"
         case .emptyChapters: return "目录为空，请先更新目录。"
+        case .chapterLocked: return "模拟追读尚未解锁这一章。请调整开始日期、开始章节或每日更新数。"
         }
     }
 }

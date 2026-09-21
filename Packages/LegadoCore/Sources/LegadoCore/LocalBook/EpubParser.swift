@@ -123,7 +123,7 @@ public final class EpubParser {
         }
     }
 
-    public func content(chapter: BookChapter) throws -> String {
+    public func content(chapter: BookChapter, deletingTags: Int64 = 0) throws -> String {
         let entries = readingEntries()
         guard let index = entries.firstIndex(where: { $0.href == chapter.url }), let href = chapter.url else {
             throw LocalBookError.invalidEPUB("目录章节不存在")
@@ -156,6 +156,8 @@ public final class EpubParser {
                 html = String(html[..<range.lowerBound])
             }
             let fragment = try SwiftSoup.parseBodyFragment(html)
+            if deletingTags & 2 != 0 { try fragment.select("h1, h2, h3, h4, h5, h6").remove() }
+            if deletingTags & 4 != 0 { try fragment.select("rp, rt").remove() }
             for image in try fragment.select("img, image") {
                 let source = try image.tagName() == "image" ? image.attr("xlink:href") : image.attr("src")
                 try image.tagName("img")
