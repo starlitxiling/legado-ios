@@ -10,6 +10,12 @@ struct ReaderSettings: Equatable {
     var autoReadSpeed: Double = 10
     var hideStatusBar = false
     var theme: ReaderTheme = .day
+    var isEInk = false
+    var textFullJustify = true
+    var textBottomJustify = true
+    var useZhLayout = false
+    var hangingPunctuation = false
+    var punctuationCompress = "none"
 
     init(configuration: ReadBookConfig = ReadBookConfig()) { self.configuration = configuration }
 
@@ -97,6 +103,11 @@ struct ReaderSettings: Equatable {
         settings.hideStatusBar = defaults.bool(forKey: "hideStatusBar")
         settings.theme = defaults.bool(forKey: "isNightTheme") ? .night :
             (defaults.bool(forKey: "Legado.readerEyeCare") || defaults.string(forKey: "bgStr") == "#CCE8CF" ? .eyeCare : .day)
+        settings.textFullJustify = defaults.object(forKey: "textFullJustify") as? Bool ?? true
+        settings.textBottomJustify = defaults.object(forKey: "textBottomJustify") as? Bool ?? true
+        settings.useZhLayout = defaults.bool(forKey: "useZhLayout")
+        settings.hangingPunctuation = defaults.bool(forKey: "hangingPunctuation")
+        settings.punctuationCompress = defaults.string(forKey: "punctuationCompress") ?? "none"
         return settings.normalized
     }
 
@@ -128,6 +139,10 @@ struct ReaderSettings: Equatable {
         value.configuration.bgAlpha = min(100, max(0, configuration.bgAlpha))
         value.configuration.underlineWidth = clamp(configuration.underlineWidth, 0...20, 1)
         value.configuration.underlineDistance = clamp(configuration.underlineDistance, 0...100, 4)
+        if !["none", "lineEnd", "adjacent", "adjacentLineEnd", "all"].contains(value.punctuationCompress) { value.punctuationCompress = "none" }
+        value.configuration.textBold = min(2, max(0, configuration.textBold))
+        value.configuration.titleBold = min(2, max(-1, configuration.titleBold))
+        value.configuration.titleLineSpacingExtra = min(30, max(-20, configuration.titleLineSpacingExtra))
         return value
     }
 
@@ -141,6 +156,11 @@ struct ReaderSettings: Equatable {
             for key in ["tipHeaderLeftTemplate", "tipHeaderMiddleTemplate", "tipHeaderRightTemplate", "tipFooterLeftTemplate", "tipFooterMiddleTemplate", "tipFooterRightTemplate"]
                 where fields[key] == nil { defaults.removeObject(forKey: key) }
         } catch { NSLog("Unable to save reader configuration: %@", error.localizedDescription) }
+        defaults.set(value.textFullJustify, forKey: "textFullJustify")
+        defaults.set(value.textBottomJustify, forKey: "textBottomJustify")
+        defaults.set(value.useZhLayout, forKey: "useZhLayout")
+        defaults.set(value.hangingPunctuation, forKey: "hangingPunctuation")
+        defaults.set(value.punctuationCompress, forKey: "punctuationCompress")
         defaults.set(value.autoReadSpeed, forKey: "autoReadSpeed")
         defaults.set(value.hideStatusBar, forKey: "hideStatusBar")
         defaults.set(value.theme == .night, forKey: "isNightTheme")

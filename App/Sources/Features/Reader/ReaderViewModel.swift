@@ -463,7 +463,7 @@ final class ReaderViewModel {
         value.bookUrl = book.bookUrl; value.bookName = book.name; value.bookAuthor = book.author
         value.chapterIndex = chapterIndex; value.chapterUrl = chapters.first(where: { $0.index == chapterIndex })?.url ?? ""
         value.chapterName = chapterTitle; value.chapterPos = range.location; value.chapterPosEnd = NSMaxRange(range)
-        value.layoutTitleLength = settings.titleMode == 2 ? 0 : (chapterTitle as NSString).length + 1
+        value.layoutTitleLength = pagination.titleLength
         value.bookText = pagination.text.attributedSubstring(from: range).string; value.note = note
         do { try await BookHighlightRepository(database: database).upsert(value); await refreshHighlights() }
         catch { errorMessage = error.localizedDescription }

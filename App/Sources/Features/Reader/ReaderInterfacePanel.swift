@@ -1,0 +1,307 @@
+import SwiftUI
+import UniformTypeIdentifiers
+import LegadoCore
+
+@MainActor
+struct ReaderInterfacePanel: View {
+    let store: ReaderStyleStore
+    let apply: (ReaderSettings) async -> Void
+    @State private var draft: ReaderSettings
+    @State private var work: Task<Void, Never>?
+    @State private var rendering: Task<Void, Never>?
+    @State private var error: String?
+    @State private var customizing = false
+    @State private var importing = false
+    @State private var importingImage = false
+    @State private var exporting = false
+    @State private var document = ReaderStyleDocument(data: Data())
+    @State private var linkedMargins = true
+    @AppStorage("chineseConverterType") private var chineseConverterType = 0
+    @Environment(\.dismiss) private var dismiss
+
+    init(store: ReaderStyleStore, settings: ReaderSettings, apply: @escaping (ReaderSettings) async -> Void) {
+        self.store = store; self.apply = apply; _draft = State(initialValue: settings)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ScrollView {
+                VStack(spacing: 12) {
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 8) {
+                            Menu("字重") {
+                                Picker("字重", selection: config(\.textBold)) {
+                                    Text("正常").tag(0); Text("粗体").tag(1); Text("细体").tag(2)
+                                }
+                            }
+                            NavigationLink("字体") { FontPicker(selection: config(\.textFont)) }
+                            Menu("缩进") {
+                                ForEach(0..<5) { count in
+                                    Button("\(count) 字") { config(\.paragraphIndent).wrappedValue = String(repeating: "\u{3000}", count: count) }
+                                }
+                            }
+                            Menu("繁简转换") {
+                                Picker("繁简转换", selection: $chineseConverterType) {
+                                    Text("不转换").tag(0); Text("转简体").tag(1); Text("转繁体").tag(2)
+                                }
+                            }
+                            NavigationLink("边距") { margins }
+                            NavigationLink("信息") { information }
+                        }.font(.system(size: 14)).buttonStyle(.bordered)
+                    }
+                    slider("字号", value: number(\.textSize), range: 5...50, step: 1)
+                    slider("字间距", value: Binding(get: { (draft.letterSpacing + 0.5) * 100 },
+                        set: { setting(\.letterSpacing).wrappedValue = $0 / 100 - 0.5 }), range: 0...100, step: 1)
+                    slider("行距", value: number(\.lineSpacingExtra), range: 0...50, step: 1)
+                    slider("段距", value: number(\.paragraphSpacing), range: 0...20, step: 1, divisor: 10)
+                    Picker("翻页动画", selection: config(\.pageAnim)) {
+                        Text("覆盖").tag(0); Text("滑动").tag(1); Text("仿真").tag(2); Text("滚动").tag(3); Text("无").tag(4)
+                    }.pickerStyle(.segmented).disabled(draft.isEInk)
+                    HStack {
+                        Text("文字颜色和背景（长按自定义）").font(.caption)
+                        Spacer(minLength: 4)
+                        Toggle("共用布局", isOn: Binding(get: { store.sharedLayout }, set: { enabled in
+                            enqueue { try await store.setSharedLayout(enabled); await adoptStyle() }
+                        })).font(.caption).fixedSize()
+                    }
+                    ScrollView(.horizontal, showsIndicators: false) {
+                        HStack(spacing: 12) {
+                            ForEach(Array(store.styles.enumerated()), id: \.offset) { index, style in
+                                Button {
+                                    enqueue { try await store.select(index); await adoptStyle() }
+                                } label: {
+                                    Text("文").font(.system(size: 20))
+                                        .foregroundStyle((ARGBColor(hex: draft.theme == .night ? style.textColorNight : style.textColor) ?? ARGBColor(0xFF000000)).color)
+                                        .frame(width: 48, height: 48)
+                                        .background((ARGBColor(hex: draft.theme == .night ? style.bgStrNight : style.bgStr) ?? ARGBColor(0xFFFFFFFF)).color, in: Circle())
+                                        .overlay(Circle().strokeBorder(index == store.selected ? Color.accentColor : .clear, lineWidth: 2))
+                                }
+                                .accessibilityLabel(style.name.isEmpty ? "预设 \(index)" : style.name)
+                                .simultaneousGesture(LongPressGesture().onEnded { _ in
+                                    enqueue { try await store.select(index); await adoptStyle(); customizing = true }
+                                })
+                            }
+                        }.padding(.horizontal, 6).padding(.vertical, 2)
+                    }
+                }.padding(16)
+            }
+            .legadoNavigationTitle("阅读界面")
+            .toolbar { Button("完成") { dismiss() } }
+            .navigationDestination(isPresented: $customizing) { customization }
+        }
+        .presentationDetents([.height(470), .large])
+        .presentationBackgroundInteraction(.enabled(upThrough: .height(470)))
+        .onChange(of: chineseConverterType) { _, _ in enqueue { render(draft) } }
+        .alert("阅读样式", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
+            Button("好", role: .cancel) { error = nil }
+        } message: { Text(error ?? "") }
+        .fileImporter(isPresented: $importing, allowedContentTypes: importingImage ? [.image] : [.json]) { result in
+            enqueue {
+                let url = try result.get()
+                let access = url.startAccessingSecurityScopedResource()
+                defer { if access { url.stopAccessingSecurityScopedResource() } }
+                let data = try Data(contentsOf: url)
+                if importingImage {
+                    guard data.count <= 30 * 1024 * 1024, let image = UIImage(data: data), let jpeg = image.jpegData(compressionQuality: 0.9) else {
+                        throw CocoaError(.fileReadCorruptFile)
+                    }
+                    let folder = URL.applicationSupportDirectory.appendingPathComponent("Legado/bg", isDirectory: true)
+                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+                    let name = UUID().uuidString + ".jpg"
+                    try jpeg.write(to: folder.appendingPathComponent(name), options: .atomic)
+                    var updated = draft
+                    if draft.isEInk { updated.configuration.bgStrEInk = name; updated.configuration.bgTypeEInk = 2 }
+                    else if draft.theme == .night { updated.configuration.bgStrNight = name; updated.configuration.bgTypeNight = 2 }
+                    else { updated.configuration.bgStr = name; updated.configuration.bgType = 2 }
+                    draft = updated
+                    try await store.update(updated.configuration); render(updated)
+                } else { try await store.importStyles(data); await adoptStyle() }
+            }
+        }
+        .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "readConfig") { result in
+            if case .failure(let failure) = result { error = failure.localizedDescription }
+        }
+    }
+
+    private var margins: some View {
+        Form {
+            Toggle("左右边距联动", isOn: $linkedMargins)
+            marginGroup("页眉", top: \.headerPaddingTop, bottom: \.headerPaddingBottom,
+                        left: \.headerPaddingLeft, right: \.headerPaddingRight, line: \.showHeaderLine)
+            marginGroup("正文", top: \.paddingTop, bottom: \.paddingBottom, left: \.paddingLeft, right: \.paddingRight)
+            marginGroup("页脚", top: \.footerPaddingTop, bottom: \.footerPaddingBottom,
+                        left: \.footerPaddingLeft, right: \.footerPaddingRight, line: \.showFooterLine)
+        }.legadoNavigationTitle("边距")
+    }
+
+    private func marginGroup(_ title: String, top: WritableKeyPath<ReadBookConfig, Int>, bottom: WritableKeyPath<ReadBookConfig, Int>,
+                             left: WritableKeyPath<ReadBookConfig, Int>, right: WritableKeyPath<ReadBookConfig, Int>,
+                             line: WritableKeyPath<ReadBookConfig, Bool>? = nil) -> some View {
+        Section(title) {
+            slider("上", value: number(top), range: 0...400, step: 1)
+            slider("下", value: number(bottom), range: 0...400, step: 1)
+            slider("左", value: marginBinding(left, partner: right), range: 0...100, step: 1)
+            slider("右", value: marginBinding(right, partner: left), range: 0...100, step: 1)
+            if let line { Toggle("显示分隔线", isOn: config(line)) }
+        }
+    }
+
+    private var information: some View {
+        Form {
+            Section("页眉") {
+                tipPicker("左", \.tipHeaderLeft, template: \.tipHeaderLeftTemplate)
+                tipPicker("中", \.tipHeaderMiddle, template: \.tipHeaderMiddleTemplate)
+                tipPicker("右", \.tipHeaderRight, template: \.tipHeaderRightTemplate)
+                Picker("显示", selection: config(\.headerMode)) {
+                    Text("隐藏状态栏时显示").tag(0); Text("显示").tag(1); Text("隐藏").tag(2)
+                }
+            }
+            Section("页脚") {
+                tipPicker("左", \.tipFooterLeft, template: \.tipFooterLeftTemplate)
+                tipPicker("中", \.tipFooterMiddle, template: \.tipFooterMiddleTemplate)
+                tipPicker("右", \.tipFooterRight, template: \.tipFooterRightTemplate)
+                Picker("显示", selection: config(\.footerMode)) { Text("显示").tag(0); Text("隐藏").tag(1) }
+            }
+            Section("信息文字") {
+                slider("字号", value: number(\.tipTextSize), range: 5...50, step: 1)
+                ColorPicker("颜色", selection: integerColor(\.tipColor))
+                Button("跟随正文颜色") { config(\.tipColor).wrappedValue = 0 }
+                ColorPicker("分隔线颜色", selection: integerColor(\.tipDividerColor))
+                Button("跟随信息颜色") { config(\.tipDividerColor).wrappedValue = -1 }
+            }
+            Section("章节标题") {
+                Picker("位置", selection: config(\.titleMode)) {
+                    Text("左").tag(0); Text("中").tag(1); Text("右").tag(3); Text("隐藏").tag(2)
+                }
+                slider("字号偏移", value: number(\.titleSize), range: -8...48, step: 1)
+                slider("行高偏移 (%)", value: number(\.titleLineSpacingExtra), range: -20...30, step: 1)
+                NavigationLink("字体") { FontPicker(selection: config(\.titleFont)) }
+                Picker("字重", selection: config(\.titleBold)) {
+                    Text("跟随正文").tag(-1); Text("正常").tag(0); Text("粗体").tag(1); Text("细体").tag(2)
+                }
+                ColorPicker("颜色", selection: integerColor(\.titleColor))
+                Button("跟随正文颜色") { config(\.titleColor).wrappedValue = 0 }
+                Toggle("章节序号单独一行", isOn: config(\.splitChapterTitle))
+                slider("序号字号偏移", value: number(\.titleNumberSize), range: -8...48, step: 1)
+                ColorPicker("序号颜色", selection: integerColor(\.titleNumberColor))
+                slider("序号下间距", value: number(\.titleNumberSpacing), range: 0...400, step: 1)
+                slider("上间距", value: number(\.titleTopSpacing), range: 0...400, step: 1)
+                slider("下间距", value: number(\.titleBottomSpacing), range: 0...400, step: 1)
+            }
+        }.legadoNavigationTitle("信息与标题")
+    }
+
+    private var customization: some View {
+        Form {
+            TextField("样式名", text: config(\.name))
+            ColorPicker("文字颜色", selection: color(textColorPath))
+            ColorPicker("背景颜色", selection: Binding(get: { color(backgroundPath).wrappedValue }, set: { value in
+                mutate { settings in
+                    settings.configuration[keyPath: backgroundPath] = Self.hex(value)
+                    settings.configuration[keyPath: backgroundTypePath] = 0
+                }
+            }))
+            ColorPicker("强调颜色", selection: color(accentPath))
+            Button("选择背景图片") { importingImage = true; importing = true }
+            slider("背景透明度", value: number(\.bgAlpha), range: 0...100, step: 1)
+            Button("导入样式") { importingImage = false; importing = true }
+            Button("导出样式") { enqueue { document = ReaderStyleDocument(data: try store.exportSelected()); exporting = true } }
+            Button("删除样式", role: .destructive) {
+                enqueue { try await store.deleteSelected(); await adoptStyle(); customizing = false }
+            }.disabled(store.styles.count <= 5)
+        }.legadoNavigationTitle("自定义样式")
+    }
+
+    private var textColorPath: WritableKeyPath<ReadBookConfig, String> {
+        draft.isEInk ? \.textColorEInk : draft.theme == .night ? \.textColorNight : \.textColor
+    }
+    private var backgroundPath: WritableKeyPath<ReadBookConfig, String> {
+        draft.isEInk ? \.bgStrEInk : draft.theme == .night ? \.bgStrNight : \.bgStr
+    }
+    private var backgroundTypePath: WritableKeyPath<ReadBookConfig, Int> {
+        draft.isEInk ? \.bgTypeEInk : draft.theme == .night ? \.bgTypeNight : \.bgType
+    }
+    private var accentPath: WritableKeyPath<ReadBookConfig, String> {
+        draft.isEInk ? \.textAccentColorEInk : draft.theme == .night ? \.textAccentColorNight : \.textAccentColor
+    }
+
+    private func tipPicker(_ title: String, _ path: WritableKeyPath<ReadBookConfig, Int>,
+                           template: WritableKeyPath<ReadBookConfig, String?>) -> some View {
+        Picker(title, selection: Binding(get: { draft.configuration[keyPath: path] }, set: { value in
+            mutate { $0.configuration[keyPath: path] = value; $0.configuration[keyPath: template] = nil }
+        })) {
+            ForEach(ReaderInfo.choices, id: \.0) { choice in Text(choice.1).tag(choice.0) }
+        }
+    }
+
+    private func slider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, step: Double, divisor: Double = 1) -> some View {
+        HStack(spacing: 12) {
+            Text(title).font(.system(size: 14)).frame(width: 88, alignment: .leading)
+            Slider(value: value, in: range, step: step).accessibilityLabel(title)
+            Text(value.wrappedValue / divisor, format: .number.precision(.fractionLength(divisor == 1 ? 0 : 1)))
+                .font(.system(size: 13).monospacedDigit()).frame(minWidth: 30, alignment: .trailing)
+        }
+    }
+
+    private func config<T>(_ path: WritableKeyPath<ReadBookConfig, T>) -> Binding<T> {
+        Binding(get: { draft.configuration[keyPath: path] }, set: { value in mutate { $0.configuration[keyPath: path] = value } })
+    }
+    private func setting<T>(_ path: WritableKeyPath<ReaderSettings, T>) -> Binding<T> {
+        Binding(get: { draft[keyPath: path] }, set: { value in mutate { $0[keyPath: path] = value } })
+    }
+    private func number(_ path: WritableKeyPath<ReadBookConfig, Int>) -> Binding<Double> {
+        Binding(get: { Double(draft.configuration[keyPath: path]) }, set: { config(path).wrappedValue = Int($0.rounded()) })
+    }
+    private func marginBinding(_ path: WritableKeyPath<ReadBookConfig, Int>, partner: WritableKeyPath<ReadBookConfig, Int>) -> Binding<Double> {
+        Binding(get: { Double(draft.configuration[keyPath: path]) }, set: { value in
+            mutate { settings in
+                settings.configuration[keyPath: path] = Int(value)
+                if linkedMargins { settings.configuration[keyPath: partner] = Int(value) }
+            }
+        })
+    }
+    private func color(_ path: WritableKeyPath<ReadBookConfig, String>) -> Binding<Color> {
+        Binding(get: { (ARGBColor(hex: draft.configuration[keyPath: path]) ?? ARGBColor(0xFF000000)).color },
+                set: { config(path).wrappedValue = Self.hex($0) })
+    }
+    private func integerColor(_ path: WritableKeyPath<ReadBookConfig, Int>) -> Binding<Color> {
+        Binding(get: { ARGBColor(UInt32(truncatingIfNeeded: draft.configuration[keyPath: path])).color }, set: { value in
+            let hex = Self.hex(value)
+            let raw = UInt32(hex.dropFirst(), radix: 16) ?? 0
+            config(path).wrappedValue = Int(Int32(bitPattern: raw))
+        })
+    }
+    private static func hex(_ color: Color) -> String {
+        var red: CGFloat = 0, green: CGFloat = 0, blue: CGFloat = 0, alpha: CGFloat = 0
+        UIColor(color).getRed(&red, green: &green, blue: &blue, alpha: &alpha)
+        return String(format: "#%02X%02X%02X%02X", Int(alpha * 255), Int(red * 255), Int(green * 255), Int(blue * 255))
+    }
+    private func mutate(_ change: (inout ReaderSettings) -> Void) {
+        var updated = draft; change(&updated); updated = updated.normalized; draft = updated
+        let settings = updated
+        enqueue { try await store.update(settings.configuration); settings.save(); render(settings) }
+    }
+    private func adoptStyle() async {
+        var settings = draft; settings.configuration = store.current; draft = settings
+        render(settings)
+    }
+    private func render(_ settings: ReaderSettings) {
+        rendering?.cancel()
+        rendering = Task { await apply(settings) }
+    }
+    private func enqueue(_ action: @escaping @MainActor () async throws -> Void) {
+        let previous = work
+        work = Task {
+            await previous?.value
+            do { try await action() } catch { self.error = error.localizedDescription }
+        }
+    }
+}
+
+struct ReaderStyleDocument: FileDocument {
+    static var readableContentTypes: [UTType] { [.json] }
+    var data: Data
+    init(data: Data) { self.data = data }
+    init(configuration: ReadConfiguration) throws { data = configuration.file.regularFileContents ?? Data() }
+    func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper { FileWrapper(regularFileWithContents: data) }
+}

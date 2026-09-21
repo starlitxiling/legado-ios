@@ -21,7 +21,7 @@ final class BookDetailInterfaceUITests: XCTestCase {
         app.buttons["保存"].tap()
         XCTAssertTrue(app.buttons["detail.read"].waitForExistence(timeout: 5))
         app.buttons["detail.read"].tap()
-        XCTAssertTrue(app.staticTexts["第一章 启航"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.otherElements["reader.body"].waitForExistence(timeout: 15))
         snapshot(app, "u5-detail-reading")
     }
 

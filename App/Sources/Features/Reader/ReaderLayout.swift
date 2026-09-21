@@ -31,7 +31,7 @@ enum ReaderLayout {
             content: input.rawContent, includeTitle: false)
         let pagination = try Paginator().paginate(title: title, paragraphs: content.paragraphs,
             size: size, settings: settings, imageBaseURL: LocalBook.isLocal(input.book) ? "legado-local://book/" : URL(string: input.chapter.url ?? "",
-                relativeTo: URL(string: input.chapter.baseUrl ?? input.book.bookUrl ?? ""))?.absoluteURL.absoluteString)
+                relativeTo: URL(string: input.chapter.baseUrl ?? input.book.bookUrl ?? ""))?.absoluteURL.absoluteString, isVolume: input.chapter.isVolume)
         return ReaderLayoutResult(title: title, pagination: pagination)
     }
 }

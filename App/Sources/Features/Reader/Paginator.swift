@@ -9,12 +9,15 @@ struct ReaderPage {
     let text: NSAttributedString
     let frame: CTFrame?
     var imageURL: String? = nil
+    var lines: [CTLine] = []
+    var lineOrigins: [CGPoint] = []
 }
 
 struct ReaderPagination {
     let text: NSAttributedString
     let pages: [ReaderPage]
     let contentSize: CGSize
+    var titleLength: Int = 0
 
     func pageIndex(at characterOffset: Int) -> Int {
         guard !pages.isEmpty else { return 0 }
@@ -34,9 +37,11 @@ struct Paginator {
     var fontName = "PingFangSC-Regular"
 
     func paginate(title: String, paragraphs: [String], size: CGSize,
-                  settings: ReaderSettings, imageBaseURL: String? = nil) throws -> ReaderPagination {
+                  settings: ReaderSettings, imageBaseURL: String? = nil, isVolume: Bool = false) throws -> ReaderPagination {
         let settings = settings.normalized
-        let title = settings.titleMode == 2 ? "" : title
+        let visibleTitle = settings.titleMode == 2 && !isVolume && !paragraphs.isEmpty ? "" : title
+        let split = ReaderTypography.splitTitle(visibleTitle, enabled: settings.configuration.splitChapterTitle && !isVolume)
+        let title = split.map { $0.0 + "\n" + $0.1 } ?? visibleTitle
         let contentSize = CGSize(width: size.width - settings.paddingLeft - settings.paddingRight,
                                  height: size.height - settings.paddingTop - settings.paddingBottom)
         guard contentSize.width.isFinite, contentSize.height.isFinite,
@@ -63,40 +68,21 @@ struct Paginator {
         let suffix = raw.substring(from: start)
         if matches.isEmpty || !suffix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { string += suffix }
         let fontName = settings.textFont.isEmpty ? fontName : settings.textFont
-        let font = CTFontCreateWithName(fontName as CFString, settings.textSize, nil)
-        func paragraphStyle(indent: CGFloat, multiplier: CGFloat) -> CTParagraphStyle {
-            var indent = indent
-            var multiplier = multiplier
-            var spacing = CGFloat(settings.paragraphSpacing)
-            return withUnsafePointer(to: &indent) { indentPointer in
-                withUnsafePointer(to: &multiplier) { multiplierPointer in
-                    withUnsafePointer(to: &spacing) { spacingPointer in
-                        let values = [
-                            CTParagraphStyleSetting(spec: .firstLineHeadIndent, valueSize: MemoryLayout<CGFloat>.size, value: indentPointer),
-                            CTParagraphStyleSetting(spec: .lineHeightMultiple, valueSize: MemoryLayout<CGFloat>.size, value: multiplierPointer),
-                            CTParagraphStyleSetting(spec: .paragraphSpacing, valueSize: MemoryLayout<CGFloat>.size, value: spacingPointer)
-                        ]
-                        return CTParagraphStyleCreate(values, values.count)
-                    }
-                }
-            }
-        }
-        let color: CGColor
-        switch settings.theme {
-        case .night: color = CGColor(gray: 173 / 255, alpha: 1)
-        case .day, .eyeCare: color = CGColor(red: 62 / 255, green: 61 / 255, blue: 59 / 255, alpha: 1)
-        }
-        let attributed = NSMutableAttributedString(string: string, attributes: [
-            NSAttributedString.Key(kCTFontAttributeName as String): font,
-            NSAttributedString.Key(kCTForegroundColorAttributeName as String): color,
-            NSAttributedString.Key(kCTParagraphStyleAttributeName as String): paragraphStyle(indent: 0, multiplier: settings.lineSpacingMultiplier)
-        ])
+        let attributed = NSMutableAttributedString(string: string, attributes: ReaderTypography.bodyAttributes(settings, fontName: fontName))
         if !title.isEmpty {
-            attributed.addAttributes(ReaderTitleStyle(mode: settings.titleMode, sizeOffset: settings.titleSize,
-                topSpacing: settings.titleTopSpacing, bottomSpacing: settings.titleBottomSpacing)
-                .attributes(fontName: fontName, bodySize: settings.textSize),
+            attributed.addAttributes(ReaderTypography.titleAttributes(settings, bodyFontName: fontName),
                 range: NSRange(location: 0, length: (title as NSString).length))
         }
+        if let split {
+            var numberSettings = settings
+            numberSettings.configuration.titleSize = settings.configuration.titleNumberSize
+            if settings.configuration.titleNumberColor != 0 { numberSettings.configuration.titleColor = settings.configuration.titleNumberColor }
+            numberSettings.configuration.titleBottomSpacing = settings.configuration.titleNumberSpacing
+            attributed.addAttributes(ReaderTypography.titleAttributes(numberSettings, bodyFontName: fontName, numberTitle: true),
+                                     range: NSRange(location: 0, length: (split.0 as NSString).length + 1))
+        }
+        let titleLength = title.isEmpty ? 0 : (title as NSString).length + (body.isEmpty ? 0 : 1)
+        ReaderPunctuation.apply(to: attributed, indices: ReaderPunctuation.targets(attributed.string, mode: settings.punctuationCompress).filter { $0 >= titleLength })
         let text = NSAttributedString(attributedString: attributed)
         let framesetter = CTFramesetterCreateWithAttributedString(text)
         let path = CGPath(rect: CGRect(origin: .zero, size: contentSize), transform: nil)
@@ -118,10 +104,36 @@ struct Paginator {
             let visible = CTFrameGetVisibleStringRange(frame)
             guard visible.length > 0 else { throw PaginationError.noVisibleCharacters }
             let range = NSRange(location: offset, length: visible.length)
-            pages.append(ReaderPage(range: range, text: text.attributedSubstring(from: range), frame: frame))
+            var lines = CTFrameGetLines(frame) as! [CTLine]
+            var origins = [CGPoint](repeating: .zero, count: lines.count)
+            CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
+            if ["lineEnd", "adjacentLineEnd"].contains(settings.punctuationCompress) {
+                let compressed = NSMutableAttributedString(attributedString: text)
+                for (index, line) in lines.enumerated() {
+                    let lineRange = CTLineGetStringRange(line)
+                    guard lineRange.location >= titleLength, let target = ReaderPunctuation.lineEnd(in: text, range: lineRange),
+                          text.attribute(ReaderPunctuation.trimKey, at: target, effectiveRange: nil) == nil else { continue }
+                    ReaderPunctuation.apply(to: compressed, indices: [target])
+                    let typesetter = CTTypesetterCreateWithAttributedString(compressed)
+                    let replacement = CTTypesetterCreateLine(typesetter, lineRange)
+                    let isTitle = !title.isEmpty && lineRange.location < (title as NSString).length
+                    lines[index] = settings.textFullJustify && !isTitle
+                        ? CTLineCreateJustifiedLine(replacement, 1, contentSize.width) ?? replacement : replacement
+                }
+            }
+            if settings.textBottomJustify, NSMaxRange(range) < boundary, lines.count > 1 {
+                var descent: CGFloat = 0
+                _ = CTLineGetTypographicBounds(lines.last!, nil, &descent, nil)
+                let remaining = max(0, origins.last!.y - descent)
+                for index in origins.indices {
+                    origins[index].y -= remaining * CGFloat(index) / CGFloat(origins.count - 1)
+                }
+            }
+            pages.append(ReaderPage(range: range, text: text.attributedSubstring(from: range), frame: frame,
+                                    lines: lines, lineOrigins: origins))
             offset = NSMaxRange(range)
         }
         if pages.isEmpty { pages = [ReaderPage(range: NSRange(location: 0, length: 0), text: text, frame: nil)] }
-        return ReaderPagination(text: text, pages: pages, contentSize: contentSize)
+        return ReaderPagination(text: text, pages: pages, contentSize: contentSize, titleLength: titleLength)
     }
 }

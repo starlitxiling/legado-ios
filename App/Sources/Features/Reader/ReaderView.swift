@@ -13,6 +13,8 @@ struct ReaderView: View {
     @State private var showsReadAloud = false
     @State private var showsControls = false
     @State private var showsSettings = false
+    @State private var styles: ReaderStyleStore
+    @State private var styleError: String?
     @State private var showsChapters = false
     @State private var showsBookmarks = false
     @State private var showsSelection = false
@@ -27,6 +29,7 @@ struct ReaderView: View {
     init(destination: ReaderDestination, database: AppDatabase, client: any HttpClient,
          cacheDirectory: URL? = nil) {
         self.destination = destination
+        _styles = State(initialValue: ReaderStyleStore(database: database))
         let directory = cacheDirectory ?? URL.applicationSupportDirectory
             .appendingPathComponent("Legado/ReaderCache", isDirectory: true)
         let model = ReaderViewModel(database: database, client: client,
@@ -90,21 +93,25 @@ struct ReaderView: View {
                   database: database, client: client)
     }
 
-    private var background: Color {
-        if themeColors.isEInk { return themeColors.background }
-        switch model.settings.theme {
-        case .day: return Color(white: 238 / 255)
-        case .night: return .black
-        case .eyeCare: return ARGBColor(0xFFCCE8CF).color
-        }
+    private var background: some View { ReaderBackgroundView(settings: model.settings) }
+
+    private var infoValues: ReaderInfoValues {
+        let count = max(1, model.pagination?.pages.count ?? 1)
+        let total = max(1, model.chapters.count)
+        let progress = (Double(model.chapterPosition) + Double(model.pageIndex + 1) / Double(count)) / Double(total)
+        return ReaderInfoValues(bookName: model.book?.name ?? "", chapterTitle: model.chapterTitle,
+                                page: "\(model.pageIndex + 1)", totalPages: "\(count)",
+                                readProgress: String(format: "%.1f%%", progress * 100),
+                                chapter: "\(model.chapterPosition + 1)", totalChapters: "\(total)")
     }
 
     var body: some View {
         GeometryReader { geometry in
-            let pageSize = CGSize(width: geometry.size.width, height: max(1, geometry.size.height - 28))
+            let pageSize = CGSize(width: geometry.size.width, height: max(1, geometry.size.height - ReaderInfoView.height(settings: model.settings, header: true) - ReaderInfoView.height(settings: model.settings, header: false)))
             ZStack {
                 background.ignoresSafeArea()
                 VStack(spacing: 0) {
+                    ReaderInfoView(settings: model.settings, header: true, values: infoValues)
                     ReaderPagePresentation(mode: themeColors.palette.pageAnimation(model.settings.pageAnim),
                         page: model.chapterPosition * 1_000_000 + model.pageIndex,
                         progress: autoRead.progress, turn: scrollTurnPage) {
@@ -135,12 +142,7 @@ struct ReaderView: View {
                         }
                     }
                     .onLongPressGesture { autoRead.stop(); showsSelection = true }
-                    HStack {
-                        Text(model.chapterTitle).lineLimit(1)
-                        Spacer()
-                        Text("\(model.pageIndex + 1) / \(model.pagination?.pages.count ?? 0)")
-                    }
-                    .font(.caption).padding(.horizontal, 16).frame(height: 28)
+                    ReaderInfoView(settings: model.settings, header: false, values: infoValues)
                 }
                 if model.isLoading { ProgressView("正在加载正文…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) }
                 if let error = model.errorMessage {
@@ -162,7 +164,12 @@ struct ReaderView: View {
         .preferredColorScheme(model.settings.theme == .night ? .dark : .light)
         .toolbar(.hidden, for: .navigationBar, .tabBar)
         .statusBarHidden(model.settings.hideStatusBar && !showsControls)
-        .sheet(isPresented: $showsSettings) { settingsPanel }
+        .sheet(isPresented: $showsSettings) {
+            ReaderInterfacePanel(store: styles, settings: model.settings) { settings in await model.reflow(settings: settings) }
+        }
+        .alert("阅读样式加载失败", isPresented: Binding(get: { styleError != nil }, set: { if !$0 { styleError = nil } })) {
+            Button("好", role: .cancel) { styleError = nil }
+        } message: { Text(styleError ?? "") }
         .sheet(isPresented: $showsChapters) { chapterPanel }
         .sheet(isPresented: $showsReadAloud) { ReadAloudPanel(controller: readAloud) }
         .sheet(isPresented: $showsBookmarks) { BookmarkListView(model: model) }
@@ -171,6 +178,12 @@ struct ReaderView: View {
         .sheet(isPresented: $showsReviews) { ReaderReviewView(model: model) }
         .task(id: destination) {
             ReaderFonts.registerInstalled()
+            UIDevice.current.isBatteryMonitoringEnabled = true
+            do {
+                try await styles.load()
+                var settings = ReaderSettings.load(); settings.isEInk = themeColors.isEInk
+                await model.reflow(settings: settings)
+            } catch { styleError = error.localizedDescription }
             await model.load(bookURL: destination.bookURL, chapterIndex: destination.chapterIndex)
             await readAloud.attach(model)
             await model.refreshHighlights()
@@ -245,7 +258,7 @@ struct ReaderView: View {
                     Spacer()
                     Button("目录") { showsChapters = true }
                     Spacer()
-                    Button("设置") { showsSettings = true }
+                    Button("界面") { showsSettings = true }
                     Button("听书") { showsReadAloud = true }
                     Spacer()
                     Button("下一章") { Task { await model.nextChapter() } }
@@ -259,59 +272,6 @@ struct ReaderView: View {
                 }
             }.padding().background(.regularMaterial)
         }
-    }
-
-    private func setting(_ keyPath: WritableKeyPath<ReaderSettings, Double>) -> Binding<Double> {
-        Binding(get: { model.settings[keyPath: keyPath] }, set: { value in
-            var settings = model.settings; settings[keyPath: keyPath] = value
-            settings.save()
-            Task { await model.reflow(settings: settings) }
-        })
-    }
-
-    private var settingsPanel: some View {
-        NavigationStack {
-            Form {
-                Section("标题") {
-                    Picker("对齐", selection: integerSetting(\.titleMode)) {
-                        Text("左对齐").tag(0); Text("居中").tag(1); Text("隐藏").tag(2); Text("右对齐").tag(3)
-                    }
-                    Slider(value: Binding(get: { (model.settings.textSize + model.settings.titleSize) / model.settings.textSize },
-                        set: { setting(\.titleSize).wrappedValue = model.settings.textSize * ($0 - 1) }), in: 0.8...2, step: 0.1)
-                        .accessibilityLabel("标题字号倍数")
-                    LabeledContent("上边距") { Slider(value: setting(\.titleTopSpacing), in: 0...80, step: 1) }
-                    LabeledContent("下边距") { Slider(value: setting(\.titleBottomSpacing), in: 0...80, step: 1) }
-                }
-                NavigationLink("字体") {
-                    FontPicker(selection: Binding(get: { model.settings.textFont }, set: { font in
-                        var settings = model.settings; settings.textFont = font; settings.save()
-                        Task { await model.reflow(settings: settings) }
-                    }))
-                }
-                Picker("翻页动画", selection: integerSetting(\.pageAnim)) {
-                    Text("覆盖").tag(0); Text("滑动").tag(1); Text("仿真").tag(2); Text("滚动").tag(3); Text("无动画").tag(4)
-                }
-                Section("自动阅读：每屏 \(Int(model.settings.autoReadSpeed)) 秒") {
-                    Slider(value: setting(\.autoReadSpeed), in: 1...120, step: 1)
-                }
-                Section("字号：\(Int(model.settings.textSize))") {
-                    Slider(value: setting(\.textSize), in: 12...48, step: 1)
-                }
-                Section("行距：\(model.settings.lineSpacingMultiplier, specifier: "%.1f") 倍") {
-                    Slider(value: setting(\.lineSpacingMultiplier), in: 1...3, step: 0.1)
-                }
-                Picker("主题", selection: Binding(get: { model.settings.theme }, set: { theme in
-                    var settings = model.settings; settings.theme = theme; settings.save()
-                    Task { await model.reflow(settings: settings) }
-                })) {
-                    Text("日间").tag(ReaderTheme.day)
-                    Text("夜间").tag(ReaderTheme.night)
-                    Text("护眼").tag(ReaderTheme.eyeCare)
-                }
-            }
-            .legadoNavigationTitle("阅读设置")
-            .toolbar { Button("完成") { showsSettings = false } }
-        }.presentationDetents([.large])
     }
 
     private var chapterPanel: some View {
@@ -339,14 +299,6 @@ struct ReaderView: View {
         }
     }
 
-    private func integerSetting(_ keyPath: WritableKeyPath<ReaderSettings, Int>) -> Binding<Int> {
-        Binding(get: { model.settings[keyPath: keyPath] }, set: { value in
-            autoRead.stop()
-            var settings = model.settings; settings[keyPath: keyPath] = value; settings.save()
-            Task { await model.reflow(settings: settings) }
-        })
-    }
-
     private func turnPage(_ forward: Bool) {
         autoRead.stop()
         Task { if forward { await model.nextPage() } else { await model.previousPage() } }
@@ -371,7 +323,7 @@ struct ReaderView: View {
                 } else {
                     CoreTextReaderPage(pagination: pagination, pageIndex: index, highlight: currentChapter ? model.readAloudRange : nil,
                         annotations: (currentChapter ? model.highlights : []).map { item in
-                            let titleLength = model.settings.titleMode == 2 ? 0 : (model.chapterTitle as NSString).length + 1
+                            let titleLength = pagination.titleLength
                             let start = item.bodyStart(currentTitleLength: titleLength) + titleLength
                             let end = item.bodyEnd(currentTitleLength: titleLength) + titleLength
                             return NSRange(location: start, length: max(0, end - start))
@@ -379,6 +331,7 @@ struct ReaderView: View {
                         .frame(width: pagination.contentSize.width, height: pagination.contentSize.height)
                         .padding(.leading, model.settings.paddingLeft).padding(.top, model.settings.paddingTop)
                         .accessibilityLabel(pagination.pages[index].text.string)
+                        .accessibilityIdentifier("reader.body")
                 }
             }
         }.frame(width: size.width, height: size.height, alignment: .topLeading)
@@ -441,17 +394,16 @@ private final class ReaderTextCanvas: UIView {
         guard let context = UIGraphicsGetCurrentContext(), let pagination,
               pagination.pages.indices.contains(pageIndex) else { return }
         let page = pagination.pages[pageIndex]
-        guard let frame = page.frame else { return }
+        guard page.frame != nil else { return }
         context.saveGState()
-        context.setShouldAntialias(UserDefaults.standard.bool(forKey: "antiAlias"))
+        context.setShouldAntialias(true)
         defer { context.restoreGState() }
         context.textMatrix = .identity
         context.translateBy(x: 0, y: bounds.height)
         context.scaleBy(x: 1, y: -1)
         for highlight in annotations + (highlight.map { [$0] } ?? []) {
-            let lines = CTFrameGetLines(frame) as! [CTLine]
-            var origins = [CGPoint](repeating: .zero, count: lines.count)
-            CTFrameGetLineOrigins(frame, CFRange(location: 0, length: 0), &origins)
+            let lines = page.lines
+            let origins = page.lineOrigins
             context.setFillColor(UIColor.systemYellow.withAlphaComponent(0.3).cgColor)
             for (index, line) in lines.enumerated() {
                 let range = CTLineGetStringRange(line)
@@ -465,6 +417,13 @@ private final class ReaderTextCanvas: UIView {
                                     width: abs(end - start), height: ascent + descent))
             }
         }
-        CTFrameDraw(frame, context)
+        for (index, line) in page.lines.enumerated() {
+            for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+                let attributes = CTRunGetAttributes(run) as NSDictionary
+                let offset = (attributes[ReaderPunctuation.offsetKey.rawValue] as? NSNumber)?.doubleValue ?? 0
+                context.textPosition = CGPoint(x: page.lineOrigins[index].x + offset, y: page.lineOrigins[index].y)
+                CTRunDraw(run, context, CFRange(location: 0, length: 0))
+            }
+        }
     }
 }
