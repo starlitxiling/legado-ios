@@ -4,7 +4,9 @@ import LegadoCore
 enum ImageRepositoryLoader {
     static func load(url: String, origin: String?, book: Book?, isCover: Bool,
                      sources: BookSourceRepository, cookies: CookieRepository, client: any HttpClient,
-                     cacheDirectory: URL? = nil) async throws -> Data {
+                     cacheDirectory: URL? = nil, readerCacheDirectory: URL? = nil) async throws -> Data {
+        if !isCover, let book, !LocalBook.isLocal(book), let directory = readerCacheDirectory,
+           let data = try BookHelp.imageData(directory: directory, book: book, src: url), BookHelp.imageMediaType(data) != nil { return data }
         let row = try await sources.get(bookSourceUrl: origin ?? "")
         let source = try row.map { try JSONDecoder().decode(BookSource.self, from: JSONEncoder().encode($0)) }
         let store = CookieStore()

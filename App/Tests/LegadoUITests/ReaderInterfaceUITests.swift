@@ -169,6 +169,32 @@ final class ReaderInterfaceUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Selected note"].waitForExistence(timeout: 5))
     }
 
+    @MainActor
+    func testLocalImageStylesChangeActualLayout() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-localbook-gallery", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO", "-doubleHorizontalPage", "0", "-clickImgWay", "3", "-readerMenuConfig", #"{"primary":["imageStyle"],"more":["highlightRule","effectiveReplaces","simulatedReading","bookmark","editContent","pageAnim","getProgress","coverProgress","reverseContent","replace","sameTitleRemoved","reSegment","delRubyTag","delHTag","reimportSource","updateToc","log","help"]}"#]
+        app.launch()
+        let status = app.staticTexts["localbook.status"]
+        XCTAssertTrue(status.waitForExistence(timeout: 15))
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "label == %@", "10 formats passed"), object: status)], timeout: 60), .completed)
+        app.buttons["localbook.open.epub"].tap()
+        let picture = app.images["正文图片"].firstMatch
+        for _ in 0..<4 { if picture.waitForExistence(timeout: 3) { break }; app.swipeLeft() }
+        XCTAssertTrue(picture.exists)
+        let originalWidth = picture.frame.width
+        for style in ["满宽", "文字大小", "独占一页"] {
+            app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+            app.buttons["更多"].tap(); app.buttons["图片样式"].tap(); app.buttons[style].tap()
+            XCTAssertTrue(app.buttons["收起"].waitForExistence(timeout: 5)); app.buttons["收起"].tap()
+            for _ in 0..<4 { if picture.waitForExistence(timeout: 2) { break }; app.swipeLeft() }
+            XCTAssertTrue(picture.exists)
+            if style == "满宽" { XCTAssertGreaterThanOrEqual(picture.frame.width, originalWidth) }
+            if style == "文字大小" { XCTAssertLessThan(picture.frame.height, 55) }
+            snapshot(app, "u6-image-style-" + (style == "满宽" ? "full" : style == "文字大小" ? "text" : "single"))
+        }
+    }
+
     @MainActor private func snapshot(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)

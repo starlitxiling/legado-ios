@@ -30,6 +30,16 @@ final class WebBookContentFlowTests: XCTestCase {
         await client.enqueue(url: url, response: HttpResponse(status: 200, body: Data(body.utf8), finalURL: url))
     }
 
+    func testImageOptionsSurviveCacheExtraction() throws {
+        let options = #",{"headers":{"Referer":"https://content.test"},"style":"TEXT","click":"java.toast(src)"}"#
+        let tag = "<img src=\"/image.svg" + options + "\">"
+        let text = "Before" + tag + "After"
+        let images = try BookHelp.images(in: text, chapter: chapter())
+        XCTAssertEqual(images.count, 1)
+        XCTAssertEqual(images.first?.url, "https://content.test/image.svg" + options)
+        XCTAssertEqual(images.first.map { (text as NSString).substring(with: $0.range) }, tag)
+    }
+
     func testContentAndImagesAreCachedAcrossWebBookInstances() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: directory) }

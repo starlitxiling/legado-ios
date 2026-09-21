@@ -66,7 +66,8 @@ import LegadoCore
                 if address.hasPrefix("/") { return try Data(contentsOf: URL(fileURLWithPath: address)) }
                 if let local = URL(string: address), local.isFileURL { return try Data(contentsOf: local) }
                 return try await ImageRepositoryLoader.load(url: address, origin: origin, book: book, isCover: isCover,
-                    sources: container.bookSources, cookies: container.cookies, client: client)
+                    sources: container.bookSources, cookies: container.cookies, client: client,
+                    readerCacheDirectory: URL.applicationSupportDirectory.appendingPathComponent("Legado/ReaderCache", isDirectory: true))
             }
         }
     }

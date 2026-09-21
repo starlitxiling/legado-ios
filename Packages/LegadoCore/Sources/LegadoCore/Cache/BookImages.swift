@@ -14,9 +14,10 @@ extension BookHelp {
         let text = content as NSString
         let base = WebBookContext.absolute(chapter.url ?? "", base: chapter.baseUrl ?? "")
         return try regex.matches(in: content, range: NSRange(location: 0, length: text.length)).compactMap { match in
-            let src = try SwiftSoup.parseBodyFragment(text.substring(with: match.range)).select("img").attr("src")
+            let src = try SwiftSoup.parseBodyFragment(MediaContentResolver.escapeImageOptions(text.substring(with: match.range))).select("img").attr("src")
             guard !src.isEmpty else { return nil }
-            return ChapterImage(range: match.range, url: WebBookContext.absolute(src, base: base))
+            let address = CustomUrl(src).getUrl()
+            return ChapterImage(range: match.range, url: WebBookContext.absolute(address, base: base) + String(src.dropFirst(address.count)))
         }
     }
 

@@ -7,6 +7,7 @@ struct ReaderLayoutInput {
     var rawContent: String
     var rules: [ReplaceRuleRow]
     var highlightRules: [HighlightRule] = []
+    var sourceImageStyle: String?
     var manualReplace = false
     var replaceEnableDefault = true
     var chineseConverterType = 0
@@ -31,9 +32,20 @@ enum ReaderLayout {
         let title = try processor.title(book: input.book, chapter: input.chapter)
         let content = try processor.getContent(book: input.book, chapter: input.chapter,
             content: input.rawContent, includeTitle: false)
+        let imageStyle = [input.book.readConfig?.imageStyle, input.sourceImageStyle].compactMap { $0 }.first { !$0.isEmpty }
+            ?? (input.book.isImage || LocalBook.fileURL(input.book)?.pathExtension.lowercased() == "pdf" ? "FULL" : "DEFAULT")
         let pagination = try Paginator().paginate(title: title, paragraphs: content.paragraphs,
             size: size, settings: settings, imageBaseURL: LocalBook.isLocal(input.book) ? "legado-local://book/" : URL(string: input.chapter.url ?? "",
-                relativeTo: URL(string: input.chapter.baseUrl ?? input.book.bookUrl ?? ""))?.absoluteURL.absoluteString, isVolume: input.chapter.isVolume, highlightRules: input.highlightRules, book: input.book)
+                relativeTo: URL(string: input.chapter.baseUrl ?? input.book.bookUrl ?? ""))?.absoluteURL.absoluteString, isVolume: input.chapter.isVolume, highlightRules: input.highlightRules, book: input.book, imageStyle: imageStyle, imageSize: { url in
+                do {
+                    let data: Data?
+                    if LocalBook.isLocal(input.book) { data = try LocalBook.image(book: input.book, href: CustomUrl(url).getUrl()) }
+                    else if let directory = input.cacheDirectory { data = try BookHelp.imageData(directory: directory, book: input.book, src: url) }
+                    else { data = nil }
+                    return data.flatMap(ReaderImageLayout.naturalSize)
+                } catch is CancellationError { throw CancellationError() }
+                catch { NSLog("Unable to read image dimensions for %@: %@", url, error.localizedDescription); return nil }
+            })
         return ReaderLayoutResult(title: title, pagination: pagination)
     }
 }

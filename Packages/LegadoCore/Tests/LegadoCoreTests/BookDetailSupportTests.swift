@@ -34,6 +34,13 @@ final class BookDetailSupportTests: XCTestCase {
         XCTAssertEqual(try BookHelp.content(directory: root, book: other, chapter: chapter), "retained")
     }
 
+    func testImageClickExposesResultBookChapterWithoutEventListener() throws {
+        var source = BookSource(); source.bookSourceUrl = "https://click.test"; source.eventListener = false
+        var book = Book(); book.name = "Book"; book.bookUrl = "https://click.test/book"
+        var chapter = BookChapter(); chapter.title = "Chapter"; chapter.url = "https://click.test/1"
+        XCTAssertEqual(try SourceCallback.imageClick(script: "book.name + \"|\" + chapter.title + \"|\" + result", src: "image", source: source, book: book, chapter: chapter, client: ReplayHttpClient()), "Book|Chapter|image")
+    }
+
     func testSourceCallbackHonorsEventFlagAndExposesBookAndChapter() throws {
         var source = BookSource(); source.bookSourceUrl = "https://source.test"
         source.ruleContent = ContentRule(); source.ruleContent?.callBackJs = "event === 'clickCustomButton' && book.name === 'Book' && chapter.index === 2 && result === 'input'"

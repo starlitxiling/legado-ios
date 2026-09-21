@@ -20,7 +20,7 @@ struct ReaderMenuView: View {
         let config = model.settings.configuration
         return (ARGBColor(hex: model.settings.theme == .night ? config.bgStrNight : config.bgStr) ?? ARGBColor(0xFFEEEEEE)).color
     }
-    private let implemented = Set(["reimportSource", "highlightRule", "effectiveReplaces", "bookmark", "editContent", "pageAnim", "getProgress", "coverProgress", "reverseContent", "simulatedReading", "replace", "sameTitleRemoved", "reSegment", "delRubyTag", "delHTag", "updateToc", "log", "help"])
+    private let implemented = Set(["imageStyle", "reimportSource", "highlightRule", "effectiveReplaces", "bookmark", "editContent", "pageAnim", "getProgress", "coverProgress", "reverseContent", "simulatedReading", "replace", "sameTitleRemoved", "reSegment", "delRubyTag", "delHTag", "updateToc", "log", "help"])
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
@@ -140,6 +140,13 @@ struct ReaderMenuView: View {
                 }))
             }
         case "reSegment": Toggle(title, isOn: Binding(get: { model.readerBook?.readConfig?.reSegment ?? false }, set: { value in Task { await model.updateReadConfig { $0.reSegment = value } } }))
+        case "imageStyle":
+            Menu(title) {
+                Button("跟随书源") { Task { await model.updateReadConfig { $0.imageStyle = nil } } }
+                ForEach(Array(zip(["DEFAULT", "FULL", "TEXT", "SINGLE"], ["默认", "满宽", "文字大小", "独占一页"])), id: \.0) { value, name in
+                    Button(name) { Task { await model.updateReadConfig { $0.imageStyle = value; if value == "SINGLE" { $0.pageAnim = 0 } } } }
+                }
+            }
         case "pageAnim":
             Menu(title) {
                 Button("跟随全局") { Task { await model.updateReadConfig { $0.pageAnim = nil } } }

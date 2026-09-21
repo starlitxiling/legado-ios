@@ -332,9 +332,17 @@ struct ReaderView: View {
         let position = touchedPosition(point, size: size)
         let trigger = behavior.string("highlightActionTrigger")
         if (trigger == "click" && taps == 1 || trigger == "doubleTap" && taps == 2), opensHighlight(position.offset) { showsHighlights = true; return }
-        if let pagination = model.pagination, pagination.pages.indices.contains(position.page), let url = pagination.pages[position.page].imageURL {
-            let mode = behavior.string("clickImgWay")
-            if mode != "3", (mode == "4" ? taps == 2 : taps == 1) { previewImageURL = url; showPanel("image"); return }
+        if let pagination = model.pagination, pagination.pages.indices.contains(position.page),
+           let image = pagination.pages[position.page].images.first(where: { $0.offset == position.offset }) {
+            do {
+                switch try ReaderImageAction.resolve(image, mode: behavior.string("clickImgWay"), taps: taps,
+                    onlineText: model.readerBook?.isOnLineTxt == true) {
+                case .none: break
+                case .consume: return
+                case .preview: previewImageURL = image.url; showPanel("image"); return
+                case .script(let code, let result): runImageScript(code, result: result); return
+                }
+            } catch { styleError = error.localizedDescription; return }
         }
         guard taps == 1, let action = ReaderTouchMap.action(x: point.x, y: point.y, width: size.width, height: size.height, actions: ReaderTouchMap.load()) else { return }
         perform(action)
@@ -398,6 +406,14 @@ struct ReaderView: View {
             }
         }
     }
+    private func runImageScript(_ script: String, result: String) {
+        guard let source = model.readerSource, let book = model.readerBook else { return }
+        let chapter = model.readerChapter, client = container.httpClient
+        Task {
+            do { _ = try await Task.detached { try SourceCallback.imageClick(script: script, src: result, source: source, book: book, chapter: chapter, client: client) }.value }
+            catch { styleError = error.localizedDescription }
+        }
+    }
     private func customButton() {
         guard !customRunning, let source = model.readerSource, let book = model.readerBook else { return }
         customRunning = true
@@ -446,24 +462,23 @@ struct ReaderView: View {
         ZStack(alignment: .topLeading) {
             background
             if let pagination = preview ?? model.pagination, pagination.pages.indices.contains(index) {
-                if let imageURL = pagination.pages[index].imageURL {
-                    RemoteImage(url: imageURL, origin: model.book?.origin,
-                        book: model.book.flatMap { try? DiscoveryStorage.book($0) }, isCover: false)
-                        .frame(width: pagination.contentSize.width, height: pagination.contentSize.height)
-                        .padding(.leading, model.settings.paddingLeft).padding(.top, model.settings.paddingTop)
-                } else {
-                    CoreTextReaderPage(pagination: pagination, pageIndex: index, highlight: currentChapter ? model.readAloudRange : nil,
-                        annotations: (currentChapter ? model.highlights : []).map { item in
-                            let titleLength = pagination.titleLength
-                            let start = item.bodyStart(currentTitleLength: titleLength) + titleLength
-                            let end = item.bodyEnd(currentTitleLength: titleLength) + titleLength
-                            return NSRange(location: start, length: max(0, end - start))
-                        })
-                        .frame(width: pagination.contentSize.width, height: pagination.contentSize.height)
-                        .padding(.leading, model.settings.paddingLeft).padding(.top, model.settings.paddingTop)
-                        .accessibilityLabel(pagination.pages[index].text.string)
-                        .accessibilityIdentifier("reader.body")
-                        .accessibilityValue("第 \(model.chapterPosition + 1) 章，第 \(index + 1) 页")
+                CoreTextReaderPage(pagination: pagination, pageIndex: index, highlight: currentChapter ? model.readAloudRange : nil,
+                    annotations: (currentChapter ? model.highlights : []).map { item in
+                        let titleLength = pagination.titleLength
+                        let start = item.bodyStart(currentTitleLength: titleLength) + titleLength
+                        let end = item.bodyEnd(currentTitleLength: titleLength) + titleLength
+                        return NSRange(location: start, length: max(0, end - start))
+                    })
+                    .frame(width: pagination.contentSize.width, height: pagination.contentSize.height)
+                    .padding(.leading, model.settings.paddingLeft).padding(.top, model.settings.paddingTop)
+                    .accessibilityLabel(pagination.pages[index].text.string)
+                    .accessibilityIdentifier("reader.body")
+                    .accessibilityValue("第 \(model.chapterPosition + 1) 章，第 \(index + 1) 页")
+                ForEach(Array(pagination.pages[index].images.enumerated()), id: \.offset) { _, image in
+                    RemoteImage(url: image.url, origin: model.book?.origin, book: model.readerBook, isCover: false)
+                        .frame(width: image.rect.width, height: image.rect.height)
+                        .offset(x: model.settings.paddingLeft + image.rect.minX, y: model.settings.paddingTop + image.rect.minY)
+                        .allowsHitTesting(false)
                 }
             }
         }.frame(width: size.width, height: size.height, alignment: .topLeading)

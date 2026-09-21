@@ -33,7 +33,7 @@ public enum MediaContentResolver {
         return result
     }
 
-    private static func escapeImageOptions(_ html: String) throws -> String {
+    static func escapeImageOptions(_ html: String) throws -> String {
         // Legado 允许 src 中直接嵌入 JSON 引号；先保护该属性，再交给 HTML 解析器。
         let pattern = try NSRegularExpression(pattern: #"<img[^>]*\ssrc\s*=\s*['"]([^'"{>]*\{(?:[^{}]|\{[^}>]+\})+\})['"][^>]*>"#,
                                               options: .caseInsensitive)

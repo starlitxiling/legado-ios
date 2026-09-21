@@ -187,6 +187,7 @@
 		CAE2FE3C7326C1C22CDA45FE /* RssViewModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99E1FF2F6E823698773096CE /* RssViewModels.swift */; };
 		CB3A6BCC213AA06E6E941F77 /* ReplaceRuleEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E71EF59B96EA56C0BF709761 /* ReplaceRuleEditView.swift */; };
 		CFE1000FB1D1FFD0DAD1896D /* launcher6@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = FE6B2E901F19160E65567DED /* launcher6@3x.png */; };
+		D0B5F5C03EB25688F82BD265 /* ReaderImageLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7F89C7A13BB82CBE13069AC /* ReaderImageLayout.swift */; };
 		D1040A712FB3CFE631A02F7A /* RulesManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6439FDF5D9B976A62C02B06F /* RulesManagementView.swift */; };
 		D21928298382F7FE923E0D3D /* RssArticlesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59167322CCFD198C94819160 /* RssArticlesView.swift */; };
 		D3AAACECB7E126A977779B3A /* FormLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6DF47EDCFE860F0EC7D7BC0 /* FormLoginView.swift */; };
@@ -403,6 +404,7 @@
 		B6F29A594559068C02ACC3BE /* launcher1@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "launcher1@2x.png"; sourceTree = "<group>"; };
 		B72790E03C55A9F5C40D600F /* SourcesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesView.swift; sourceTree = "<group>"; };
 		B77239E722318D7708A8BC10 /* AddBookURLModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddBookURLModel.swift; sourceTree = "<group>"; };
+		B7F89C7A13BB82CBE13069AC /* ReaderImageLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderImageLayout.swift; sourceTree = "<group>"; };
 		B96C49A23B17B5435344204C /* UploadRuleSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadRuleSettingsView.swift; sourceTree = "<group>"; };
 		BB344863A63C60F29FE6B2F0 /* ReaderManualReplaceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderManualReplaceView.swift; sourceTree = "<group>"; };
 		BC055C977B07CF7E57AA5955 /* ImageRepositoryLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageRepositoryLoader.swift; sourceTree = "<group>"; };
@@ -812,6 +814,7 @@
 				8033CF52AFA5C4E71B10F760 /* ReaderBehaviorPanel.swift */,
 				366D60FB81B1F0FC7CEED2A6 /* ReaderChapterCache.swift */,
 				D06837C77795C8E7367F0584 /* ReaderDeviceController.swift */,
+				B7F89C7A13BB82CBE13069AC /* ReaderImageLayout.swift */,
 				201FE9CB6A8C5B69D5A59C73 /* ReaderInfo.swift */,
 				F6B9ECC6720AC469283BCE2E /* ReaderInfoView.swift */,
 				016EA73956A1FA2616DE6468 /* ReaderInputView.swift */,
@@ -1317,6 +1320,7 @@
 				7789A7ADF6AD2D01D0CD1203 /* ReaderDeviceController.swift in Sources */,
 				73A1B3CBAE0CA94C84C2D54B /* ReaderDictionaryView.swift in Sources */,
 				F1AFA1AE4505CF691C7C4E0E /* ReaderHighlightRulesView.swift in Sources */,
+				D0B5F5C03EB25688F82BD265 /* ReaderImageLayout.swift in Sources */,
 				0277E8F90E9E3A3F5C4388DE /* ReaderInfo.swift in Sources */,
 				646C0BC8F180F980B3EDE0E1 /* ReaderInfoView.swift in Sources */,
 				1C4C214EDED055683CB25011 /* ReaderInputView.swift in Sources */,
