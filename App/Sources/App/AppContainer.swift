@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import LegadoCore
+import UserNotifications
 
 @Observable
 @MainActor
@@ -22,6 +23,7 @@ final class AppContainer {
     let headlessWebView: HeadlessWebViewScheduler
     let browserInteraction: BrowserInteraction
     let downloads: DownloadCenterModel
+    let autoTasks: AutoTaskController
     let backgroundRefresh: BookshelfBackgroundRefresh
     let audioPlayback = AVPlayerAudioPlayer()
     let webService: WebServiceController
@@ -64,7 +66,11 @@ final class AppContainer {
         downloads = DownloadCenterModel(database: database, client: self.httpClient,
             threadCount: UserDefaults.standard.object(forKey: "threadCount") as? Int ?? 32,
             adaptSpecialStyle: UserDefaults.standard.object(forKey: "adaptSpecialStyle") as? Bool ?? true)
-        backgroundRefresh = BookshelfBackgroundRefresh(database: database, client: self.httpClient)
+        autoTasks = AutoTaskController(database: database, client: self.httpClient, secrets: sourceSecrets) { title, body in
+            let content = UNMutableNotificationContent(); content.title = String(title.prefix(200)); content.body = String(body.prefix(4000))
+            try await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+        }
+        backgroundRefresh = BookshelfBackgroundRefresh(database: database, client: self.httpClient, autoTasks: autoTasks)
         webService = WebServiceController.live(database: database, client: self.httpClient)
     }
 

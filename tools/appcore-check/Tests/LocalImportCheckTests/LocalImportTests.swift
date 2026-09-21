@@ -4,6 +4,14 @@ import LegadoCore
 
 @MainActor
 final class LocalImportTests: XCTestCase {
+    func testStorageFolderStaysInsideDocuments() throws {
+        let documents = FileManager.default.temporaryDirectory.appendingPathComponent("library-root")
+        XCTAssertEqual(try LocalImportViewModel.storageDirectory(folder: " Custom ", documents: documents), documents.appendingPathComponent("Custom", isDirectory: true))
+        for invalid in ["", ".", "..", "../outside", "nested/folder", "a\\b"] {
+            XCTAssertThrowsError(try LocalImportViewModel.storageDirectory(folder: invalid, documents: documents))
+        }
+    }
+
     func testArchiveImportsEveryBookAndKeepsStableURLsAndProgress() async throws {
         let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
             .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootTabView: View {
     let container: AppContainer
+    @Environment(\.scenePhase) private var scenePhase
     @State private var restoreRevision = 0
     @State private var exploreRevision = 0
     @State private var preferences = AppPreferences.shared
@@ -59,6 +60,12 @@ struct RootTabView: View {
         }
         .onChange(of: preferences.boolean("showRss")) { _, enabled in
             if !enabled, selectedPage == "rss" { selectedPage = "bookshelf" }
+        }
+        .task {
+            while !Task.isCancelled {
+                if scenePhase == .active && preferences.boolean("autoTaskService") { await container.autoTasks.runDue() }
+                do { try await Task.sleep(for: .seconds(60)) } catch { return }
+            }
         }
         .modifier(AppThemeModifier(preferences: preferences))
     }

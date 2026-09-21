@@ -1,5 +1,6 @@
 import SwiftUI
 import UIKit
+import CoreImage
 
 @MainActor struct ThemeSettingsView: View {
     let preferences: AppPreferences
@@ -12,22 +13,9 @@ import UIKit
 
     var body: some View {
         Form {
-            Section("主题") {
-                NavigationLink("应用图标") { LauncherIconSettingsView(preferences: preferences) }
-                Menu {
-                    ForEach(ThemeMode.allCases, id: \.rawValue) { mode in
-                        Button { themeStore.mode = mode } label: {
-                            if themeStore.mode == mode { Label(modeName(mode), systemImage: "checkmark") }
-                            else { Text(modeName(mode)) }
-                        }
-                    }
-                } label: {
-                    HStack {
-                        Text("模式").foregroundStyle(themeColors.textPrimary)
-                        Spacer()
-                        Text(modeName(themeStore.mode)).foregroundStyle(themeColors.accent)
-                    }.contentShape(Rectangle())
-                }.accessibilityIdentifier("theme.mode")
+            Section {
+                NavigationLink("切换图标") { LauncherIconSettingsView(preferences: preferences) }
+                NavigationLink("启动界面样式") { WelcomeSettingsView(preferences: preferences) }
                 Menu {
                     Button("跟随系统") { preferences.set("fontScale", .int(0)) }
                     ForEach(8...16, id: \.self) { scale in
@@ -35,12 +23,13 @@ import UIKit
                     }
                 } label: {
                     HStack {
-                        Text("字体缩放").foregroundStyle(themeColors.textPrimary)
+                        Text("字体大小").foregroundStyle(themeColors.textPrimary)
                         Spacer()
                         Text(preferences.integer("fontScale") == 0 ? "跟随系统" : "\(preferences.integer("fontScale") * 10)%")
                             .foregroundStyle(themeColors.accent)
                     }.contentShape(Rectangle())
                 }
+                NavigationLink("封面设置") { CoverSettingsView(preferences: preferences) }
                 NavigationLink("主题列表") {
                     List(preferences.themes, id: \.themeName) { theme in
                         Button(theme.themeName) {
@@ -49,19 +38,39 @@ import UIKit
                         }
                     }.legadoNavigationTitle("主题列表")
                 }
-                controls.text("主题名称", "durThemeName")
+                Toggle("跟随壁纸配色", isOn: Binding(get: { preferences.defaults.bool(forKey: "Legado.followBackgroundColors") }, set: { enabled in
+                    preferences.defaults.set(enabled, forKey: "Legado.followBackgroundColors")
+                    if enabled { applyBackgroundColors() }
+                }))
+                Text("iOS 无法读取系统壁纸，此项使用下方导入的背景图片。图片更换时重新提取主色与强调色。").font(.footnote).foregroundStyle(.secondary)
                 TextField("保存名称", text: $themeName)
-                Button("保存日间主题") { saveTheme(night: false) }
-                Button("保存夜间主题") { saveTheme(night: true) }
                 if let message { Text(message) }
             }
             colors(night: false)
             colors(night: true)
-            Section {
-                NavigationLink("欢迎页") { WelcomeSettingsView(preferences: preferences) }
-                NavigationLink("封面设置") { CoverSettingsView(preferences: preferences) }
-            }
         }.legadoNavigationTitle("主题设置")
+            .onChange(of: preferences.string("backgroundImage")) { _, _ in applyBackgroundColors() }
+            .onChange(of: preferences.string("backgroundImageNight")) { _, _ in applyBackgroundColors() }
+    }
+
+    private func applyBackgroundColors() {
+        guard preferences.defaults.bool(forKey: "Legado.followBackgroundColors") else { return }
+        var applied = false
+        for suffix in ["", "Night"] {
+            let path = preferences.string("backgroundImage" + suffix)
+            guard !path.isEmpty else { continue }
+            let url = path.hasPrefix("file:") ? URL(string: path) : URL(fileURLWithPath: path)
+            guard let url, url.isFileURL, let image = CIImage(contentsOf: url),
+                  let filter = CIFilter(name: "CIAreaAverage", parameters: [kCIInputImageKey: image, kCIInputExtentKey: CIVector(cgRect: image.extent)]),
+                  let output = filter.outputImage else { message = "请导入有效的本地背景图片后提取配色"; continue }
+            var pixel = [UInt8](repeating: 0, count: 4)
+            CIContext().render(output, toBitmap: &pixel, rowBytes: 4, bounds: CGRect(x: 0, y: 0, width: 1, height: 1), format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB())
+            let value = Int32(bitPattern: 0xff000000 | UInt32(pixel[0]) << 16 | UInt32(pixel[1]) << 8 | UInt32(pixel[2]))
+            preferences.set("colorPrimary" + suffix, .int(value)); preferences.set("colorAccent" + suffix, .int(value))
+            applied = true
+        }
+        if applied { message = "已应用背景图片配色" }
+        else { message = "请先导入本地背景图片" }
     }
 
     private func modeName(_ mode: ThemeMode) -> String {
@@ -80,14 +89,15 @@ import UIKit
 
     private func colors(night: Bool) -> some View {
         let suffix = night ? "Night" : ""
-        return Section(night ? "夜间配色" : "日间配色") {
-            color("主色", "colorPrimary" + suffix)
+        return Section(night ? "夜间" : "白天") {
+            color("主色调", "colorPrimary" + suffix)
             color("强调色", "colorAccent" + suffix)
             color("背景色", "colorBackground" + suffix)
-            color("底栏背景", "colorBottomBackground" + suffix)
+            color("底部操作栏颜色", "colorBottomBackground" + suffix)
             controls.text("背景图片 URL 或本地路径", "backgroundImage" + suffix)
             CoverResourcePicker(title: "导入背景图片", key: "backgroundImage" + suffix, directory: "bg", preferences: preferences)
             controls.number("背景模糊", "backgroundImage" + suffix + "Blurring", range: 0...100)
+            Button("保存主题配置") { saveTheme(night: night) }
         }
     }
 

@@ -186,3 +186,13 @@ AppPreferences 是唯一可观察偏好实现；BackupPreferences 为兼容名�
 资源使用 Application Support/LegadoResources 下的 covers、readRecordCovers、bg 目录。Android 忽略 defaultCover/defaultCoverDark 的 XML 偏好，iOS 使用固定文件名保存这两张图片并在恢复后作为缺省路径；任意 Android 封面文件仍保留，但无法凭文件内容推断其日夜用途。文件型字体以 coverFont.ttf 打包，PostScript 字体名不产生字体资源。主题背景引用作为兼容扩展参加背景资源收集。
 
 未运行 xcodegen、xcodebuild，未修改工程文件，未提交。PreferenceControls 及部分新增 UI 已用 iOS SDK、保留 MainActor 隔离的依赖桩完成 Swift 5 类型检查；这不替代完整工程构建。
+
+## 轮次 5 U8
+
+我的页面按 `pref_main.xml` 重排为无标题入口、设置、其他三段，主题模式在列表直接四选一。主题页提供图标、启动样式、字体、封面、主题列表及日夜配色保存；跟随壁纸使用导入背景图片的平均色，因为 iOS 不开放系统壁纸读取。其它设置重排为语言、主界面、其它设置，保存位置可选 Documents 下的单个目录名，并拒绝越界路径，只影响后续本地导入。文件管理提供本地书列表、分享和导入；书签、阅读记录匹配书架书籍后可跳转阅读。
+
+WebDAV 账号与同步选项统一进入备份页，备份内容和恢复忽略项以折叠列表呈现。备份密码说明已纠正：敏感配置按现有 Android 兼容加密机制保护，并非整包 ZIP 加密。
+
+定时任务执行已接入五段 Cron、脚本宿主、notify/refreshToc 动作、运行日志与结果持久化；前台每分钟检查，后台复用系统刷新任务。iOS 后台时间不保证精确到点，列表明确提示。退出入口停止网络和音频服务，关闭应用使用系统应用切换器。MCP 按本轮范围保留禁用项。
+
+验证：AutoTaskTests 2/0（Cron 与执行/错误落库）；AppCore 322/0（包含保存路径边界）；generic iOS 构建通过；SettingsInterfaceUITests 1/0（任务编辑回填、执行结果、主题/其它/备份导航），截图 `assets/u8-*.png`。原始日志 `.build/round5/u8-{core,app,ios,ui}.log`。未做 iPhone 测试。

@@ -6,11 +6,12 @@ import LegadoCore
 final class BookshelfBackgroundRefresh {
     static let identifier = "io.legado.ios.refresh"
     private let database: AppDatabase
+    private let autoTasks: AutoTaskController
     private let client: any HttpClient
     private(set) var errorMessage: String?
 
-    init(database: AppDatabase, client: any HttpClient) {
-        self.database = database; self.client = client
+    init(database: AppDatabase, client: any HttpClient, autoTasks: AutoTaskController) {
+        self.database = database; self.client = client; self.autoTasks = autoTasks
     }
 
     func schedule() {
@@ -25,6 +26,7 @@ final class BookshelfBackgroundRefresh {
         let database = database, client = client
         let work = Task {
             do {
+                if UserDefaults.standard.bool(forKey: "autoTaskService") { await autoTasks.runDue() }
                 let report = try await BookshelfRefreshService.refresh(database: database, client: client,
                     onlyUpdateRead: UserDefaults.standard.bool(forKey: "onlyUpdateRead"))
                 task.setTaskCompleted(success: !report.cancelled && report.failures.isEmpty)

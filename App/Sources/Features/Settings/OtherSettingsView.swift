@@ -10,10 +10,15 @@ struct OtherSettingsView: View {
     private var controls: PreferenceControls { .init(preferences: preferences) }
     var body: some View {
         Form {
-            Section("首页") {
+            Section {
+                Picker("语言", selection: controls.string("language")) {
+                    Text("跟随系统").tag("auto"); Text("简体中文").tag("zh"); Text("繁体中文").tag("tw"); Text("英语").tag("en")
+                }
+            }
+            Section("主界面") {
                 controls.toggle("启动时刷新书架", "auto_refresh")
-                controls.toggle("只更新正在阅读的书", "onlyUpdateRead")
-                controls.toggle("启动时继续阅读", "defaultToRead")
+                controls.toggle("仅更新已读完", "onlyUpdateRead")
+                controls.toggle("自动跳转最近阅读", "defaultToRead")
                 controls.toggle("显示发现", "showDiscovery")
                 controls.toggle("发现页快速滚动", "showDiscoveryFastScroller")
                 controls.toggle("显示订阅", "showRss")
@@ -21,11 +26,19 @@ struct OtherSettingsView: View {
                     Text("书架").tag("bookshelf"); Text("发现").tag("explore")
                     Text("订阅").tag("rss"); Text("我的").tag("my")
                 }
-                Picker("语言", selection: controls.string("language")) {
-                    Text("跟随系统").tag("auto"); Text("简体中文").tag("zh"); Text("繁体中文").tag("tw"); Text("英语").tag("en")
-                }
+
             }
-            Section("网络与图片") {
+            Section("其它设置") {
+                TextField("书籍保存位置（应用内文件夹）", text: Binding(get: { preferences.defaults.string(forKey: "Legado.booksFolder") ?? "Books" }, set: { preferences.defaults.set($0, forKey: "Legado.booksFolder") }))
+                    .textInputAutocapitalization(.never).autocorrectionDisabled()
+                Text("输入应用 Documents 内的文件夹名；更改仅影响新导入书籍，既有书籍保留原位置。").font(.footnote).foregroundStyle(.secondary)
+                TextField("源编辑框最大行数", value: controls.integer("sourceEditMaxLine"), format: .number).keyboardType(.numberPad)
+                NavigationLink("校验设置") { CheckSourceView(sources: sources, checker: container.sourceChecker) }
+                NavigationLink("直链上传规则") { UploadRuleSettingsView(database: container.database) }
+                DisclosureGroup("导入文件名规则") {
+                    TextEditor(text: controls.string("bookImportFileName")).font(.system(.body, design: .monospaced)).frame(minHeight: 100)
+                }
+
                 controls.text("User-Agent", "userAgent")
                 controls.text("自定义 Hosts JSON", "customHosts")
                 controls.toggle("抗锯齿", "antiAlias")
@@ -33,8 +46,7 @@ struct OtherSettingsView: View {
                 controls.number("保留已读漫画章节（0 不清理）", "imageRetainNum", range: 0...10000)
                 controls.number("预下载章节", "preDownloadNum", range: 0...100)
                 controls.number("下载线程", "threadCount", range: 1...128)
-            }
-            Section("阅读与清理") {
+
                 Picker("简繁转换", selection: controls.integer("chineseConverterType")) {
                     Text("不转换").tag(0); Text("转为简体").tag(1); Text("转为繁体").tag(2)
                 }
@@ -60,11 +72,7 @@ struct OtherSettingsView: View {
                         catch { message = error.localizedDescription }
                     }
                 }
-            }
-            Section("书源与调试") {
-                TextField("编辑器最大行数", value: controls.integer("sourceEditMaxLine"), format: .number).keyboardType(.numberPad)
-                NavigationLink("书源校验") { CheckSourceView(sources: sources, checker: container.sourceChecker) }
-                NavigationLink("直链上传规则") { UploadRuleSettingsView(database: container.database) }
+
                 controls.toggle("JS API 需要令牌", "jsSourceApiTokenRequired")
                 SecureField("JS API 令牌", text: controls.string("jsSourceApiToken"))
                 controls.toggle("记录调试日志", "recordLog")
@@ -72,7 +80,7 @@ struct OtherSettingsView: View {
             }
             if let message { Section { Text(message) } }
         }
-        .legadoNavigationTitle("其他设置")
+        .legadoNavigationTitle("其它设置")
         .task {
             do { sources = try await container.bookSources.all().map { try DiscoveryStorage.source($0) } }
             catch { message = error.localizedDescription }

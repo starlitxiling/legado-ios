@@ -14,13 +14,26 @@ final class LocalImportViewModel {
     private(set) var rules: [TxtTocRule] = []
     private(set) var ruleError: String?
     private let database: AppDatabase
-    private let booksDirectory: URL
+    private let configuredBooksDirectory: URL?
+    private var booksDirectory: URL {
+        get throws {
+            if let configuredBooksDirectory { return configuredBooksDirectory }
+            return try Self.storageDirectory(folder: UserDefaults.standard.string(forKey: "Legado.booksFolder") ?? "Books")
+        }
+    }
+    nonisolated static func storageDirectory(folder: String, documents: URL = .documentsDirectory) throws -> URL {
+        let name = folder.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !name.isEmpty, name != ".", name != "..", !name.contains("/"), !name.contains("\\"), !name.contains("\0") else {
+            throw CocoaError(.fileWriteInvalidFileName, userInfo: [NSLocalizedDescriptionKey: "Invalid books folder; choose one folder name in Settings"])
+        }
+        return documents.appendingPathComponent(name, isDirectory: true)
+    }
     private let filenameScript: () -> String
 
-    init(database: AppDatabase, booksDirectory: URL = URL.documentsDirectory.appendingPathComponent("Books", isDirectory: true),
+    init(database: AppDatabase, booksDirectory: URL? = nil,
          filenameScript: @escaping () -> String = { UserDefaults.standard.string(forKey: "bookImportFileName") ?? "" }) {
         self.filenameScript = filenameScript
-        self.database = database; self.booksDirectory = booksDirectory
+        self.database = database; self.configuredBooksDirectory = booksDirectory
     }
 
     private var archiveConflicts: [URL: Set<String>] = [:]
@@ -65,6 +78,9 @@ final class LocalImportViewModel {
 
     private func importEntry(_ url: URL, scoped: Bool, archive: BookArchive? = nil,
                              entry: BookArchiveEntry? = nil, keepBoth: Bool) async {
+        let booksDirectory: URL
+        do { booksDirectory = try self.booksDirectory }
+        catch { errors.append(error.localizedDescription); return }
         let name = entry.map { ($0.name as NSString).lastPathComponent } ?? url.lastPathComponent
         let source = url.standardizedFileURL.absoluteString + (entry.map { "!" + $0.name } ?? "")
         let identity = SHA256.hash(data: Data(source.utf8)).map { String(format: "%02x", $0) }.joined()
@@ -162,7 +178,7 @@ final class LocalImportViewModel {
                   !name.contains("\\"), !name.contains("\0"),
                   LocalBook.fileExtensions.contains(ext) || BookArchive.formats.contains(ext) else { throw LocalBookError.unsupportedFile }
             let identity = SHA256.hash(data: Data(url.absoluteString.utf8)).map { String(format: "%02x", $0) }.joined()
-            let folder = booksDirectory.appendingPathComponent(".downloads", isDirectory: true).appendingPathComponent(identity)
+            let folder = try booksDirectory.appendingPathComponent(".downloads", isDirectory: true).appendingPathComponent(identity)
             try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
             let file = folder.appendingPathComponent(name)
             try response.body.write(to: file, options: .atomic)

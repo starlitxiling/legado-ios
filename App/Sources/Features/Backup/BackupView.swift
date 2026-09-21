@@ -5,7 +5,7 @@ import LegadoCore
 
 struct BackupView: View {
     let container: AppContainer
-    let settings: SettingsViewModel
+    @Bindable var settings: SettingsViewModel
     @Binding var model: BackupViewModel?
     @State private var setupError: String?
     @State private var selectingFile = false
@@ -13,8 +13,26 @@ struct BackupView: View {
 
     var body: some View {
         List {
+            Section("WebDAV 设置") {
+                TextField("服务器地址", text: $settings.address).textInputAutocapitalization(.never).autocorrectionDisabled().keyboardType(.URL)
+                TextField("账号", text: $settings.username).textInputAutocapitalization(.never).autocorrectionDisabled()
+                SecureField("密码", text: $settings.password)
+                let controls = PreferenceControls(preferences: model?.preferences ?? AppPreferences.shared)
+                controls.text("子文件夹", "webDavDir")
+                controls.text("设备名称", "webDavDeviceName")
+                controls.toggle("恢复缺失本地书", "webDavBookAutoRestore")
+                controls.toggle("同步阅读进度", "syncBookProgress")
+                controls.toggle("同步增强", "syncBookProgressPlus")
+                Button("保存账号") { settings.save() }
+                Button("测试连接") { Task { await settings.testConnection() } }.disabled(settings.isTesting)
+                Button("删除账号", role: .destructive) { settings.clearCredentials() }
+                if let message = settings.message { Text(message).foregroundStyle(.secondary) }
+                if let error = settings.errorMessage { Text(error).foregroundStyle(.red) }
+            }
+
             if let model {
-                Section {
+                Section("备份与恢复") {
+                    BackupConfigurationFields(preferences: model.preferences)
                     Button("备份到 WebDAV") {
                         Task {
                             do {
@@ -25,8 +43,6 @@ struct BackupView: View {
                     }
                     Button("生成本地备份") { Task { await model.createBackup(upload: false) } }
                     if let file = model.exportedFile { ShareLink("保存或分享 ZIP", item: file) }
-                    Toggle("自动备份", isOn: Binding(get: { model.preferences.boolean("autoBackup") }, set: { model.preferences.set("autoBackup", .boolean($0)) }))
-                    Toggle("进度同步", isOn: Binding(get: { model.preferences.boolean("syncBookProgress") }, set: { model.preferences.set("syncBookProgress", .boolean($0)) }))
                     Button("立即同步阅读进度") {
                         Task {
                             do {
@@ -51,7 +67,7 @@ struct BackupView: View {
                 .disabled(model.isBusy)
                 if model.isBusy { ProgressView("正在处理，请勿重复导入") }
                 if let error = model.errorMessage { Text(error).foregroundStyle(.red) }
-                Section("legado 目录备份") {
+                Section("远端备份") {
                     ForEach(model.files, id: \.url) { file in
                         Button(file.displayName) { selectedBackup = file }
                             .disabled(model.isBusy)

@@ -5,6 +5,7 @@ final class StartupUITests: XCTestCase {
     func testColdLaunchReachesInteractiveBookshelf() {
         continueAfterFailure = false
         let app = XCUIApplication()
+        app.launchArguments += ["-autoTaskService", "NO", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO"]
         app.launch()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20),
                       "App must leave the database loading screen and display the main tabs")
@@ -18,6 +19,7 @@ final class StartupUITests: XCTestCase {
     func testThemePresetsAndEInkRemainInteractive() {
         continueAfterFailure = false
         let app = XCUIApplication()
+        app.launchArguments += ["-autoTaskService", "NO", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO"]
         app.launch()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
         openSettings(app)
@@ -39,16 +41,12 @@ final class StartupUITests: XCTestCase {
         app.buttons["默认"].tap()
         app.navigationBars["主题列表"].buttons.element(boundBy: 0).tap()
         XCTAssertTrue(app.navigationBars["主题设置"].waitForExistence(timeout: 5))
-        app.buttons["theme.mode"].tap()
-        XCTAssertTrue(app.buttons["墨水屏"].waitForExistence(timeout: 5))
-        app.buttons["墨水屏"].tap()
-        XCTAssertTrue(app.navigationBars["主题设置"].exists)
+        app.navigationBars["主题设置"].buttons.element(boundBy: 0).tap()
+        for _ in 0..<4 where !app.segmentedControls["settings.themeMode"].isHittable { app.swipeDown() }
+        app.segmentedControls["settings.themeMode"].buttons["墨水屏"].tap()
         let attachment = XCTAttachment(screenshot: app.screenshot())
-        attachment.name = "theme-eink"
-        attachment.lifetime = .keepAlways
-        add(attachment)
-        app.buttons["theme.mode"].tap()
-        app.buttons["跟随系统"].tap()
+        attachment.name = "theme-eink"; attachment.lifetime = .keepAlways; add(attachment)
+        app.segmentedControls["settings.themeMode"].buttons["系统"].tap()
     }
 
     @MainActor
@@ -56,6 +54,7 @@ final class StartupUITests: XCTestCase {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments += ["-showDiscovery", "YES", "-showRss", "YES", "-defaultHomePage", "bookshelf", "-auto_refresh", "NO", "-defaultToRead", "NO"]
+        app.launchArguments += ["-autoTaskService", "NO", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO"]
         app.launch()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
         XCTAssertEqual(app.tabBars.buttons.count, 4)
@@ -78,10 +77,11 @@ final class StartupUITests: XCTestCase {
     func testHiddenTabsKeepMyPageAndBookshelfReachable() {
         continueAfterFailure = false
         let app = XCUIApplication()
+        app.launchArguments += ["-autoTaskService", "NO", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO"]
         app.launch()
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
         openSettings(app)
-        let settings = app.staticTexts["其他设置"]
+        let settings = app.staticTexts["其它设置"]
         for _ in 0..<4 where !settings.isHittable { app.swipeUp() }
         XCTAssertTrue(settings.isHittable)
         settings.tap()
@@ -95,7 +95,7 @@ final class StartupUITests: XCTestCase {
         app.tabBars.buttons["书架"].tap()
         XCTAssertTrue(app.navigationBars["书架"].waitForExistence(timeout: 5))
         openSettings(app)
-        XCTAssertTrue(app.navigationBars["其他设置"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.navigationBars["其它设置"].waitForExistence(timeout: 5))
         discovery.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
         rss.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
         XCTAssertEqual(app.tabBars.buttons.count, 4)
