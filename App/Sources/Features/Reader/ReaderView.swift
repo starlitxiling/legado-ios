@@ -138,7 +138,7 @@ struct ReaderView: View {
                     ReaderInfoView(settings: model.settings, header: true, values: infoValues)
                     ReaderPagePresentation(mode: animation,
                         page: model.chapterPosition * 1_000_000 + model.pageIndex,
-                        progress: autoRead.progress, turn: scrollTurnPage) {
+                        progress: autoRead.progress, pageHeight: spreadHeight(index: model.pageIndex, size: pageSize, count: count), turn: scrollTurnPage) {
                         pageSpread(index: model.pageIndex, size: pageSize, count: count)
                     } next: {
                         if let pagination = model.pagination, model.pageIndex + count < pagination.pages.count {
@@ -438,8 +438,14 @@ struct ReaderView: View {
             return chapter != model.chapterIndex || offset != model.characterOffset
         }
     }
+    private func spreadHeight(index: Int, size: CGSize, count: Int, preview: ReaderPagination? = nil) -> Double {
+        guard animation == 3, let pagination = preview ?? model.pagination else { return size.height }
+        return (index..<index + count).filter { pagination.pages.indices.contains($0) }.map {
+            max(size.height, pagination.pages[$0].height + model.settings.paddingTop + model.settings.paddingBottom)
+        }.max() ?? size.height
+    }
     private func pageSpread(index: Int, size: CGSize, count: Int, preview: ReaderPagination? = nil, currentChapter: Bool = true) -> some View {
-        HStack(spacing: 0) {
+        HStack(alignment: .top, spacing: 0) {
             ForEach(0..<count, id: \.self) { column in
                 pageContent(index: index + column, size: size, preview: preview, currentChapter: currentChapter)
             }
@@ -482,7 +488,7 @@ struct ReaderView: View {
                         .allowsHitTesting(false)
                 }
             }
-        }.frame(width: size.width, height: size.height, alignment: .topLeading)
+        }.frame(width: size.width, height: spreadHeight(index: index, size: size, count: 1, preview: preview), alignment: .topLeading)
     }
 
     @ViewBuilder private var selectionPanel: some View {

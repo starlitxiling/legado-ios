@@ -3,6 +3,23 @@ import LegadoCore
 @testable import ReaderCheck
 
 final class ReaderImageTests: XCTestCase {
+    func testFullWidthLongImageKeepsItsAspectRatioInScrollMode() throws {
+        let size = CGSize(width: 400, height: 700)
+        let body = ["<img src='https://image.test/long'>After"]
+        var settings = ReaderSettings(); settings.pageAnim = 3
+        let result = try Paginator().paginate(title: "", paragraphs: body, size: size, settings: settings,
+            imageStyle: "FULL", imageSizes: ["https://image.test/long": CGSize(width: 100, height: 800)])
+        let page = try XCTUnwrap(result.pages.first)
+        XCTAssertEqual(page.images.first?.rect.width, result.contentSize.width)
+        XCTAssertEqual(page.height, result.contentSize.width * 8)
+        XCTAssertEqual(result.pages.count, 2)
+        XCTAssertEqual(result.text.string, " After")
+        settings.pageAnim = 0
+        let paged = try Paginator().paginate(title: "", paragraphs: body, size: size, settings: settings,
+            imageStyle: "FULL", imageSizes: ["https://image.test/long": CGSize(width: 100, height: 800)])
+        XCTAssertLessThanOrEqual(paged.pages[0].height, paged.contentSize.height)
+    }
+
     func testImageClickModesRespectScriptsPreviewAndLegacyFallback() throws {
         let image = ReaderPlacedImage(offset: 1, url: #"https://image.test/a,{"js":"legacy()"}"#, click: "click()", rect: .zero)
         XCTAssertEqual(try ReaderImageAction.resolve(image, mode: "0", taps: 1, onlineText: true), .script("click()", image.url))

@@ -37,7 +37,7 @@ enum ReaderImageLayout {
         return delegate
     }
 
-    static func spec(offset: Int, url: String, style: String, natural: CGSize?, available: CGSize, textSize: Double) throws -> ReaderImageSpec {
+    static func spec(offset: Int, url: String, style: String, natural: CGSize?, available: CGSize, textSize: Double, scroll: Bool = false) throws -> ReaderImageSpec {
         let attributes = try CustomUrl(url).getAttr()
         let chosen = (attributes["style"] as? String ?? style).uppercased()
         var natural = natural ?? CGSize(width: 400, height: 300)
@@ -55,7 +55,7 @@ enum ReaderImageLayout {
             size = CGSize(width: min(available.width, height * natural.width / natural.height), height: height)
         } else {
             let scale = ["FULL", "SINGLE"].contains(chosen) ? available.width / natural.width : min(1, available.width / natural.width)
-            let fitted = min(scale, available.height / natural.height)
+            let fitted = scroll && chosen == "FULL" ? scale : min(scale, available.height / natural.height)
             size = CGSize(width: natural.width * fitted, height: natural.height * fitted)
         }
         return ReaderImageSpec(offset: offset, url: url, click: attributes["click"] as? String, style: chosen, size: size)

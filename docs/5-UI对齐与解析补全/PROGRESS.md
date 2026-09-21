@@ -48,7 +48,7 @@
 | P3f 缓存宿主 | 完成 | 主会话 | CacheMemoryValue / JavaHostCacheTests | Core 701/0、AppCore 284/0、iOS 构建通过 |
 | U4 发现页 | 完成 | 主会话 | ExploreView / ExploreKinds / explore-ui-compat.md | Core 703/0、AppCore 286/0、专项 16/0；模拟器交互与渲染 1/0；截图已复核 |
 | U5 书籍详情 | 完成 | 主会话 | book-detail-compat.md / assets/u5-* | Core 706/0、AppCore 289/0；模拟器 2/0；iOS 构建通过 |
-| U6 阅读器 | 在途 | 主会话 | reader-ui-compat.md / 样式、菜单、输入、设置与独立目录 | Core 720/0、AppCore 314/0；选择菜单/图片样式模拟器通过；自动换源/样式打包继续 |
+| U6 阅读器 | 在途 | 主会话 | reader-ui-compat.md / 样式、菜单、输入、设置与独立目录 | Core 723/0、AppCore 318/0；长图/自动换源/样式 ZIP 已实现，整组模拟器与 IPA 门禁在跑 |
 | 批次 3-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -59,4 +59,4 @@
 
 U6 配置层 614f74885、排版/界面 0e3d2dcbe、菜单/输入 0dc014290、独立目录 d84ccd1ea；反转/云进度/模拟追读/EPUB 清理/手动替换 f56320b6b 已验证，高亮规则 d04df1f2e 已提交，选择菜单/字典 1a5c88fe5 已提交，图片样式已验证；图片样式 275026c8a；样式 ZIP 核心 3/0、App 6/0 与 iOS 构建通过，样式 ZIP c93013a04；自动换源专项通过，App 317/0 与构建通过，当前阅读器最终检查；P4 真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md。全程不推送；WebDAV 凭据只用于读取。
 
-P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。
+P4-8 按可执行规格收口：Kotlin SearchBook.kt:65、BookChapter.kt:118 均按 URL 判断相等，沿用 URL 去重。计划的全字段描述与源码及章节主键冲突，此处以固定 Kotlin 基线为准。

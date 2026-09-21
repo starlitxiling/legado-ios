@@ -34,6 +34,8 @@ enum ReaderLayout {
             content: input.rawContent, includeTitle: false)
         let imageStyle = [input.book.readConfig?.imageStyle, input.sourceImageStyle].compactMap { $0 }.first { !$0.isEmpty }
             ?? (input.book.isImage || LocalBook.fileURL(input.book)?.pathExtension.lowercased() == "pdf" ? "FULL" : "DEFAULT")
+        var settings = settings
+        settings.pageAnim = input.book.readConfig?.pageAnim ?? settings.pageAnim
         let pagination = try Paginator().paginate(title: title, paragraphs: content.paragraphs,
             size: size, settings: settings, imageBaseURL: LocalBook.isLocal(input.book) ? "legado-local://book/" : URL(string: input.chapter.url ?? "",
                 relativeTo: URL(string: input.chapter.baseUrl ?? input.book.bookUrl ?? ""))?.absoluteURL.absoluteString, isVolume: input.chapter.isVolume, highlightRules: input.highlightRules, book: input.book, imageStyle: imageStyle, imageSize: { url in

@@ -4,6 +4,7 @@ struct ReaderPagePresentation<Content: View, Next: View>: View {
     let mode: Int
     let page: Int
     let progress: Double
+    var pageHeight: Double = 0
     let turn: (Bool) async -> Bool
     @ViewBuilder let content: () -> Content
     @ViewBuilder let next: () -> Next
@@ -37,7 +38,7 @@ struct ReaderPagePresentation<Content: View, Next: View>: View {
             if progress > 0 { content().modifier(NoAnimTransition()) }
             else { SimulationPageTransition(page: page, content: content) }
         case .scroll:
-            ScrollPageContainer(progress: progress, page: page, turn: turn) {
+            ScrollPageContainer(progress: progress, page: page, pageHeight: pageHeight, turn: turn) {
                 VStack(spacing: 0) { content(); next() }
             }
         case .none:

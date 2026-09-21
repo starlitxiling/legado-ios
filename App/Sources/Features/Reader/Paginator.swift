@@ -10,6 +10,7 @@ struct ReaderPage {
     let frame: CTFrame?
     var imageURL: String? = nil
     var images: [ReaderPlacedImage] = []
+    var height: CGFloat = 0
     var lines: [CTLine] = []
     var lineOrigins: [CGPoint] = []
 }
@@ -83,7 +84,8 @@ struct Paginator {
             }
             let natural = try imageSizes[url] ?? imageSize(url)
             images.append(try ReaderImageLayout.spec(offset: (string as NSString).length, url: url, style: imageStyle,
-                natural: natural, available: contentSize, textSize: settings.textSize))
+                natural: natural, available: contentSize, textSize: settings.textSize,
+                scroll: !settings.isEInk && (settings.pageAnim == 3 || settings.pageAnim == 4 && settings.noAnimScrollPage)))
             // Android 单图排版用一个空格占据章节字符坐标。
             string += " "
             start = NSMaxRange(match.range)
@@ -124,7 +126,7 @@ struct Paginator {
             let range = NSRange(location: pageStart, length: offset - pageStart)
             pages.append(ReaderPage(range: range, text: text.attributedSubstring(from: range), frame: pageFrame,
                 imageURL: pageImages.count == 1 && pageLines.isEmpty ? pageImages[0].url : nil,
-                images: pageImages, lines: pageLines, lineOrigins: pageOrigins))
+                images: pageImages, height: max(contentSize.height, usedHeight), lines: pageLines, lineOrigins: pageOrigins))
             pageStart = offset; pageFrame = nil; usedHeight = 0
             pageLines = []; pageOrigins = []; pageImages = []
         }
@@ -137,7 +139,7 @@ struct Paginator {
                 pageImages.append(ReaderPlacedImage(offset: offset, url: image.url, click: image.click,
                     rect: CGRect(origin: CGPoint(x: x, y: y), size: image.size)))
                 usedHeight += image.size.height; offset += 1
-                if image.style == "SINGLE" { finishPage() }
+                if image.style == "SINGLE" || usedHeight >= contentSize.height { finishPage() }
                 continue
             }
             let boundary = images.first(where: { $0.offset > offset && $0.style != "TEXT" })?.offset ?? text.length

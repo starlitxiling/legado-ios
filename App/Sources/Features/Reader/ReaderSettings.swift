@@ -16,6 +16,7 @@ struct ReaderSettings: Equatable {
     var textBottomJustify = true
     var useZhLayout = false
     var hangingPunctuation = false
+    var noAnimScrollPage = false
     var punctuationCompress = "none"
 
     init(configuration: ReadBookConfig = ReadBookConfig()) { self.configuration = configuration }
@@ -107,6 +108,7 @@ struct ReaderSettings: Equatable {
         settings.textFullJustify = defaults.object(forKey: "textFullJustify") == nil ? true : defaults.bool(forKey: "textFullJustify")
         settings.textBottomJustify = defaults.object(forKey: "textBottomJustify") == nil ? true : defaults.bool(forKey: "textBottomJustify")
         settings.useZhLayout = defaults.bool(forKey: "useZhLayout")
+        settings.noAnimScrollPage = defaults.bool(forKey: "noAnimScrollPage")
         settings.hangingPunctuation = defaults.bool(forKey: "hangingPunctuation")
         settings.punctuationCompress = defaults.string(forKey: "punctuationCompress") ?? "none"
         return settings.normalized
@@ -190,6 +192,7 @@ struct ReaderSettings: Equatable {
         defaults.set(value.textFullJustify, forKey: "textFullJustify")
         defaults.set(value.textBottomJustify, forKey: "textBottomJustify")
         defaults.set(value.useZhLayout, forKey: "useZhLayout")
+        defaults.set(value.noAnimScrollPage, forKey: "noAnimScrollPage")
         defaults.set(value.hangingPunctuation, forKey: "hangingPunctuation")
         defaults.set(value.punctuationCompress, forKey: "punctuationCompress")
         defaults.set(value.autoReadSpeed, forKey: "autoReadSpeed")

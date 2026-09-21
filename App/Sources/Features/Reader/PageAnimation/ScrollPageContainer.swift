@@ -4,11 +4,12 @@ import UIKit
 struct ScrollPageContainer<Content: View>: UIViewControllerRepresentable {
     let progress: Double
     let page: Int
+    let pageHeight: Double
     let content: Content
     let turn: (Bool) async -> Bool
 
-    init(progress: Double, page: Int, turn: @escaping (Bool) async -> Bool, @ViewBuilder content: () -> Content) {
-        self.progress = progress; self.page = page; self.turn = turn; self.content = content()
+    init(progress: Double, page: Int, pageHeight: Double = 0, turn: @escaping (Bool) async -> Bool, @ViewBuilder content: () -> Content) {
+        self.progress = progress; self.page = page; self.pageHeight = pageHeight; self.turn = turn; self.content = content()
     }
 
     func makeCoordinator() -> Coordinator { Coordinator(turn: turn) }
@@ -44,7 +45,7 @@ struct ScrollPageContainer<Content: View>: UIViewControllerRepresentable {
     func updateUIViewController(_ controller: UIViewController, context: Context) {
         context.coordinator.host?.rootView = content
         context.coordinator.turn = turn
-        context.coordinator.update(page: page, progress: progress)
+        context.coordinator.update(page: page, progress: progress, height: pageHeight)
     }
 
     final class Coordinator: NSObject, UIScrollViewDelegate {
@@ -53,23 +54,24 @@ struct ScrollPageContainer<Content: View>: UIViewControllerRepresentable {
         var turn: (Bool) async -> Bool
         private var page: Int?
         private var progress: Double = 0
+        private var pageHeight: Double = 0
         private var pendingTurn = false
         private var updating = false
         init(turn: @escaping (Bool) async -> Bool) { self.turn = turn }
 
-        func update(page: Int, progress: Double) {
+        func update(page: Int, progress: Double, height: Double) {
             guard let scroll else { return }
             updating = true
             var offset = scroll.contentOffset.y
             if let previous = self.page, previous != page {
                 if pendingTurn || self.progress > 0 {
-                    offset += page > previous ? -scroll.bounds.height : scroll.bounds.height
+                    offset += page > previous ? -max(scroll.bounds.height, pageHeight) : max(scroll.bounds.height, height)
                 } else { offset = 0 }
                 pendingTurn = false
             } else if progress > self.progress, !scroll.isDragging {
-                offset += (progress - self.progress) * scroll.bounds.height
+                offset += (progress - self.progress) * max(scroll.bounds.height, height)
             }
-            self.page = page; self.progress = progress
+            self.page = page; self.progress = progress; self.pageHeight = height
             if offset != scroll.contentOffset.y { scroll.setContentOffset(CGPoint(x: 0, y: max(0, offset)), animated: false) }
             updating = false
             checkBoundary(scroll)
@@ -79,7 +81,7 @@ struct ScrollPageContainer<Content: View>: UIViewControllerRepresentable {
 
         private func checkBoundary(_ scrollView: UIScrollView) {
             guard !updating, !pendingTurn, page != nil, progress == 0 else { return }
-            let step = ReaderScrollStep.resolve(offset: scrollView.contentOffset.y, height: scrollView.bounds.height)
+            let step = ReaderScrollStep.resolve(offset: scrollView.contentOffset.y, height: max(scrollView.bounds.height, pageHeight))
             if step.pages != 0 {
                 pendingTurn = true
                 Task { [weak self, weak scrollView] in
