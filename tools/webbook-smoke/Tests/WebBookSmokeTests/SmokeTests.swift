@@ -35,6 +35,19 @@ final class SmokeTests: XCTestCase {
         XCTAssertTrue(requests.allSatisfy { $0.timeout == 3 && $0.callTimeout == 3 })
     }
 
+    func testSearchOnlyStopsBeforeDetailsAndRejectsUnknownBoolean() async throws {
+        let client = ReplayHttpClient()
+        let url = URL(string: "https://example.invalid/search?key=demo&page=1")!
+        let body = try Data(contentsOf: root.appendingPathComponent("search.html"))
+        await client.enqueue(url: url, response: HttpResponse(status: 200, body: body, finalURL: url))
+        let arguments = ["--source", root.appendingPathComponent("source.json").path, "--keyword", "demo", "--search-only", "true"]
+        let report = try await runSmoke(options: SmokeOptions(arguments: arguments), client: client, emit: { _ in })
+        XCTAssertEqual(report.searchCount, 1); XCTAssertEqual(report.chapterCount, 0)
+        let requests = await client.requests
+        XCTAssertEqual(requests.count, 1)
+        XCTAssertThrowsError(try SmokeOptions(arguments: Array(arguments.dropLast()) + ["yes"]))
+    }
+
     func testInvalidArgumentsAndRedaction() throws {
         for extra in [["--pick", "-1"], ["--chapters", "0"], ["--timeout", "nan"], ["--unknown", "x"]] {
             XCTAssertThrowsError(try SmokeOptions(arguments: ["--source", "x", "--keyword", "x"] + extra))

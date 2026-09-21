@@ -30,6 +30,7 @@ final class ScriptContextTests: XCTestCase {
         let context = try WebBookContext(source: source(), client: ReplayHttpClient(), book: book)
         let parser = try context.parser("body", baseURL: base, chapter: chapter, nextChapterURL: "/next")
         XCTAssertEqual(try parser.getString("@js:book.author + '|' + chapter.index + '|' + source.bookSourceUrl"), "Author|7|" + base)
+        XCTAssertEqual(try parser.getString("@js:book.putVariable('custom','saved');book.getVariable('custom')+'|'+chapter.getVariable('shared')"), "saved|chapter")
         XCTAssertEqual(try parser.getString("@js:java.get('shared') + '|' + JSON.parse(chapter.variable).shared + '|' + nextChapterUrl"), "chapter|chapter|/next")
         XCTAssertEqual(try parser.getString("@js:book.author='changed'; chapter.index=99; source.bookSourceUrl='changed'; book.author+'|'+chapter.index+'|'+source.getKey()"), "Author|7|" + base)
     }

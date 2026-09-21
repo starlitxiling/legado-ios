@@ -158,6 +158,13 @@ public final class JsEngine: SelectorEngine {
     func freezeEntities(in context: JSContext) {
         context.evaluateScript("""
         (function() {
+            ['book','chapter'].forEach(function(name) {
+                const value=globalThis[name];
+                if(value && typeof value==='object' && !Object.isFrozen(value)) {
+                    value.getVariable=key=>__legadoEntityVariable(name,key,null,false);
+                    value.putVariable=(key,stored)=>__legadoEntityVariable(name,key,stored,true);
+                }
+            });
             function freeze(value) {
                 if (value == null || typeof value !== 'object' || Object.isFrozen(value)) return;
                 Object.keys(value).forEach(function(key) { freeze(value[key]); });

@@ -60,7 +60,7 @@ public struct SourceSessionHttpClient: HttpClient, SourceScriptClient, WebViewCo
         return result
     }
 
-    func checkResponse(_ response: StrResponse) async throws -> StrResponse {
-        try await SourceLogin(database: database, client: client, secrets: secrets).check(source: source, response: response)
+    func checkResponse(_ response: StrResponse, bindings: [String: Any]) async throws -> StrResponse {
+        try await SourceLogin(database: database, client: client, secrets: secrets).check(source: source, response: response, bindings: bindings)
     }
 }

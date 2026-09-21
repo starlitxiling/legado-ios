@@ -59,6 +59,31 @@ final class WebBookFlowTests: XCTestCase {
         }
     }
 
+    func testLenientHeaderKeysAndInvalidHeaderFallback() async throws {
+        XCTAssertEqual(try SourceHeaders.parse("{User-Agent:'agent', 'X-Count':42, Flag:true}"), ["User-Agent":"agent", "X-Count":"42", "Flag":"true"])
+        for header in ["{User-Agent:'agent'}", "invalid header"] {
+            var source = source(); source.header = header
+            let client = ReplayHttpClient()
+            await enqueue(client, path: "/search", body: "<a href='/book'>Book</a>")
+            let results = try await WebBook(source: source, client: client).search(key: "query")
+            XCTAssertEqual(results.first?.name, "Book")
+            let requests = await client.requests
+            XCTAssertEqual(requests.first?.headers["User-Agent"], header.hasPrefix("{") ? "agent" : UrlRequestBuilder.defaultUserAgent)
+        }
+    }
+
+    func testLoginCheckReceivesSearchContextWithAndWithoutPersistentSession() async throws {
+        for persistent in [false, true] {
+            var source = source()
+            source.loginCheckJs = "if(key !== 'query' || page !== 3) throw 'missing search context'; result"
+            let client = ReplayHttpClient()
+            await enqueue(client, path: "/search", body: "<a href='/book'>Book</a>")
+            let session: any HttpClient = persistent ? SourceSessionHttpClient(source: source, database: try AppDatabase.inMemory(), client: client) : client
+            let results = try await WebBook(source: source, client: session).search(key: "query", page: 3)
+            XCTAssertEqual(results.first?.name, "Book")
+        }
+    }
+
     func testLoginCheckTransformsEveryWebBookFlowWithoutSessionWrapper() async throws {
         var source = source()
         source.loginUrl = "function checked(body){return body.replace(/OLD/g,'NEW')}"

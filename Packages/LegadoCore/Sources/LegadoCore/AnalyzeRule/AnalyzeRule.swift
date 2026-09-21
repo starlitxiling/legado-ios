@@ -14,7 +14,7 @@ public final class AnalyzeRule {
     /// 规格 §2.2：setContent 时根据文本首尾判断的 JSON 特征。
     public private(set) var isJSON = false
     private let engines: [RuleMode: any SelectorEngine]
-    private let chapter: (any RuleVariableStorage)?
+    let chapter: (any RuleVariableStorage)?
     var book: (any RuleVariableStorage)?
     private let ruleData: (any RuleVariableStorage)?
     private let source: (any RuleVariableStorage)?

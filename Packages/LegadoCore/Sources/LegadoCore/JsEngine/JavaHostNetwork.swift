@@ -186,7 +186,7 @@ final class JavaHostNetwork {
     private static func bridge(_ response: AnalyzeUrlExecutor.Response) -> [String: Any] {
         ["__strResponse": true, "body": response.body, "url": response.url, "code": response.code, "headers": response.headers,
          "callTime": response.callTime, "isSuccessful": response.isSuccessful,
-         "raw": ["url": response.url, "code": response.code, "headers": response.headers, "body": Array(response.raw.body)]]
+         "raw": ["url": response.url, "code": response.code, "headers": response.headers, "body": Array(response.raw.body), "text": (try? ResponseDecoder.decode(response.raw.body, headers: response.raw.headers)) ?? response.body]]
     }
 
     private static func errorText(_ error: Error) -> String {

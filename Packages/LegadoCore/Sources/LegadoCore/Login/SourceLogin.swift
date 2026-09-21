@@ -102,9 +102,11 @@ public actor SourceLogin {
         try await check(source: source, response: StrResponse(raw: response)).raw
     }
 
-    public func check(source: BookSource, response: StrResponse) async throws -> StrResponse {
-        try await SourceResponseCheck.check(source: source, response: response) { script, bindings in
-            try await self.evaluate(source: source, script: script, bindings: bindings)
+    public func check(source: BookSource, response: StrResponse, bindings: [String: Any] = [:]) async throws -> StrResponse {
+        try await SourceResponseCheck.check(source: source, response: response) { script, checkBindings in
+            var context = bindings
+            context.merge(checkBindings) { _, value in value }
+            return try await self.evaluate(source: source, script: script, bindings: context)
         }
     }
 

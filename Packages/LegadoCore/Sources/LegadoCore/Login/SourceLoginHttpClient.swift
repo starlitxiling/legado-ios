@@ -3,7 +3,7 @@ import Foundation
 protocol SourceScriptClient: HttpClient {
     func configureSourceVariables(_ binding: JsSourceBinding)
     func configureSourceBindings(_ engine: JsEngine)
-    func checkResponse(_ response: StrResponse) async throws -> StrResponse
+    func checkResponse(_ response: StrResponse, bindings: [String: Any]) async throws -> StrResponse
     func loginHeaders(url: String, headers: [String: String]) throws -> [String: String]
 }
 

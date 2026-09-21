@@ -6,6 +6,7 @@ final class JavaHostTimeTests: XCTestCase {
         let engine = JsEngine(timeZone: TimeZone(secondsFromGMT: 8 * 3600)!)
         XCTAssertEqual(try engine.evaluateScript("java.timeFormat(0)") as? String, "1970/01/01 08:00")
         XCTAssertEqual(try engine.evaluateScript("java.timeFormat(123,'yyyy-MM-dd HH:mm:ss.SSS')") as? String, "1970-01-01 08:00:00.123")
+        XCTAssertEqual(try engine.evaluateScript("java.timeFormatUTC(new Date(0),'yyyyMMdd',0)") as? String, "19700101")
         XCTAssertEqual(try engine.evaluateScript("java.timeFormat(0,'')") as? String, "")
     }
 

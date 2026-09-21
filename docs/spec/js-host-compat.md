@@ -157,3 +157,14 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 `openUrl` 限制长度、校验来源并交给 App 确认打开；尊重 blockSourceNavigation。HTTP(S)/应用 scheme 使用 iOS 的 URL 分发，legado/yuedu 导入链接进入书源预览。iOS 不能用 Android MIME 类型强制选择目标应用。未安装 UI 宿主时明确报错。
 
 验证：Core 739/0、AppCore 318/0、阅读目录刷新专项 1/0、generic iOS 构建通过；另有导出 API 枚举测试，确保入口不会落入未实现方法分支。日志为 `.build/round5/p3gh-*` 与 `p3h-*`。
+
+## 真实回归回流（2026-09-22）
+
+- `java.connect().raw().request().url().toString()` 返回最终重定向地址；raw 的 code/header/body 同时保留方法调用与已有属性用法，二进制 TTS 替换仍保留原字节。
+- `org.jsoup.Jsoup.parse` 与 `Packages.org.jsoup` 映射到现有 SwiftSoup DOM；支持 select、text/html/outerHtml、attr/absUrl、parent/parents/children、remove、集合索引/size/get/first/last/eq/eachText/eachAttr/toArray。节点离开 JS 上下文后仍保留所属文档。此为常用 API 子集，不是完整 Java 类加载器。
+- JavaImporter 覆盖已遇到的 java.lang.String、java.net URL 编解码、HashMap、Cipher/SecretKeySpec/IvParameterSpec、android.util.Base64；加解密复用已测试的宿主实现。java.io 与 java.security 原生类未模拟，3 个重测样本仍需这些 JVM 类；对应 java.* 替代 API 已可用，但不能声称原脚本兼容。
+- Date 参数转换为毫秒后传给宿主。book/chapter 的 getVariable/putVariable 接入实体存储，保留只读字段限制。
+- loginCheckJs 接收当前搜索 key/page/baseUrl；使用持久化会话时仍通过该会话读取服务器刚写入的 Cookie。
+- SourceHeaders 接受 Android Gson 常见宽松格式（单引号、裸键、数值/布尔值），无效配置与 Kotlin BaseSource.kt:196 一样记录错误后使用默认头；header 脚本可调用 jsLib。
+
+验证：Core 747/0，真实四流程模拟器门禁 7/8，CLI 精选门禁与全量归因见轮次 5 报告。新增网络桥、Java 包、实体变量、登录上下文与宽松请求头测试使用合成输入和 ReplayHttpClient，不把私有书源代码提交到仓库。

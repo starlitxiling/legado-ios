@@ -52,7 +52,8 @@
 | 批次 3 门禁 | 完成 | 主会话 | dist/Legado-1.0-eeb012746.ipa | 全量单测、模拟器、Release archive 通过；真机暂缓 |
 | P9 JSONPath / XPath | 完成 | 主会话 | jsonpath-completion.md / xpath-compat.md | Core 732/0、App 318/0、iOS 构建通过；Java 原依赖对拍通过 |
 | P3g/h 字体、书籍及并发 | 完成 | 主会话 | QueryTTF / SourceLock / js-host-compat.md | Core 739/0、App 318/0、iOS 构建通过；Java 字体对拍通过 |
-| U7/U8、批次 5 | 在途 | 主会话 | 按 PLAN.md | 全量 4198 源搜索冒烟运行中 |
+| U7/U8 | 完成 | 主会话 | d3ed56eb4 / 709874808 / assets/u7-*、u8-* | App 322/0、模拟器各 1/0、iOS 构建通过 |
+| 批次 5 真实回归 | 在途 | 主会话 | 全量 4198 源、精选 20 源、模拟器 8 源 | 全量归因中；精选 16/20、模拟器 7/8；宿主缺口已回流测试 |
 
 ## 执行方式
 
@@ -60,7 +61,7 @@
 
 ## 下一步
 
-U6 最后提交 eeb012746，自动化门禁通过；P9、P3g/h 完成，继续 U7/U8 与 §5 真实回归。P4 真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md。全程不推送；WebDAV 凭据只用于读取。
+完成真实回归报告与最终 UI / Release IPA 门禁。P0–P9、U0–U9 实现完成；回归发现的宿主修复 Core 747/0。全程不推送；WebDAV 凭据只用于读取。Android 设备/模拟器不可用，互导与同屏验收尚未执行。
 
 P4-8 按可执行规格收口：Kotlin SearchBook.kt:65、BookChapter.kt:118 均按 URL 判断相等，沿用 URL 去重。计划的全字段描述与源码及章节主键冲突，此处以固定 Kotlin 基线为准。
 

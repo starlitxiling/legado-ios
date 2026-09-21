@@ -1,5 +1,5 @@
 {
-  "originHash" : "fc0fb4239e953e7e6e07bb7eaf9a7490848bfe291b67eb57348a7f1cbd34d222",
+  "originHash" : "06a4c91ef7562d778fea67b6a7c684cdb9c78d4c489256966aeb75ad92055ddd",
   "pins" : [
     {
       "identity" : "grdb.swift",
@@ -20,12 +20,29 @@
       }
     },
     {
+      "identity" : "plzmasdk",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/OlehKulykov/PLzmaSDK.git",
+      "state" : {
+        "revision" : "1b27a1c9df85805342d1b049427d6d1dc7ce713d"
+      }
+    },
+    {
       "identity" : "swiftsoup",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/scinfu/SwiftSoup.git",
       "state" : {
         "revision" : "18b80329749eca5ea29fc50211dca5c7eff5bfec",
         "version" : "2.13.9"
+      }
+    },
+    {
+      "identity" : "unrar.swift",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/mtgto/Unrar.swift",
+      "state" : {
+        "revision" : "7216007a38ac122dbdeae26cfdaf7f10775c868f",
+        "version" : "0.5.4"
       }
     }
   ],

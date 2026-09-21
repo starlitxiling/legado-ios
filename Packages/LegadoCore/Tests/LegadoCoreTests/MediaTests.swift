@@ -264,7 +264,7 @@ final class MediaTests: XCTestCase {
 
 private struct MediaFixtureClient: SourceScriptClient {
     func configureSourceBindings(_ engine: JsEngine) { engine.headlessWebView = MediaWebView() }
-    func checkResponse(_ response: StrResponse) async throws -> StrResponse { response }
+    func checkResponse(_ response: StrResponse, bindings: [String: Any]) async throws -> StrResponse { response }
     func loginHeaders(url: String, headers: [String: String]) throws -> [String: String] { headers }
     func send(_ request: HttpRequest) async throws -> HttpResponse {
         HttpResponse(status: 200, body: Data("https://site.test/sound.mp3".utf8), finalURL: request.url)

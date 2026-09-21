@@ -8,12 +8,44 @@ import CoreFoundation
     func html() -> String
     func outerHtml() -> String
     func attr(_ name: String) -> String
+    func absUrl(_ name: String) -> String
+    func ownText() -> String
+    func tagName() -> String
+    func hasClass(_ name: String) -> Bool
+    func select(_ query: String) -> JSValue?
+    func children() -> JSValue?
+    func parents() -> JSValue?
+    func parent() -> JavaElement?
+    func remove() -> JavaElement
+    func toString() -> String
 }
 
-/// 只桥接离线读取；列表保持原生 JS 数组，不模拟 java.util.List。
 private final class JavaElement: NSObject, JavaElementExport {
     let element: Element
-    init(_ element: Element) { self.element = element }
+    let owner: Node
+    init(_ element: Element, owner: Node? = nil) {
+        self.element = element
+        var root: Node = element
+        while let parent = root.parent() { root = parent }
+        self.owner = owner ?? root
+    }
+    private func list(_ operation: () throws -> [Element]) -> JSValue? {
+        guard let context = JSContext.current() else { return nil }
+        do {
+            let values = try operation().map { JavaElement($0, owner: owner) }
+            return context.objectForKeyedSubscript("__legadoElements").call(withArguments: [values])
+        } catch { context.exception = JSValue(newErrorFromMessage: String(describing: error), in: context); return nil }
+    }
+    func select(_ query: String) -> JSValue? { list { try element.select(query).array() } }
+    func children() -> JSValue? { list { element.children().array() } }
+    func parents() -> JSValue? { list { element.parents().array() } }
+    func parent() -> JavaElement? { element.parent().map { JavaElement($0, owner: owner) } }
+    func absUrl(_ name: String) -> String { read { try element.absUrl(name) } }
+    func ownText() -> String { element.ownText() }
+    func tagName() -> String { element.tagName() }
+    func hasClass(_ name: String) -> Bool { element.hasClass(name) }
+    func toString() -> String { outerHtml() }
+    func remove() -> JavaElement { _ = read { try element.remove(); return "" }; return self }
     private func read(_ operation: () throws -> String) -> String {
         do { return try operation() }
         catch {
@@ -83,6 +115,7 @@ public final class JavaHost {
         context.evaluateScript("""
         (function(invoke, concurrent) {
             globalThis.java = {};
+            globalThis.__legadoEntityVariable = (name,key,value,writing) => invoke('entityVariable',[name,String(key),value,writing]);
             ['lock','singleFlight'].forEach(name => {
                 java[name] = function(key, action, timeout) {
                     if (typeof action !== 'function') throw new Error('action must be a function');
@@ -94,6 +127,30 @@ public final class JavaHost {
                 const value = java.getSource();
                 return value == null ? null : value.bookSourceName ?? value.sourceName ?? value.name ?? null;
             };
+            Object.defineProperty(Array.prototype,'toArray',{value:function(){return this.slice();}, configurable:true});
+            globalThis.__legadoElements = function(values) {
+                const methods = {
+                    size: () => values.length, isEmpty: () => values.length === 0,
+                    get: index => { if (index < 0 || index >= values.length) throw new Error('Element index out of bounds'); return values[index]; },
+                    first: () => values[0] || null, last: () => values[values.length-1] || null,
+                    text: () => values.map(e => e.text()).join(' '),
+                    html: () => values.map(e => e.html()).join('\\n'),
+                    outerHtml: () => values.map(e => e.outerHtml()).join('\\n'),
+                    toString: () => values.map(e => e.outerHtml()).join('\\n'),
+                    attr: name => { const found = values.find(e => e.attr(name) !== ''); return found ? found.attr(name) : ''; },
+                    eachAttr: name => values.map(e => e.attr(name)).filter(s => s !== ''),
+                    eachText: () => values.map(e => e.text()).filter(s => s !== ''),
+                    select: query => __legadoElements(values.flatMap(e => Array.from(e.select(query)))),
+                    parents: () => __legadoElements(values.flatMap(e => Array.from(e.parents()))),
+                    eq: index => __legadoElements(index >= 0 && index < values.length ? [values[index]] : []),
+                    remove: function(index) { if (arguments.length) return values.splice(index,1)[0]; values.forEach(e => e.remove()); return values; },
+                    clear: () => { values.length = 0; }
+                };
+                Object.keys(methods).forEach(name => Object.defineProperty(values,name,{value:methods[name], configurable:true}));
+                return values;
+            };
+            globalThis.org = {jsoup: {Jsoup: {parse: (html, base) => invoke('jsoupParse',[String(html),base === undefined ? '' : String(base)])}, nodes: {}}};
+            globalThis.Packages = {org: globalThis.org};
             globalThis.com = {jayway: {jsonpath: {JsonPath: {
                 read: function(content, path) { return invoke('jsonPathRead', [content, path]); }
             }}}};
@@ -126,6 +183,7 @@ public final class JavaHost {
             }
             function nativeArguments(args) {
                 return Array.prototype.map.call(args, function(value) {
+                    if (value instanceof Date) return value.getTime();
                     if (ArrayBuffer.isView(value)) return Array.from(new Uint8Array(value.buffer,value.byteOffset,value.byteLength));
                     if (value instanceof ArrayBuffer) return Array.from(new Uint8Array(value));
                     return value;
@@ -167,9 +225,19 @@ public final class JavaHost {
                 if (Array.isArray(value)) return value.map(response);
                 if (!value || !value.__strResponse) return value;
                 const headers = javaMap(value.headers, true);
+                const raw = Object.assign({}, value.raw);
+                raw.request = () => ({url: () => ({toString: () => value.url})});
+                raw.code = callable(value.code); raw.headers = callable(headers);
+                raw.header = name => headers.get(name);
+                raw.isSuccessful = callable(value.isSuccessful);
+                const bytes = Array.from(value.raw.body);
+                Object.defineProperty(bytes,'bytes',{value: () => bytes.slice()});
+                Object.defineProperty(bytes,'string',{value: () => value.raw.text});
+                raw.body = callable(bytes);
+                raw.__legadoRawResponse = value.raw;
                 const result = {
                     body: callable(value.body), url: callable(value.url), code: callable(value.code),
-                    headers: callable(headers), header: name => headers.get(name), raw: callable(value.raw),
+                    headers: callable(headers), header: name => headers.get(name), raw: callable(raw),
                     callTime: value.callTime, isSuccessful: callable(value.isSuccessful)
                 };
                 if (value.__connectionResponse) {
@@ -235,10 +303,12 @@ public final class JavaHost {
         delete globalThis.__legadoConcurrent;
         delete globalThis.__legadoHost;
         """)
+        context.evaluateScript(JavaPackageCompatibility.script)
     }
 
     func bridge(_ value: Any?) -> Any {
         if let data = value as? Data { return ["__legadoBytes": Array(data).map(Int.init)] }
+        if let node = value as? XPathDOMNode, let element = node.node as? Element { return JavaElement(element, owner: node.owner) }
         if let element = value as? Element { return JavaElement(element) }
         if let list = value as? [Any] { return list.map { bridge($0) } }
         if let object = value as? [String: Any] { return object.mapValues { bridge($0) } }
@@ -246,9 +316,12 @@ public final class JavaHost {
     }
 
     static func nativeValue(_ value: Any?) -> Any? {
-        if let element = value as? JavaElement { return element.element }
+        if let element = value as? JavaElement { return XPathDOMNode(node: element.element, owner: element.owner) }
         if let list = value as? [Any] { return list.map { nativeValue($0) ?? NSNull() } }
-        if let object = value as? [String: Any] { return object.mapValues { nativeValue($0) ?? NSNull() } }
+        if let object = value as? [String: Any] {
+            if let raw = object["__legadoRawResponse"] as? [String: Any] { return raw }
+            return object.mapValues { nativeValue($0) ?? NSNull() }
+        }
         return value
     }
 
@@ -265,6 +338,19 @@ public final class JavaHost {
     }
 
     private func call(_ method: String, _ arguments: [Any]) throws -> Any? {
+        if method == "entityVariable" {
+            let storage = arguments.first as? String == "chapter" ? parser?.chapter : parser?.book
+            guard let storage else { throw JsEngineError.exception("Entity variable storage is unavailable") }
+            let key = arguments[1] as? String ?? ""
+            if arguments[3] as? Bool == true {
+                let value = arguments[2] is NSNull ? nil : ruleText(arguments[2])
+                try storage.setValue(value, for: key); return value
+            }
+            return try storage.value(for: key)
+        }
+        if method == "jsoupParse" {
+            return try SwiftSoup.parse(arguments.first as? String ?? "", arguments.count > 1 ? arguments[1] as? String ?? "" : "")
+        }
         if JavaHostFont.methods.contains(method) || method.hasPrefix("font.") {
             return try fonts.call(method, arguments: arguments, network: network, bindings: try parser?.scriptBindings ?? [:])
         }

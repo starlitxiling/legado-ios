@@ -251,15 +251,24 @@ final class WebBookContext {
             let api = sourceStore.api
             engine.sourceBindingInstaller = { [weak engine] context in api.install(in: context, engine: engine) }
         }
-        if let header = source.header, !header.isEmpty {
-            let text = header.hasPrefix("@js:") ? ruleText(try engine.evaluateScript(String(header.dropFirst(4)))) : header
-            engine.networkSource.headers = try JSONDecoder().decode([String: String].self, from: Data(text.utf8))
-        }
         if let library = source.jsLib, !library.isEmpty {
             engine.libraryInitializer = { context in
                 context.evaluateScript(library)
                 if let exception = context.exception { throw JsEngineError.exception(exception.toString()) }
             }
+        }
+        if let header = source.header, !header.isEmpty {
+            do {
+                let script = header.trimmingCharacters(in: .whitespacesAndNewlines)
+                let text: String
+                if script.hasPrefix("@js:") { text = ruleText(try engine.evaluateScript(String(script.dropFirst(4)))) }
+                else if script.hasPrefix("<js>"), script.hasSuffix("</js>") { text = ruleText(try engine.evaluateScript(String(script.dropFirst(4).dropLast(5)))) }
+                else { text = header }
+                engine.networkSource.headers = try SourceHeaders.parse(text)
+            } catch { engine.logger("Source header rule failed; using default headers: " + String(describing: error)) }
+        }
+        if engine.networkSource.headers.httpHeader("User-Agent") == nil {
+            engine.networkSource.headers["User-Agent"] = UrlRequestBuilder.defaultUserAgent
         }
         return engine
     }
@@ -289,11 +298,16 @@ final class WebBookContext {
         let executor = try AnalyzeUrlExecutor(url, engine: js, bindings: bindings, context: parser)
         func check(_ response: AnalyzeUrlExecutor.Response) async throws -> AnalyzeUrlExecutor.Response {
             let text = StrResponse(raw: response.raw, body: response.body)
+            var requestBindings: [String: Any] = ["key": NSNull(), "page": 1, "baseUrl": baseURL]
+            requestBindings.merge(bindings) { _, value in value }
             let checked: StrResponse
-            if let session = client as? any SourceScriptClient { checked = try await session.checkResponse(text) }
-            else {
-                checked = try await SourceResponseCheck.check(source: source, response: text) { script, bindings in
-                    try js.evaluateScript(script, bindings: bindings, context: parser)
+            if let session = client as? any SourceScriptClient {
+                checked = try await session.checkResponse(text, bindings: requestBindings)
+            } else {
+                checked = try await SourceResponseCheck.check(source: source, response: text) { script, checkBindings in
+                    var contextBindings = requestBindings
+                    contextBindings.merge(checkBindings) { _, current in current }
+                    return try js.evaluateScript(script, bindings: contextBindings, context: parser)
                 }
             }
             return .init(raw: checked.raw, body: checked.body, callTime: response.callTime,

@@ -8,6 +8,47 @@ final class JavaHostNetworkTests: XCTestCase {
         JsEngine(httpClient: client, cookieStore: CookieStore(), cacheManager: CacheManager(directory: nil))
     }
 
+    func testRawResponseRequestUsesRedirectDestination() async throws {
+        let client = ReplayHttpClient(), engine = engine(client)
+        let final = URL(string: "https://redirect.test/books?q=one")!
+        await client.enqueue(url: url, response: HttpResponse(status: 200, body: Data("hello".utf8), finalURL: final, headers: ["X-Test": "yes"]))
+        XCTAssertEqual(try engine.evaluateScript("var r=java.connect('https://example.test/a').raw();[r.request().url().toString(),r.code(),r.header('X-Test'),r.body().string()].join('|')") as? String,
+            "https://redirect.test/books?q=one|200|yes|hello")
+    }
+
+    func testJsoupDocumentListsRemainUsableAsRuleNodes() throws {
+        let engine = engine(ReplayHttpClient())
+        XCTAssertEqual(try engine.evaluateScript("var d=org.jsoup.Jsoup.parse('<div><a href=next>A</a><a>B</a><i>X</i></div>','https://example.test/');d.select('i').remove();[d.select('a').size(),d.select('a')[0].absUrl('href'),d.select('a').text(),d.select('i').size()].join('|')") as? String,
+                       "2|https://example.test/next|A B|0")
+        let nodes = try engine.evaluateScript("Packages.org.jsoup.Jsoup.parse('<div><b>A</b><b>B</b></div>').select('b')")
+        let values = try XCTUnwrap(nodes as? [Any])
+        let texts = try values.map { value in
+            let parser = AnalyzeRule(engines: [.default: AnalyzeByJSoup()]); try parser.setContent(value)
+            return try parser.getString("text")
+        }
+        XCTAssertEqual(texts, ["A", "B"])
+        XCTAssertThrowsError(try engine.evaluateScript("org.jsoup.Jsoup.parse('x').select('[')"))
+    }
+
+    func testImportedJavaCryptoAndEncodedRequestsUseExistingHosts() async throws {
+        let engine = engine(ReplayHttpClient())
+        let script = #"""
+        var imported=new JavaImporter(Packages.java.lang,Packages.javax.crypto,Packages.javax.crypto.spec,Packages.android.util);
+        with(imported) {
+            var key=SecretKeySpec(String('0123456789abcdef').getBytes(),'AES');
+            var iv=IvParameterSpec(String('0123456789abcdef').getBytes());
+            var cipher=Cipher.getInstance('AES/CBC/PKCS5Padding');
+            cipher.init(1,key,iv);
+            var encoded=Base64.encodeToString(cipher.doFinal(String('hello').getBytes()),Base64.NO_WRAP);
+            cipher.init(2,key,iv);
+            String(cipher.doFinal(Base64.decode(encoded,Base64.NO_WRAP))).toString();
+        }
+        """#
+        XCTAssertEqual(try engine.evaluateScript(script) as? String, "hello")
+        XCTAssertEqual(try engine.evaluateScript("new JavaImporter(Packages.java.net).URLEncoder.encode('a b','GBK')") as? String, "a+b")
+        XCTAssertEqual(try engine.evaluateScript("Packages.android.util.Base64.encodeToString([0,255],2)") as? String, "AP8=")
+    }
+
     func testAjaxArrayArgumentAndHTTPErrorBody() async throws {
         let client = ReplayHttpClient(), engine = engine(client)
         await client.enqueue(url: url, response: HttpResponse(status: 503, body: Data("unavailable".utf8), finalURL: url))

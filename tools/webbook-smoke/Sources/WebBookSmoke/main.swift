@@ -4,6 +4,7 @@ import LegadoCore
 struct SmokeOptions {
     let sourcePath: String
     let keyword: String
+    var searchOnly = false
     var pick = 0
     var chapters = 2
     var sourceIndex = 0
@@ -12,7 +13,7 @@ struct SmokeOptions {
 
     init(arguments: [String]) throws {
         var values: [String: String] = [:]
-        let allowed = ["--source", "--keyword", "--pick", "--chapters", "--source-index", "--timeout", "--error-log"]
+        let allowed = ["--source", "--keyword", "--pick", "--chapters", "--source-index", "--timeout", "--error-log", "--search-only"]
         guard arguments.count.isMultiple(of: 2) else { throw SmokeError.invalidArguments }
         for index in stride(from: 0, to: arguments.count, by: 2) {
             let flag = arguments[index]
@@ -27,6 +28,8 @@ struct SmokeOptions {
               let timeout = Double(values["--timeout"] ?? "60"), timeout.isFinite, timeout > 0 else {
             throw SmokeError.invalidArguments
         }
+        guard values["--search-only"] == nil || ["true", "false"].contains(values["--search-only"]!) else { throw SmokeError.invalidArguments }
+        searchOnly = values["--search-only"] == "true"
         errorLogPath = values["--error-log"]
         sourcePath = path; keyword = key
         self.pick = pick; self.chapters = chapters; self.sourceIndex = sourceIndex; self.timeout = timeout
@@ -34,7 +37,7 @@ struct SmokeOptions {
 }
 
 enum SmokeError: Error {
-    case invalidArguments, invalidSource, unsupportedSource, sourceIndexOutOfBounds, pickOutOfBounds, noReadableChapters
+    case invalidArguments, invalidSource, unsupportedSource, sourceIndexOutOfBounds, pickOutOfBounds, noReadableChapters, emptyContent
 }
 
 struct SmokeFailure: Error {
@@ -124,6 +127,7 @@ func runSmoke(options: SmokeOptions, client: any HttpClient,
         context = "pick=\(options.pick)，结果数=\(results.count)"
         guard results.indices.contains(options.pick) else { throw SmokeError.pickOutOfBounds }
         complete()
+        if options.searchOnly { return SmokeReport(searchCount: results.count, chapterCount: 0, contentCount: 0) }
         stage = "详情"; context = "pick=\(options.pick)，\(addressSummary(results[options.pick].bookUrl))"; start = .now
         var book = try await web.bookInfo(results[options.pick])
         emit("详情：\(safeText(book.name ?? "")) / \(safeText(book.author ?? ""))")
@@ -140,6 +144,7 @@ func runSmoke(options: SmokeOptions, client: any HttpClient,
             stage = "正文"; context = "章节索引=\(index)，\(addressSummary(chapters[index].url))"; start = .now
             let next = chapters.indices.contains(index + 1) ? chapters[index + 1].url : nil
             let content = try await web.content(book: book, chapter: chapters[index], nextChapterUrl: next, includeTitle: false)
+            guard !content.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw SmokeError.emptyContent }
             emit("正文[\(index)] 字数=\(content.text.filter { !$0.isWhitespace }.count)，前 60 字：\(safeText(content.text).prefix(60))")
             complete()
         }
