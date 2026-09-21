@@ -10,7 +10,8 @@ public final class AnalyzeByXPath: SelectorEngine {
         case unsupportedExtension(String)
     }
 
-    public init() {}
+    private let useLegacyBridge: Bool
+    public init(useLegacyBridge: Bool = false) { self.useLegacyBridge = useLegacyBridge }
 
     /// AnalyzeByXPath.kt:52-103、133-141：保留节点列表，字符串结果逐项换行连接。
     public func evaluate(_ rule: String, content: Any, operation: RuleOperation, context: AnalyzeRule) throws -> Any? {
@@ -29,6 +30,20 @@ public final class AnalyzeByXPath: SelectorEngine {
                     return first.indices.flatMap { index in lists.compactMap { index < $0.count ? $0[index] : nil } }
                 }
                 return lists.flatMap { $0 }
+            }
+        }
+        if !useLegacyBridge {
+            var parser = try XPathDOMParser(rule)
+            let expression = try parser.parse()
+            let inputs: [Any]
+            if let elements = content as? SwiftSoup.Elements { inputs = elements.array() }
+            else if let elements = content as? [Any] { inputs = elements }
+            else { inputs = [content] }
+            let results = try inputs.flatMap { try XPathDOMEvaluator($0).evaluate(expression) }
+            switch operation {
+            case .element, .elements: return results
+            case .stringList: return results.map { ruleText($0) }
+            case .string: return results.isEmpty ? nil : results.map { ruleText($0) }.joined(separator: "\n")
             }
         }
         let projection = try XPathProjection(rule)

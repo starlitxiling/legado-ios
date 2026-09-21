@@ -17,7 +17,7 @@ final class AnalyzeByXPathTests: XCTestCase {
             ("/html/body/ul/li/a/@href", ["one", "two"]),
             ("@XPath:html/body/ul/li/a/@href", ["one", "two"]),
             ("//li[@id='b']/a/@href", ["two"]),
-            ("//a/text()", ["AC", "D"]),
+            ("//a/text()", ["A", "C", "D"]),
             ("//a[contains(@href,'on')]/@href", ["one"]),
             ("//a[starts-with(@href,'tw')]/@href", ["two"]),
             ("//li[last()]/@id", ["b"]),
@@ -73,31 +73,31 @@ final class AnalyzeByXPathTests: XCTestCase {
         XCTAssertEqual(try parser("<a href='html()'>A</a>").getStringList("//a[@href='html()']/text()"), ["A"])
     }
 
-    // 规格 §11 U7；JsoupXpath README 的 NodeTest：text 为自有文本，allText 包含子孙。
+    // JsoupXpath 2.5.3 Text.java returns individual direct text nodes.
     func testTextAndExtensionProjections() throws {
         let parser = parser("<a>A<b>B</b>C</a><a>  D \n E </a>")
-        XCTAssertEqual(try parser.getStringList("//a/text()"), ["AC", "D E"])
+        XCTAssertEqual(try parser.getStringList("//a/text()"), ["A", "C", "D E"])
         XCTAssertEqual(try parser.getStringList("//a/allText()"), ["ABC", "D E"])
         XCTAssertEqual(try self.parser("<a>A<b>B</b>C</a>").getStringList("//a/html()"), ["A<b>B</b>C"])
         XCTAssertEqual(try self.parser("<a>A<b>B</b>C</a>").getStringList("//a/outerHtml()"), ["<a>A<b>B</b>C</a>"])
-        XCTAssertEqual(try self.parser("<a>价格 -12.5，另有 20</a>").getStringList("//a/num()"), ["-12.5"])
+        XCTAssertEqual(try self.parser("<a>价格 -12.5，另有 20</a>").getStringList("//a/num()"), ["12.5"])
     }
 
-    // docs/spec/xpath-compat.md：以下断言记录库差异，不表示 Kotlin 一致性通过。
-    func testKnownBridgeDifferences() throws {
+    // JsoupXpath 2.5.3 uses the original HTML5 DOM.
+    func testHTML5DOMParity() throws {
         let document = try SwiftSoup.parse("<div id='p'><a>A</a></div>")
         try withExtendedLifetime(document) {
             let original = try document.select("a").first()!
             XCTAssertEqual(try original.parent()?.attr("id"), "p")
-            XCTAssertEqual(try parser(original).getStringList("@XPath:../@id"), [])
+            XCTAssertEqual(try parser(original).getStringList("@XPath:../@id"), ["p"])
         }
         let table = "<table><tr><td>X</td></tr></table>"
         XCTAssertEqual(try SwiftSoup.parse(table).select("table > tbody > tr > td").text(), "X")
-        XCTAssertEqual(try parser(table).getStringList("//table/tbody/tr/td/text()"), [])
-        XCTAssertEqual(try parser(table).getStringList("//table/tr/td/text()"), ["X"])
-        XCTAssertEqual(try parser("<td>X</td>").getStringList("//table/tr/td/text()"), ["X"])
+        XCTAssertEqual(try parser(table).getStringList("//table/tbody/tr/td/text()"), ["X"])
+        XCTAssertEqual(try parser(table).getStringList("//table/tr/td/text()"), [])
+        XCTAssertEqual(try parser("<td>X</td>").getStringList("//table/tr/td/text()"), [])
         XCTAssertEqual(try SwiftSoup.parse("<a>&hopf;</a>").select("a").text(), "𝕙")
-        XCTAssertEqual(try parser("<a>&hopf;</a>").getStringList("//a/text()"), ["&hopf;"])
+        XCTAssertEqual(try parser("<a>&hopf;</a>").getStringList("//a/text()"), ["𝕙"])
         let markup = "<div><p>X</p></div>"
         print("xpath-known-serialization libxml2: \(String(reflecting: try parser(markup).getStringList("//div")))")
         print("xpath-known-serialization SwiftSoup: \(String(reflecting: try SwiftSoup.parse(markup).select("div").outerHtml()))")

@@ -1,41 +1,36 @@
-# XPath 兼容性与已知差异
+# XPath DOM 求值与兼容性
 
-当前 XPath 在 libxml2 树上执行。字符串直接解析；SwiftSoup Element 的 `outerHtml()` 重新交给 libxml2 解析，XPathNode 则保留所属 libxml2 文档。JSoup 字符串缓存中的删除不传入 XPath。
-以下 Swift 结果由 `AnalyzeByXPathTests.testKnownBridgeDifferences` 实测；Kotlin 结果依据任务书、`AnalyzeByXPath.kt:17-40` 与 jsoup 语义推导，未运行 Android，不能标记为两端一致性通过。SwiftSoup 对照仅是本机辅助证据。
+P9 默认直接在 SwiftSoup 的 HTML5/XML DOM 上求值。选出的节点保留原文档引用，后续 XPath 与 CSS 继续使用同一个节点；不会再把节点序列化后交给另一套 HTML 解析器。
 
-## 祖先关系丢失
+基线为 Kotlin `2bdd3c58b`，使用 JsoupXpath `2.5.3` 与 jsoup `1.23.2`。已取得上游 tag `v2.5.3`（`ec9f18f0731fdae7d72a9c0b800a77b7968ed74b`）并实际运行 Java 对拍，原始输出 .build/round5/xpath-probe/result.txt。
 
-最小输入为 `<div id="p"><a>A</a></div>`，保持原文档存活，以其中的 a 元素为输入执行 `@XPath:../@id`。
-Swift 返回 `[]`；原 SwiftSoup 节点的父元素 id 为 `p`；Kotlin 原 Element 路径预期返回 `["p"]`。
-影响是父轴、祖先轴以及依赖原树的兄弟关系无法恢复。仅序列化 a 无法保留 div。
-后续方案是在 SwiftSoup DOM 上自实现 XPath 求值器，直接保留原节点上下文；本轮不修改桥接结构。
+## 已解决的三项差异
 
-## 表格补全差异
+| 输入 / 规则 | 当前输出 | 验证 |
+| --- | --- | --- |
+| 原文档中 a 的 `../@id` | 原 div 的 id | Swift 单测及 Java 对拍 |
+| table 省略 tbody，`//table/tbody/tr/td/text()` | `X` | Swift 单测及 Java 对拍 |
+| `<a>&hopf;</a>`，`//a/text()` | `𝕙` | Swift HTML5 DOM 单测 |
 
-最小输入为 `<table><tr><td>X</td></tr></table>`，规则为 `//table/tbody/tr/td/text()`。
-Swift 返回 `[]`，Kotlin/jsoup 预期返回 `["X"]`；本机 SwiftSoup 的 `table > tbody > tr > td` 确实得到 X。
-反向规则 `//table/tr/td/text()` 在 Swift 返回 `["X"]`，Kotlin/jsoup 预期为空，因为 jsoup 插入 tbody。
-`<td>X</td>` 由 Kotlin 入口及 Swift 桥接补 tr/table 后仍有同类差异，现有测试只记录已知差异，不表示认可一致性。
-影响是浏览器或 jsoup 树导出的直接子路径失配；不得通过更改一致性 fixture 期望值消除失败。
-后续方案是在 SwiftSoup DOM 上求值，统一采用其 HTML5 树；本轮不添加补标签修补器。
+序列化由 SwiftSoup 完成，与选择时使用相同的树；XML 保留大小写，HTML 自动补全 tbody，HTML5 实体只解码一次。
 
-## HTML5 实体
+## 支持范围
 
-最小输入为 `<a>&hopf;</a>`，规则为 `//a/text()`。
-Swift 返回 `["&hopf;"]`；Kotlin/jsoup 预期为 `["𝕙"]`，本机 SwiftSoup 对照确实为该字符。
-影响是文本匹配与输出发生差异；后续文本投影的规范空白无法修复此前保留成字面值的实体。
-后续方案是在 SwiftSoup 树上求值，避免重复使用不同实体表解析同一份 HTML。
+- 绝对/相对路径、属性、通配符、父轴、祖先轴、后代轴、前后兄弟轴、preceding/following；并集去重并恢复文档顺序。
+- 数值/位置谓词、分组后过滤、布尔与比较、算术、字符串函数、聚合、id/lang/name/local-name/namespace-uri；反向轴先按轴顺序应用谓词。
+- text/allText/html/outerHtml/num 可出现在路径或谓词/函数参数内。保留 JsoupXpath 的包含/前后缀/正则运算符与 sibling/-one 轴。
+- 不支持的函数/轴显式报错。需要比较旧结果时可构造 AnalyzeByXPath(useLegacyBridge: true)，默认不会静默转回 libxml2。
 
-## 元素序列化
+## 旧预期纠正与扩展
 
-最小输入为 `<div><p>X</p></div>`，规则为 `//div`。
-Swift 返回 `["<div><p>X</p></div>"]`；SwiftSoup 默认格式为 `"<div>\n <p>X</p>\n</div>"`。
-Kotlin/jsoup 默认格式预计接近 SwiftSoup，但 JsoupXpath 2.5.3 的 `asString()` 与 JXNode `toString()` 输出尚未逐字验证，不能把该预计当实测结果。
-影响包括换行、缩进、实体转义与空标签格式；html()/outerHtml() 目前也使用 libxml2 序列化。
-后续方案是在 SwiftSoup DOM 上求值并使用同一序列化器，再对照 Android 的完整字符串验证。
+Java 实测 `<a>A<b>B</b>C</a>` 的 text() 返回 `A, C` 两个文本块，allText() 返回 `ABC`；旧单测把 text() 合并成 AC，现按固定版本的 [Text.java](https://github.com/zhegexiaohuozi/JsoupXpath/blob/v2.5.3/src/main/java/org/seimicrawler/xpath/core/node/Text.java) 修正。
 
-## 扩展函数核验范围
+`Price -12.5` 的 num() 实测为 `12.5`，其正则不包含符号，并取全部文本中的第一段数字；旧版 Swift 的负号行为不符合 [Num.java](https://github.com/zhegexiaohuozi/JsoupXpath/blob/v2.5.3/src/main/java/org/seimicrawler/xpath/core/node/Num.java)。
 
-[JsoupXpath 官方 README 的 NodeTest](https://github.com/zhegexiaohuozi/JsoupXpath#nodetest)区分 text() 自有文本与 allText() 全部文本；num() 从自有文本提取首个连续数字。因此 `<a>A<b>B</b>C</a>` 的 text() 为 `["AC"]`，allText() 为 `["ABC"]`。
-实现支持路径末尾的无参 text()/allText()/html()/outerHtml()/num()；扩展嵌套在谓词或函数参数中的语义未完成。num() 的正负号、小数及无数字边界尚未与 2.5.3 对照。
-版本核验限制：尝试获取 v2.5.3 的 Text/AllText/Num 源码均返回 Cache miss；本机缓存检索未找到源码，curl 返回无法解析 raw.githubusercontent.com。README 为当前分支，不等同于 2.5.3 源码核验。
+计划所列 tidyText() 并不存在于该上游 tag，Java 实测返回空列表。iOS 按计划增加该名称，定义为 allText() 的规范空白别名；这是明确的兼容扩展，不声称与 Android 此版本一致。
+
+## 验证
+
+Core 全量 732/0；XPath 专项覆盖原树生命周期、三个硬差异、扩展嵌谓词、反向轴、分组、XML、显式旧实现及错误参数。既有合成语料不回退。复审由主会话执行，遵守用户不启用子代理的要求。
+
+应用层回归 318 项通过，generic iOS 构建通过（`p9-xpath-app.log`、`p9-xpath-ios.log`）。

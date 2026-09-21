@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 2026-09-21：P0、批次 1、P5/P6/U1/U2/U3 已完成；P7/P8 已完成，U6 已完成，当前批次 4 P9，P4 真实门禁待收口。
+- 2026-09-21：P0、批次 1、P5/P6/U1/U2/U3 已完成；P7/P8 已完成，U6 已完成，当前批次 4 P3g，P4 真实门禁待收口。
 - 起始提交：`30d180ecf`；P0 已拆为 ff6f50452、f82ddf72c、284834405 三笔本地提交。
 - 用户 2026-09-21 最新要求：持续完成全部计划，暂不进行 iPhone 真机测试；两次真机验收均暂缓，其余回归继续。
 - 用户最新指示：全部由主会话亲自执行，不再启动子代理。已停止全部在途子代理，保留已完成产出。
@@ -50,7 +50,7 @@
 | U5 书籍详情 | 完成 | 主会话 | book-detail-compat.md / assets/u5-* | Core 706/0、AppCore 289/0；模拟器 2/0；iOS 构建通过 |
 | U6 阅读器 | 完成 | 主会话 | reader-ui-compat.md / 样式、菜单、输入、设置与独立目录 | Core 723/0、AppCore 318/0；模拟器 8/0；Release IPA 通过 |
 | 批次 3 门禁 | 完成 | 主会话 | dist/Legado-1.0-eeb012746.ipa | 全量单测、模拟器、Release archive 通过；真机暂缓 |
-| P9 JSONPath / XPath | 在途 | 主会话 | JsonPathCompletionTests | JSONPath Core 727/0、App 318/0 与构建通过；当前 XPath DOM |
+| P9 JSONPath / XPath | 完成 | 主会话 | jsonpath-completion.md / xpath-compat.md | Core 732/0、App 318/0、iOS 构建通过；Java 原依赖对拍通过 |
 | P3g/h、U7/U8、批次 5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -59,6 +59,6 @@
 
 ## 下一步
 
-U6 最后提交 eeb012746，自动化门禁通过；当前 P9 JSONPath 后进入 XPath，再 P3g/h、U7/U8 与 §5 真实回归。P4 真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md。全程不推送；WebDAV 凭据只用于读取。
+U6 最后提交 eeb012746，自动化门禁通过；P9 完成，继续 P3g/h、U7/U8 与 §5 真实回归。P4 真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md。全程不推送；WebDAV 凭据只用于读取。
 
 P4-8 按可执行规格收口：Kotlin SearchBook.kt:65、BookChapter.kt:118 均按 URL 判断相等，沿用 URL 去重。计划的全字段描述与源码及章节主键冲突，此处以固定 Kotlin 基线为准。

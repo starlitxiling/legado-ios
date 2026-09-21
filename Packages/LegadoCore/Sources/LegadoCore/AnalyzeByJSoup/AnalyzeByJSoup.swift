@@ -15,6 +15,7 @@ public final class AnalyzeByJSoup: SelectorEngine {
 
     static func parse(_ content: Any) throws -> Element {
         if let element = content as? Element { return element }
+        if let value = content as? XPathDOMNode, let element = value.node as? Element { return element }
         let text = ruleText(content)
         let isXML = text.lowercased().hasPrefix("<?xml")
         let parser = isXML ? Parser.xmlParser() : Parser.htmlParser()
