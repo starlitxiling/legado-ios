@@ -105,6 +105,7 @@
 		712B3AE4134A4EB1A7476526 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 1A057E76B5AEF421EC25EAF6 /* GRDB */; };
 		72252A112542FF79436723E4 /* ImageRepositoryLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC055C977B07CF7E57AA5955 /* ImageRepositoryLoader.swift */; };
 		72D1288CE6EC72160B4F8417 /* ReaderPresentationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6167DB41924D8CD9E8C531D /* ReaderPresentationState.swift */; };
+		73A1B3CBAE0CA94C84C2D54B /* ReaderDictionaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4E3A31BED37225366B9A167 /* ReaderDictionaryView.swift */; };
 		74C7A6802872243F648E979C /* ReaderMemoView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C7A65C989B01DD9F14885C94 /* ReaderMemoView.swift */; };
 		76966EE63E3A6AC9F718ABAD /* WebServiceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85D2103B9B750C8E334C6B38 /* WebServiceView.swift */; };
 		76D5B83DA76E99A8B32BB692 /* Paginator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 05708E47DF0F0D8F7E94FDF3 /* Paginator.swift */; };
@@ -382,6 +383,7 @@
 		A42A13C6E24513AB68622FD2 /* RemoteImage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteImage.swift; sourceTree = "<group>"; };
 		A43BCC679B9D6EECDA5FDB28 /* CoverResourcePicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverResourcePicker.swift; sourceTree = "<group>"; };
 		A47652D0C4F57BE82DC98A57 /* EmptyStateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmptyStateView.swift; sourceTree = "<group>"; };
+		A4E3A31BED37225366B9A167 /* ReaderDictionaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderDictionaryView.swift; sourceTree = "<group>"; };
 		A53458DD44D59B741AC92A0A /* TocViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TocViewModel.swift; sourceTree = "<group>"; };
 		A76BE95616E9D9E82B7904DA /* BookDetailGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookDetailGalleryView.swift; sourceTree = "<group>"; };
 		A8CFD3D93680387A7A9D22D6 /* ReaderInterfaceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderInterfaceUITests.swift; sourceTree = "<group>"; };
@@ -1038,6 +1040,7 @@
 			isa = PBXGroup;
 			children = (
 				3AC10BC5C44F34CAE8D9F355 /* HighlightSelectionView.swift */,
+				A4E3A31BED37225366B9A167 /* ReaderDictionaryView.swift */,
 				D171472BA4EA993F45987A31 /* ReaderHighlightRulesView.swift */,
 				6A57118375B4306C5BA5723C /* ReaderRuleHighlight.swift */,
 			);
@@ -1312,6 +1315,7 @@
 				789C4342822F0E784262F3CD /* ReaderBehaviorPanel.swift in Sources */,
 				4A5CDBDE1960912049ECAC27 /* ReaderChapterCache.swift in Sources */,
 				7789A7ADF6AD2D01D0CD1203 /* ReaderDeviceController.swift in Sources */,
+				73A1B3CBAE0CA94C84C2D54B /* ReaderDictionaryView.swift in Sources */,
 				F1AFA1AE4505CF691C7C4E0E /* ReaderHighlightRulesView.swift in Sources */,
 				0277E8F90E9E3A3F5C4388DE /* ReaderInfo.swift in Sources */,
 				646C0BC8F180F980B3EDE0E1 /* ReaderInfoView.swift in Sources */,

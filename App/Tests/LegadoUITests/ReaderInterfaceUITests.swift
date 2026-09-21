@@ -105,7 +105,10 @@ final class ReaderInterfaceUITests: XCTestCase {
         let app = XCUIApplication()
         app.launchArguments = ["-detail-gallery", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO", "-doubleHorizontalPage", "0", "-manualReplaceRule", "NO", "-readerMenuConfig", #"{"primary":["highlightRule"],"more":["effectiveReplaces","simulatedReading","bookmark","editContent","pageAnim","getProgress","coverProgress","reverseContent","replace","sameTitleRemoved","reSegment","delRubyTag","delHTag","imageStyle","reimportSource","updateToc","log","help"]}"#]
         app.launch()
-        XCTAssertTrue(app.buttons["detail.read"].waitForExistence(timeout: 15)); app.buttons["detail.read"].tap()
+        let read = app.buttons["detail.read"]
+        XCTAssertTrue(read.waitForExistence(timeout: 15))
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true AND hittable == true"), object: read)], timeout: 15), .completed)
+        read.tap()
         XCTAssertTrue(app.otherElements["reader.body"].waitForExistence(timeout: 15))
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         app.buttons["更多"].tap(); app.buttons["高亮规则"].tap()
@@ -113,7 +116,11 @@ final class ReaderInterfaceUITests: XCTestCase {
         let name = app.textFields["名称"]
         XCTAssertTrue(name.waitForExistence(timeout: 5)); name.tap(); name.typeText("Reader Highlight")
         let pattern = app.textViews["匹配文本"]; pattern.tap(); pattern.typeText("启航")
-        app.switches["应用于标题"].tap()
+        let titleSwitch = app.switches["应用于标题"]
+        for _ in 0..<2 where titleSwitch.value as? String != "1" {
+            titleSwitch.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        }
+        XCTAssertEqual(titleSwitch.value as? String, "1")
         let bold = app.switches["粗体"]
         for _ in 0..<6 where !bold.isHittable { app.swipeUp() }
         XCTAssertTrue(bold.isHittable); bold.tap()
@@ -134,6 +141,32 @@ final class ReaderInterfaceUITests: XCTestCase {
         XCTAssertTrue(app.buttons["收起"].waitForExistence(timeout: 5)); app.buttons["收起"].tap()
         XCTAssertTrue(app.otherElements["reader.body"].exists)
         snapshot(app, "u6-reader-highlight-rendered")
+    }
+
+    @MainActor
+    func testSelectionBookmarkStoresSelectedText() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-detail-gallery", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO", "-doubleHorizontalPage", "0", "-selectText", "YES", "-longPressSelectParagraph", "YES", "-textSelectMenuConfig", #"{"bar":["bookmark","copy","highlight","replace","aloud"],"more":["dict","search","browser","share","processText"]}"#]
+        app.launch()
+        let read = app.buttons["detail.read"]
+        XCTAssertTrue(read.waitForExistence(timeout: 15))
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "enabled == true AND hittable == true"), object: read)], timeout: 15), .completed)
+        read.tap()
+        XCTAssertTrue(app.otherElements["reader.body"].waitForExistence(timeout: 15))
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.3)).press(forDuration: 1)
+        XCTAssertTrue(app.textViews["reader.selectableText"].waitForExistence(timeout: 5))
+        let bookmark = app.buttons["reader.selection.bookmark"]
+        XCTAssertTrue(bookmark.waitForExistence(timeout: 5)); XCTAssertTrue(bookmark.isEnabled)
+        snapshot(app, "u6-reader-selection")
+        bookmark.tap()
+        XCTAssertTrue(app.alerts["添加书签"].waitForExistence(timeout: 5))
+        app.alerts.textFields.firstMatch.tap(); app.alerts.textFields.firstMatch.typeText("Selected note")
+        app.alerts.buttons["保存"].tap()
+        XCTAssertTrue(app.otherElements["reader.body"].waitForExistence(timeout: 5))
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        app.buttons["目录"].tap(); app.buttons["书签"].tap()
+        XCTAssertTrue(app.staticTexts["Selected note"].waitForExistence(timeout: 5))
     }
 
     @MainActor private func snapshot(_ app: XCUIApplication, _ name: String) {

@@ -474,7 +474,7 @@ struct ReaderView: View {
             let page = pagination.pages[model.pageIndex]
             let range = selectedParagraph.map { NSIntersectionRange($0, NSRange(location: 0, length: pagination.text.length)) } ?? page.range
             HighlightSelectionView(text: pagination.text.attributedSubstring(from: range), pageOffset: range.location,
-                initialSelection: selectedParagraph == nil ? nil : NSRange(location: 0, length: range.length), save: { range, note in
+                initialSelection: selectedParagraph == nil ? nil : NSRange(location: 0, length: range.length), model: model, container: container, save: { range, note in
                 Task { await model.addHighlight(range: range, note: note) }
             }, readAloud: { range in
                 model.followReadAloud(chapter: model.chapterIndex, range: range)

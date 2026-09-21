@@ -2,6 +2,8 @@ import SwiftUI
 
 struct ReaderSearchView: View {
     let model: ReaderViewModel
+    var initialQuery = ""
+    var opened: () -> Void = {}
     @State private var query = ""
     @State private var matches: [ReaderSearchMatch] = []
     @State private var task: Task<Void, Never>?
@@ -21,7 +23,7 @@ struct ReaderSearchView: View {
                 if let error { Text(error).foregroundStyle(.red) }
                 ForEach(matches) { match in
                     Button {
-                        task?.cancel(); dismiss(); Task { await model.openSearchResult(match) }
+                        task?.cancel(); dismiss(); Task { await model.openSearchResult(match); opened() }
                     } label: {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(match.title).font(.headline)
@@ -32,7 +34,8 @@ struct ReaderSearchView: View {
                 if matches.count >= 1000 { Text("已显示前 1000 个结果，请缩小搜索范围。") }
             }.legadoNavigationTitle("全文搜索")
                 .toolbar { Button("关闭") { dismiss() } }
-        }.onDisappear { task?.cancel() }
+        }.task { if !initialQuery.isEmpty { query = initialQuery; search() } }
+            .onDisappear { task?.cancel() }
     }
     private func search() {
         guard !query.isEmpty else { return }

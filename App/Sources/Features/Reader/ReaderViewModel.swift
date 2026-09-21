@@ -502,13 +502,17 @@ final class ReaderViewModel {
         catch { errorMessage = error.localizedDescription }
     }
 
-    func addBookmark() async {
+    func addBookmark(selection: NSRange? = nil, note: String = "") async {
         guard let book, let pagination else { return }
         var value = BookmarkRow()
         value.time = max(now(), (bookmarks.map(\.time).max() ?? 0) + 1)
         value.bookName = book.name; value.bookAuthor = book.author
         value.chapterIndex = chapterIndex; value.chapterPos = characterOffset; value.chapterName = chapterTitle
-        if pagination.pages.indices.contains(pageIndex) { value.bookText = pagination.pages[pageIndex].text.string }
+        value.content = note
+        if let selection {
+            guard selection.location >= 0, selection.length > 0, NSMaxRange(selection) <= pagination.text.length else { return }
+            value.chapterPos = selection.location; value.bookText = pagination.text.attributedSubstring(from: selection).string
+        } else if pagination.pages.indices.contains(pageIndex) { value.bookText = pagination.pages[pageIndex].text.string }
         do {
             try await BookmarkRepository(database: database).upsert(value)
             bookmarks = try await BookmarkRepository(database: database).list(bookName: book.name, bookAuthor: book.author)

@@ -57,6 +57,6 @@
 
 ## 下一步
 
-U6 配置层 614f74885、排版/界面 0e3d2dcbe、菜单/输入 0dc014290、独立目录 d84ccd1ea；反转/云进度/模拟追读/EPUB 清理/手动替换 f56320b6b 已验证，当前高亮规则及选择菜单；P4 真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md。全程不推送；WebDAV 凭据只用于读取。
+U6 配置层 614f74885、排版/界面 0e3d2dcbe、菜单/输入 0dc014290、独立目录 d84ccd1ea；反转/云进度/模拟追读/EPUB 清理/手动替换 f56320b6b 已验证，高亮规则 d04df1f2e 已提交，选择菜单/字典已验证，当前图片样式；P4 真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md。全程不推送；WebDAV 凭据只用于读取。
 
 P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。
