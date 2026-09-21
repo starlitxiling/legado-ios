@@ -143,6 +143,7 @@
 		B31B97BE78B4BBF22BBBD6BA /* GeneralSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = EC19FAD2565291B1F98C7ABB /* GeneralSettingsView.swift */; };
 		B3D8D36A36A8FEEE6E501116 /* BookInfoEditModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5C84EAF38734B620B925248F /* BookInfoEditModel.swift */; };
 		B4055C0BA82020837AD4D5F9 /* ReadAloudPanel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72C193F2A32FCE1610BA1F27 /* ReadAloudPanel.swift */; };
+		B50B754B428516E86B033CE1 /* LocalDirectoryScanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = EEE669BDA30DE46D974E62EB /* LocalDirectoryScanner.swift */; };
 		B74F437CD51D67AD58983653 /* RemoteImage.swift in Sources */ = {isa = PBXBuildFile; fileRef = A42A13C6E24513AB68622FD2 /* RemoteImage.swift */; };
 		BB476609DB71008A057C4681 /* ExploreBookListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C4664656FD465C2C68615870 /* ExploreBookListView.swift */; };
 		BB8A810EA4C36851F37BF6FC /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B077CC4AD2C69481319FF3D /* SettingsView.swift */; };
@@ -390,6 +391,7 @@
 		E8FC35D7DBD5A3847289D766 /* ReadAloudController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadAloudController.swift; sourceTree = "<group>"; };
 		E9815FAB80DBA20B0D697A9A /* LocalImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalImportView.swift; sourceTree = "<group>"; };
 		EC19FAD2565291B1F98C7ABB /* GeneralSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GeneralSettingsView.swift; sourceTree = "<group>"; };
+		EEE669BDA30DE46D974E62EB /* LocalDirectoryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDirectoryScanner.swift; sourceTree = "<group>"; };
 		EF420124BA36354241C1EDDE /* ScrollPageContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollPageContainer.swift; sourceTree = "<group>"; };
 		F029F5D38BB93A3C81C9AFE8 /* HeadlessWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlessWebView.swift; sourceTree = "<group>"; };
 		F2DE06354EFB2F83A31F9115 /* CheckSourceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckSourceView.swift; sourceTree = "<group>"; };
@@ -601,6 +603,7 @@
 		629E5844CA90C644A38302F9 /* LocalImport */ = {
 			isa = PBXGroup;
 			children = (
+				EEE669BDA30DE46D974E62EB /* LocalDirectoryScanner.swift */,
 				E9815FAB80DBA20B0D697A9A /* LocalImportView.swift */,
 				5ECAD38F3612CEFBE60465CA /* LocalImportViewModel.swift */,
 			);
@@ -1175,6 +1178,7 @@
 				6D44546E659BEC0387D9FBCA /* LauncherIconSettingsView.swift in Sources */,
 				067905B29B24A703228C2A07 /* LegadoApp.swift in Sources */,
 				9CA3B9B71ED456FA37D169EA /* LegadoIcon.swift in Sources */,
+				B50B754B428516E86B033CE1 /* LocalDirectoryScanner.swift in Sources */,
 				886F3E1529EAE75A52D5A47C /* LocalImportView.swift in Sources */,
 				480B1B431A91660B8226569A /* LocalImportViewModel.swift in Sources */,
 				91AF6A3C5DC4DC984DB20EF5 /* MainTabObserver.swift in Sources */,

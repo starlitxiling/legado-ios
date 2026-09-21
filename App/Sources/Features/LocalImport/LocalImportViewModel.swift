@@ -7,6 +7,7 @@ import LegadoCore
 @MainActor
 final class LocalImportViewModel {
     private(set) var isImporting = false
+    private(set) var isDownloading = false
     private(set) var importedCount = 0
     private(set) var errors: [String] = []
     private(set) var conflictingURLs: [URL] = []
@@ -124,6 +125,54 @@ final class LocalImportViewModel {
             }
             if !(error is CancellationError) { errors.append("\(name)：\(error.localizedDescription)") }
         }
+    }
+
+    func importOnline(_ text: String, client: any HttpClient = URLSessionHttpClient()) async {
+        guard !isImporting, !isDownloading else { return }
+        isDownloading = true; errors = []
+        defer { isDownloading = false }
+        do {
+            guard let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
+                  ["http", "https"].contains(url.scheme?.lowercased() ?? ""), url.host != nil else { throw URLError(.badURL) }
+            let response: HttpResponse
+            let limit = 256 * 1024 * 1024
+            if let limited = client as? any ResponseLimitedHttpClient {
+                response = try await limited.send(HttpRequest(url: url), maximumResponseBytes: limit)
+            } else { response = try await client.send(HttpRequest(url: url)) }
+            guard (200..<300).contains(response.status) else {
+                throw URLError(.badServerResponse, userInfo: [NSLocalizedDescriptionKey: "HTTP \(response.status)"])
+            }
+            guard response.body.count <= limit else { throw WebDavError.responseTooLarge }
+            let name = Self.downloadedFilename(response)
+            let ext = (name as NSString).pathExtension.lowercased()
+            guard !name.isEmpty, name == (name as NSString).lastPathComponent, name != ".", name != "..",
+                  !name.contains("\\"), !name.contains("\0"),
+                  LocalBook.fileExtensions.contains(ext) || BookArchive.formats.contains(ext) else { throw LocalBookError.unsupportedFile }
+            let identity = SHA256.hash(data: Data(url.absoluteString.utf8)).map { String(format: "%02x", $0) }.joined()
+            let folder = booksDirectory.appendingPathComponent(".downloads", isDirectory: true).appendingPathComponent(identity)
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+            let file = folder.appendingPathComponent(name)
+            try response.body.write(to: file, options: .atomic)
+            await importFiles([file])
+        } catch { errors.append("下载导入失败：" + error.localizedDescription) }
+    }
+
+    nonisolated static func downloadedFilename(_ response: HttpResponse) -> String {
+        let disposition = response.headers.first { $0.key.caseInsensitiveCompare("Content-Disposition") == .orderedSame }?.value ?? ""
+        let patterns = [#"(?i)(?:^|;)\s*filename\*\s*=\s*([^;]+)"#, #"(?i)(?:^|;)\s*filename\s*=\s*(?:"([^"]+)"|([^;]+))"#]
+        for (patternIndex, pattern) in patterns.enumerated() {
+            guard let regex = try? NSRegularExpression(pattern: pattern),
+                  let match = regex.firstMatch(in: disposition, range: NSRange(disposition.startIndex..., in: disposition)) else { continue }
+            for index in 1..<match.numberOfRanges where match.range(at: index).location != NSNotFound {
+                let value = (disposition as NSString).substring(with: match.range(at: index)).trimmingCharacters(in: .whitespaces)
+                if patternIndex == 0 {
+                    let pieces = value.split(separator: "'", maxSplits: 2, omittingEmptySubsequences: false)
+                    if pieces.count == 3, pieces[0].lowercased() == "utf-8",
+                       let decoded = String(pieces[2]).removingPercentEncoding { return decoded }
+                } else { return value }
+            }
+        }
+        return response.finalURL.lastPathComponent
     }
 
     func loadRules() async {

@@ -17,12 +17,25 @@ struct LegadoApp: App {
 struct AppStartupView: View {
     @ObservedObject var appDelegate: LegadoAppDelegate
     @State private var theme = ThemeStore(preferences: .shared)
+    @State private var openingFile: LocalFileOpenRequest?
 
     var body: some View {
         displayedContent
             .modifier(ScriptHostModifier())
             .modifier(ThemeEnvironmentModifier(store: theme))
             .task { appDelegate.openDatabase() }
+            .onOpenURL { url in
+                guard url.isFileURL else { return }
+                openingFile = LocalFileOpenRequest(url: url)
+            }
+            .sheet(item: $openingFile) { request in
+                if let container = appDelegate.container {
+                    NavigationStack {
+                        LocalImportView(database: container.database, initialURLs: [request.url])
+                            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("完成") { openingFile = nil } } }
+                    }
+                } else { ProgressView("正在打开书库") }
+            }
     }
 
     @ViewBuilder private var displayedContent: some View {
@@ -128,4 +141,9 @@ final class LegadoAppDelegate: NSObject, UIApplicationDelegate, ObservableObject
             startupError = error.localizedDescription
         }
     }
+}
+
+private struct LocalFileOpenRequest: Identifiable {
+    let id = UUID()
+    let url: URL
 }

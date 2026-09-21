@@ -35,3 +35,9 @@ The generator derives paths from its location and produces synthetic content onl
 Members are validated for absolute/traversal paths and normalized collisions, ZIP symlinks are rejected, and native formats are decoded into data streams instead of allowing native extraction to create filesystem links. Default limits are 256 MiB compressed/expanded and 10,000 entries. Native codec internal header/dictionary allocations are controlled by the codec and are not a hard process-memory ceiling. RAR multivolume archives require a complete single archive; password parameters are available in the core API.
 
 Local import hashes the original archive URL plus member path, preserving identity/progress on repeat import. Conflicts retain the original archive and only the conflicting members are retried when keeping copies. Remote members retain serverID and an archiveEntry attribute in their origin; missing-file restore fetches and reads that member. Network replay tests assert GET-only behavior.
+
+## Import entry points
+
+The app registers local book/archive document types and enables document opening in place and file sharing. File URLs received by the application open the import page. Folder scans persist security-scoped bookmarks, skip hidden items and symbolic links, and reject scans exceeding 10,000 entries. Import retains directory access for the duration of the operation. Online import accepts HTTP(S), bounds responses to 256 MiB, and uses UTF-8 Content-Disposition filename* / filename or the final URL name. Download originals remain in the managed hidden `.downloads` folder for conflict retries.
+
+Directory and online import behavior is covered by `LocalImportEntryTests`; system document registration/open URL routing is build-verified and still awaits the combined simulator interaction pass.

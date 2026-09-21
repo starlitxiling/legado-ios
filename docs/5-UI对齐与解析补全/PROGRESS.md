@@ -35,6 +35,7 @@
 | 批次 2：U3 | 完成 | 主会话 | SearchView / SearchScope / assets/u3-* | Core 667/0、AppCore 272/0、CLI 7/0；模拟器 UI 2 项通过 |
 | P7-1 UMD | 完成 | 主会话 | UmdFile / localbook-compat.md | Core 670/0 + 缓存测试；AppCore 272/0；iOS 构建通过 |
 | P7-2 压缩包 | 完成 | 主会话 | BookArchive / LocalImport / RemoteBooks | Core 675/0、AppCore 275/0；iOS 构建通过 |
+| P7-16 导入入口 | 完成 | 主会话 | LocalDirectoryScanner / onOpenURL / project.yml | AppCore 277/0；iOS 构建通过；系统分享交互待整组验收 |
 | 批次 3-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -43,6 +44,6 @@
 
 ## 下一步
 
-最近提交 98f7b32f5（UMD/AZW）；P7 压缩包后端及导入完成，继续其它本地书项目；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6 已完成，继续 P7 本地书。全程不推送；WebDAV 凭据只用于读取。
+最近提交 10cda41c1（ZIP/RAR/7z）；P7 压缩包后端及导入完成，导入入口完成，继续 TXT 对齐；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6 已完成，继续 P7 本地书。全程不推送；WebDAV 凭据只用于读取。
 
 P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。

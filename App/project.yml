@@ -33,6 +33,24 @@ targets:
       path: Info.plist
       properties:
         CFBundleDisplayName: 阅读
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        CFBundleDocumentTypes:
+          - CFBundleTypeName: Local Books
+            CFBundleTypeRole: Viewer
+            LSHandlerRank: Alternate
+            LSItemContentTypes:
+              - public.plain-text
+              - com.adobe.pdf
+              - org.idpf.epub-container
+              - public.zip-archive
+              - com.legado.local-book
+        UTImportedTypeDeclarations:
+          - UTTypeIdentifier: com.legado.local-book
+            UTTypeDescription: Local Book or Archive
+            UTTypeConformsTo: [public.data]
+            UTTypeTagSpecification:
+              public.filename-extension: [umd, mobi, azw3, azw, rar, 7z]
         CFBundleIcons:
           CFBundleAlternateIcons:
             launcher1:
