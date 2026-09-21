@@ -111,3 +111,20 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 ### 简繁转换
 
 `java.t2s(text)` / `java.s2t(text)` 使用内置 OpenCC ver.1.1.9 单字及词语表，按最长词优先匹配。来源、提交哈希、许可证及文件校验值见 Core 的 `Resources/OpenCC/PROVENANCE.md`。不应用区域词汇表；与 Android HanLP 词表版本之间可能存在用词差异。
+
+## 文件与压缩（轮次 5 / P3e）
+
+`getFile`、`readFile`、`readTxtFile` 两个重载、`deleteFile`、四种解压入口、`getTxtInFolder`、三种格式的 String/ByteArray 读取及 `importScript` 已接入。固定规格为 Kotlin `2bdd3c58b` 的 `JsExtensions.kt:455,802-1045`。
+
+| 输入 | 结果 |
+| --- | --- |
+| 缺失文件 readFile / readTxtFile | null / 空字符串 |
+| 文件字节 65,195,169，UTF-8 | A 后接 U+00E9 |
+| getTxtInFolder 中两个文件 One / Two | One、换行、Two；成功后删除目录 |
+| ZIP/RAR/7z 十六进制内容及条目名 | 原字节或按指定/检测编码解码的文本 |
+| unArchiveFile 及三种别名 | ArchiveTemp/压缩文件名的 MD5 中间 16 位 |
+| importScript 本地或 HTTP(S) | 返回脚本文本；网络第二次命中文件缓存；空白内容抛错 |
+
+`getFile` 提供路径、名称、存在/目录/文件判定、长度与删除方法，不暴露 JVM 反射或 FileInputStream。路径是脚本存储的相对句柄，前导斜杠仍在脚本存储内；拒绝上级路径和目录中的符号链接。默认使用磁盘存储，测试可注入内存或独立目录。iOS 沙盒无法复制 Android externalCache 父目录访问；书源需使用下载方法返回的句柄。
+
+文件/压缩包上限 256 MiB、压缩条目上限 10000；复用 P7 校验后端。文件夹合并采用稳定名称顺序，空目录返回空文本。解压失败移除本次临时目录。测试 `JavaHostFileTests` 覆盖全部入口、三种压缩格式、缓存复用、磁盘重开和符号链接越界。

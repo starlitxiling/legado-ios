@@ -49,7 +49,7 @@ public final class JsEngine: SelectorEngine {
                 timeZone: TimeZone = .current, logger: @escaping (String) -> Void = { _ in },
                 httpClient: any HttpClient = URLSessionHttpClient(), cookieStore: CookieStore = JsEngine.sharedCookieStore,
                 cacheManager: CacheManager = .shared, networkSource: AnalyzeUrlExecutor.Source = .init(),
-                rateLimiter: ConcurrentRateLimiter = .shared, downloadStore: any HostDownloadStore = MemoryHostDownloadStore(),
+                rateLimiter: ConcurrentRateLimiter = .shared, downloadStore: any HostDownloadStore = DiskHostDownloadStore.shared,
                 headlessWebView: (any HeadlessWebViewProtocol)? = nil, webViewInteraction: (any WebViewUserInteraction)? = nil,
                 platformServices: JsPlatformServices = .shared) {
         self.platformServices = platformServices

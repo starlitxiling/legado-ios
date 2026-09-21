@@ -44,7 +44,8 @@
 | P7-15 MOBI | 完成 | 主会话 | MobiBook / KF6/KF8 图片与目录 | Core 688/0、AppCore 283/0；iOS 构建通过 |
 | P7 模拟器验收 | 完成 | 主会话 | LocalBookUITests / assets/p7-* | 十格式导入末章通过；EPUB/PDF/AZW3 显图与系统打开通过 |
 | P8 书架与缓存 | 完成 | 主会话 | storage-notes.md / assets/p8-refresh-failures.png | Core 692/0 + 边界 5/0；AppCore 284/0；模拟器 4/0；iOS 构建通过 |
-| P3e/f 文件与缓存宿主 | 在途 | 主会话 | JavaHostFileTests / 文件存储与压缩 | 红测已记录，开始实现 |
+| P3e 文件宿主 | 完成 | 主会话 | JavaHostFiles / DiskHostDownloadStore / js-host-compat.md | Core 698/0、AppCore 284/0、iOS 构建通过 |
+| P3f 缓存宿主 | 在途 | 主会话 | JavaHostCacheTests | 已记录红测 |
 | 批次 3-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -53,6 +54,6 @@
 
 ## 下一步
 
-P8 已完成并提交；继续 P3e/f、U4/U5/U6；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6/P7/P8 已完成。全程不推送；WebDAV 凭据只用于读取。
+最近提交 fdef646f7（P8）；继续 P3e/f、U4/U5/U6；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6/P7/P8 已完成。全程不推送；WebDAV 凭据只用于读取。
 
 P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。

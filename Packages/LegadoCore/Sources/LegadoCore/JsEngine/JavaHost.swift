@@ -122,6 +122,15 @@ public final class JavaHost {
                     });
                     return object;
                 }
+                if (value && value.__legadoFile) {
+                    const path = value.__legadoFile;
+                    const info = () => invoke('file.info', [path]);
+                    return {getPath: () => path, getAbsolutePath: () => path,
+                        getName: () => path.split('/').pop(), toString: () => path,
+                        exists: () => info().exists, isDirectory: () => info().isDirectory,
+                        isFile: () => { const f = info(); return f.exists && !f.isDirectory; },
+                        length: () => info().size, delete: () => invoke('deleteFile', [path])};
+                }
                 if (Array.isArray(value)) return value.map(response);
                 if (!value || !value.__strResponse) return value;
                 const headers = javaMap(value.headers, true);
@@ -142,8 +151,8 @@ public final class JavaHost {
                 't2s','s2t','timeFormat','timeFormatUTC','log','toast','longToast','logType','randomUUID','androidId',
                 'getReadBookConfig','getReadBookConfigMap','getThemeMode','getThemeConfig','getThemeConfigMap',
                 'base64DecodeToByteArray','hexDecodeToByteArray','hexEncodeToString','strToBytes','bytesToStr','decodeURI','htmlFormat','toURL','base64Decode','base64Encode','hexDecodeToString','toNumChapter',
-                'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','readFile','downloadFile','cacheFile',
-                'webViewGetSource','webViewGetOverrideUrl','getVerificationCode','startBrowser','startBrowserAwait','getWebViewUA'].concat(\(JavaHostCrypto.methods.map { "'" + $0 + "'" }.joined(separator: ",")));
+                'encodeURI','ajax','post','head','connect','ajaxAll','ajaxTestAll','getCookie','webView','downloadFile','cacheFile',
+                'webViewGetSource','webViewGetOverrideUrl','getVerificationCode','startBrowser','startBrowserAwait','getWebViewUA'].concat(\(JavaHostNetwork.fileMethods.map { "'" + $0 + "'" }.joined(separator: ","))).concat(\(JavaHostCrypto.methods.map { "'" + $0 + "'" }.joined(separator: ",")));
             methods.forEach(function(name) {
                 java[name] = function() {
                     const args = nativeArguments(arguments);
@@ -205,6 +214,9 @@ public final class JavaHost {
     }
 
     private func call(_ method: String, _ arguments: [Any]) throws -> Any? {
+        if JavaHostNetwork.fileMethods.contains(method) || method == "file.info" {
+            return try network.callFile(method, arguments)
+        }
         if JavaHostCrypto.methods.contains(method) || method.hasPrefix("crypto.") {
             return try crypto.call(method, arguments: arguments)
         }
