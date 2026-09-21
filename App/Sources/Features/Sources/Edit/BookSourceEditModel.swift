@@ -37,21 +37,37 @@ final class BookSourceEditModel {
     }
 
     static let groups: [SourceFieldGroup] = {
-        func keys(_ value: Any, prefix: String) -> [String] {
-            Mirror(reflecting: value).children.compactMap { $0.label.map { prefix + "." + $0 } }
+        func group(_ title: String, _ prefix: String, _ fields: [String]) -> SourceFieldGroup {
+            SourceFieldGroup(title: title, fields: fields.map { prefix.isEmpty ? $0 : prefix + "." + $0 })
         }
-        let login = ["loginUrl", "loginUi", "loginCheckJs"]
-        let search = ["searchUrl"] + keys(SearchRule(), prefix: "ruleSearch")
-        let explore = ["exploreUrl", "exploreScreen"] + keys(ExploreRule(), prefix: "ruleExplore")
-        let excluded = Set(login + ["searchUrl", "exploreUrl", "exploreScreen", "ruleSearch", "ruleExplore",
-                                    "ruleBookInfo", "ruleToc", "ruleContent", "ruleReview"])
-        return [SourceFieldGroup(title: "基本", fields: Mirror(reflecting: BookSource()).children.compactMap(\.label).filter { !excluded.contains($0) }),
-                SourceFieldGroup(title: "搜索", fields: search), SourceFieldGroup(title: "发现", fields: explore),
-                SourceFieldGroup(title: "详情", fields: keys(BookInfoRule(), prefix: "ruleBookInfo")),
-                SourceFieldGroup(title: "目录", fields: keys(TocRule(), prefix: "ruleToc")),
-                SourceFieldGroup(title: "正文", fields: keys(ContentRule(), prefix: "ruleContent") + keys(ReviewRule(), prefix: "ruleReview")),
-                SourceFieldGroup(title: "登录", fields: login)]
+        let list = ["bookList","name","author","kind","wordCount","lastChapter","intro","coverUrl","bookUrl"]
+        return [
+            group("基本", "", ["bookSourceUrl","bookSourceName","bookSourceGroup","bookSourceComment","loginUrl","loginUi","loginCheckJs","coverDecodeJs","bookUrlPattern","header","variableComment","concurrentRate","jsLib"]),
+            SourceFieldGroup(title: "搜索", fields: ["searchUrl","ruleSearch.checkKeyWord"] + list.map { "ruleSearch." + $0 }),
+            SourceFieldGroup(title: "发现", fields: ["exploreUrl"] + list.map { "ruleExplore." + $0 }),
+            group("详情", "ruleBookInfo", ["init","name","author","kind","wordCount","lastChapter","intro","coverUrl","tocUrl","canReName","downloadUrls"]),
+            group("目录", "ruleToc", ["preUpdateJs","chapterList","chapterName","chapterUrl","formatJs","isVolume","updateTime","isVip","isPay","nextTocUrl"]),
+            group("正文", "ruleContent", ["content","nextContentUrl","subContent","replaceRegex","title","sourceRegex","imageStyle","imageDecode","webJs","payAction","callBackJs","contentBatch","maxBatchSize"]),
+            group("段评", "ruleReview", ["reviewSummaryUrl","summaryListRule","summaryParagraphIndexRule","summaryCountRule","summaryParagraphDataRule","reviewDetailUrl","reviewDetailNextPageUrl","detailListRule","detailIdRule","detailAvatarRule","detailNameRule","detailBadgeRule","detailContentRule","reviewQuoteUrl","replyListRule","replyIdRule","replyAvatarRule","replyNameRule","replyBadgeRule","replyContentRule"])
+        ]
     }()
+
+    static func label(_ path: String) -> String {
+        let key = String(path.split(separator: ".").last ?? "")
+        return ["bookSourceUrl":"源 URL","bookSourceName":"源名称","bookSourceGroup":"源分组","bookSourceComment":"源注释",
+            "loginUrl":"登录 URL","loginUi":"登录 UI","loginCheckJs":"登录检查 JS","coverDecodeJs":"封面解密","bookUrlPattern":"书籍 URL 正则",
+            "header":"请求头","variableComment":"变量说明","concurrentRate":"并发率","jsLib":"JS 库","searchUrl":"搜索地址","checkKeyWord":"校验关键字",
+            "exploreUrl":"发现地址","bookList":"书籍列表","name":"书名","author":"作者","kind":"分类","wordCount":"字数","lastChapter":"最新章节",
+            "intro":"简介","coverUrl":"封面","bookUrl":"详情页 URL","init":"预处理","tocUrl":"目录 URL","canReName":"允许改名","downloadUrls":"下载 URL",
+            "preUpdateJs":"更新前 JS","chapterList":"目录列表","chapterName":"章节名称","chapterUrl":"章节 URL","formatJs":"格式化","isVolume":"Volume 标识",
+            "updateTime":"章节信息","isVip":"VIP 标识","isPay":"购买标识","nextTocUrl":"下一页","content":"正文","nextContentUrl":"下一页 URL",
+            "subContent":"副文","replaceRegex":"替换","title":"章节名称","sourceRegex":"资源正则","imageStyle":"图片样式","imageDecode":"图片解密",
+            "webJs":"WebView JS","payAction":"购买操作","callBackJs":"回调","contentBatch":"批量正文","maxBatchSize":"最大批量",
+            "reviewSummaryUrl":"统计地址","summaryListRule":"统计列表","summaryParagraphIndexRule":"段落序号","summaryCountRule":"评论数量","summaryParagraphDataRule":"段落数据",
+            "reviewDetailUrl":"详情地址","reviewDetailNextPageUrl":"详情下一页","detailListRule":"评论列表","detailIdRule":"评论 ID","detailAvatarRule":"评论头像",
+            "detailNameRule":"评论昵称","detailBadgeRule":"评论徽章","detailContentRule":"评论正文","reviewQuoteUrl":"回复地址","replyListRule":"回复列表",
+            "replyIdRule":"回复 ID","replyAvatarRule":"回复头像","replyNameRule":"回复昵称","replyBadgeRule":"回复徽章","replyContentRule":"回复正文"][key] ?? key
+    }
 
     func value(_ path: String) -> String {
         if let value = invalidFields[path] { return value }

@@ -33,6 +33,10 @@ targets:
       path: Info.plist
       properties:
         CFBundleDisplayName: 阅读
+        NSCameraUsageDescription: 扫描书源二维码以导入书源
+        CFBundleURLTypes:
+          - CFBundleURLName: Legado Import
+            CFBundleURLSchemes: [legado, yuedu]
         UIFileSharingEnabled: true
         LSSupportsOpeningDocumentsInPlace: true
         CFBundleDocumentTypes:

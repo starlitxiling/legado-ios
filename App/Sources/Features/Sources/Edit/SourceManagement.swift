@@ -2,7 +2,7 @@ import Foundation
 import LegadoCore
 
 enum SourceSort: String, CaseIterable, Identifiable {
-    case custom = "自定义", name = "名称", url = "地址", weight = "权重", update = "更新时间", respond = "响应时间", enabled = "启用状态"
+    case custom = "手动", name = "名称", url = "地址", weight = "智能", update = "更新时间", respond = "响应时间", enabled = "启用状态"
     var id: String { rawValue }
 }
 
@@ -73,4 +73,25 @@ enum SourceManagement {
             .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
             .filter { !$0.isEmpty && seen.insert($0).inserted }
     }
+}
+
+enum SourceFilter: String, CaseIterable, Identifiable {
+    case all = "全部书源", enabled = "已启用", disabled = "已禁用", login = "需要登录", ungrouped = "未分组", explore = "已启用发现", noExplore = "已禁用发现"
+    var id: String { rawValue }
+    func includes(_ row: BookSourceRow) -> Bool {
+        switch self {
+        case .all: true
+        case .enabled: row.enabled
+        case .disabled: !row.enabled
+        case .login: !(row.loginUrl ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        case .ungrouped: SourceManagement.groups(row.bookSourceGroup).isEmpty
+        case .explore: row.enabledExplore
+        case .noExplore: !row.enabledExplore
+        }
+    }
+}
+
+enum SourceStatusFilter: String, CaseIterable, Identifiable {
+    case all = "全部", passed = "通过", failed = "失败", untested = "未校验"
+    var id: String { rawValue }
 }

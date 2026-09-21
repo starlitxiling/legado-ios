@@ -62,7 +62,8 @@ struct AppStartupView: View {
 
     @ViewBuilder private var displayedContent: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-localbook-gallery") { LocalBookGalleryView() }
+        if ProcessInfo.processInfo.arguments.contains("-source-gallery") { SourceGalleryView() }
+        else if ProcessInfo.processInfo.arguments.contains("-localbook-gallery") { LocalBookGalleryView() }
         else if ProcessInfo.processInfo.arguments.contains("-detail-gallery") { BookDetailGalleryView() }
         else if ProcessInfo.processInfo.arguments.contains("-explore-gallery") { ExploreGalleryView() }
         else if ProcessInfo.processInfo.arguments.contains("-search-gallery") { SearchGalleryView() }

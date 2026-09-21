@@ -18,6 +18,8 @@ struct SourceImportSheet: View {
     let prepareURL: (String) async -> Void
     let confirm: () async -> Bool
     let cancel: () -> Void
+    var selectedIDs: Binding<Set<String>>? = nil
+    var group: Binding<String>? = nil
     var keepEnable: Binding<Bool>? = nil
     var sourceReplacement: Binding<Bool>? = nil
     @State private var address = ""
@@ -40,10 +42,23 @@ struct SourceImportSheet: View {
                             Text("相同地址仅保留最后一条。")
                                 .font(.footnote).foregroundStyle(.secondary)
                         }
+                        if let selectedIDs {
+                            Button("全选 / 全不选") {
+                                selectedIDs.wrappedValue = selectedIDs.wrappedValue.count == preview.items.count ? [] : Set(preview.items.map(\.id))
+                            }
+                            if let group { TextField("加入分组（记住上次选择）", text: group) }
+                            ForEach(preview.items) { item in
+                                Toggle(isOn: Binding(get: { selectedIDs.wrappedValue.contains(item.id) }, set: { enabled in
+                                    if enabled { selectedIDs.wrappedValue.insert(item.id) } else { selectedIDs.wrappedValue.remove(item.id) }
+                                })) {
+                                    HStack { Text(item.title); Spacer(); Text(item.status).font(.caption).foregroundStyle(.secondary) }
+                                }
+                            }
+                        }
                         Button("确认导入") {
                             Task { if await confirm() { dismiss() } }
                         }
-                        .disabled(isBusy || preview.importableCount == 0)
+                        .disabled(isBusy || preview.importableCount == 0 || selectedIDs?.wrappedValue.isEmpty == true)
                         Button("重新选择内容") { cancel() }
                             .disabled(isBusy)
                     }

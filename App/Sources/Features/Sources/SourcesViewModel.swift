@@ -13,8 +13,13 @@ final class SourcesViewModel {
     var selectedGroup: String?
     var keepEnable = false
     var useSourceReplacement = false
+    var filter: SourceFilter = .all
+    var statusFilter: SourceStatusFilter = .all
+    private(set) var metadata: [String: SourceManagementMetadata] = [:]
     var sort: SourceSort = .custom
     var ascending = true
+    var selectedImportURLs: Set<String> = []
+    var importGroup = ""
     var selectedURLs: Set<String> = []
 
     private let repository: BookSourceRepository
@@ -33,10 +38,37 @@ final class SourcesViewModel {
     var filteredSources: [BookSourceRow] {
         let query = keyword.trimmingCharacters(in: .whitespacesAndNewlines)
         return SourceManagement.sorted(sources.filter { source in
+            filter.includes(source) && matchesStatus(source.bookSourceUrl) &&
             (selectedGroup == nil || ManagementImport.groups(source.bookSourceGroup).contains(selectedGroup!)) &&
-            (query.isEmpty || [source.bookSourceName, source.bookSourceUrl, source.bookSourceGroup ?? ""]
+            (query.hasPrefix("group:") ? SourceManagement.groups(source.bookSourceGroup).contains(String(query.dropFirst(6))) :
+                query.isEmpty || [source.bookSourceName, source.bookSourceUrl, source.bookSourceGroup ?? ""]
                 .contains { $0.localizedCaseInsensitiveContains(query) })
         }, by: sort, ascending: ascending)
+    }
+
+    private func matchesStatus(_ url: String) -> Bool {
+        let state = metadata[url]?.check
+        switch statusFilter {
+        case .all: return true
+        case .passed: return state?.succeeded == true
+        case .failed: return state != nil && state?.succeeded == false
+        case .untested: return state == nil
+        }
+    }
+
+    func reorder(_ url: String, before target: String) async {
+        guard url != target else { return }
+        await perform {
+            try await self.repository.editSources { rows in
+                var rows = SourceManagement.sorted(rows, by: .custom)
+                guard let from = rows.firstIndex(where: { $0.bookSourceUrl == url }) else { return rows }
+                let moving = rows.remove(at: from)
+                guard let to = rows.firstIndex(where: { $0.bookSourceUrl == target }) else { return rows }
+                rows.insert(moving, at: to)
+                return rows.enumerated().map { index, row in var row = row; row.customOrder = index; return row }
+            }
+            self.sources = try await self.repository.list()
+        }
     }
 
     func batchEnabled(_ enabled: Bool) async {
@@ -89,7 +121,10 @@ final class SourcesViewModel {
     }
 
     func load() async {
-        await perform { self.sources = try await self.repository.list() }
+        await perform {
+            self.sources = try await self.repository.list()
+            self.metadata = try await self.repository.managementMetadata()
+        }
     }
 
     func setEnabled(_ source: BookSourceRow, enabled: Bool) async {
@@ -104,6 +139,22 @@ final class SourcesViewModel {
     func delete(_ source: BookSourceRow) async {
         await perform {
             try await self.repository.delete(source)
+            self.sources = try await self.repository.list()
+        }
+    }
+
+    func renameGroup(_ old: String, to new: String) async {
+        await perform {
+            try await self.repository.editSources { rows in rows.map { row in
+                var row = row
+                var groups = SourceManagement.groups(row.bookSourceGroup)
+                if let index = groups.firstIndex(of: old) {
+                    groups.remove(at: index)
+                    if !new.isEmpty && !groups.contains(new) { groups.insert(new, at: min(index, groups.count)) }
+                    row.bookSourceGroup = groups.joined(separator: ",")
+                }
+                return row
+            } }
             self.sources = try await self.repository.list()
         }
     }
@@ -135,7 +186,7 @@ final class SourcesViewModel {
         await perform {
             let keepEnable = self.keepEnable
             let local = Dictionary(uniqueKeysWithValues: try await self.repository.list().map { ($0.bookSourceUrl, $0) })
-            let merged = self.pendingSources.map { imported in
+            let merged = self.pendingSources.filter { self.selectedImportURLs.contains($0.bookSourceUrl) }.map { imported in
                 var source = imported
                 if let existing = local[source.bookSourceUrl] {
                     source.customOrder = existing.customOrder
@@ -143,6 +194,12 @@ final class SourcesViewModel {
                         source.enabled = existing.enabled
                         source.enabledExplore = existing.enabledExplore
                     }
+                }
+                let addedGroups = SourceManagement.groups(self.importGroup)
+                if !addedGroups.isEmpty {
+                    var groups = SourceManagement.groups(source.bookSourceGroup)
+                    groups += addedGroups.filter { !groups.contains($0) }
+                    source.bookSourceGroup = groups.joined(separator: ",")
                 }
                 return source
             }
@@ -171,12 +228,20 @@ final class SourcesViewModel {
         let rows = try unique.values.map {
             try ManagementImport.row($0.source, defaults: BookSourceRow())
         }.sorted { ($0.customOrder, $0.bookSourceUrl) < ($1.customOrder, $1.bookSourceUrl) }
-        let existing = Set(try await repository.list().map(\.bookSourceUrl))
+        let existingRows = try await repository.list()
+        let existing = Set(existingRows.map(\.bookSourceUrl))
+        let local = Dictionary(uniqueKeysWithValues: existingRows.map { ($0.bookSourceUrl, $0) })
         let overwritten = rows.filter { existing.contains($0.bookSourceUrl) }.count
         pendingSources = rows
+        selectedImportURLs = Set(rows.map(\.bookSourceUrl))
         importPreview = ManagementImportPreview(newCount: rows.count - overwritten,
                                                overwriteCount: overwritten, unsupportedCount: 0,
-                                               jsSourceCount: rows.filter { !($0.mainJs ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count)
+                                               jsSourceCount: rows.filter { !($0.mainJs ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.count,
+                                               items: try rows.map { row in
+                                                   let same = try local[row.bookSourceUrl].map { try JSONDecoder().decode(BookSource.self, from: JSONEncoder().encode($0)) == JSONDecoder().decode(BookSource.self, from: JSONEncoder().encode(row)) } ?? false
+                                                   return ManagementImportItem(id: row.bookSourceUrl, title: row.bookSourceName,
+                                                       status: local[row.bookSourceUrl] == nil ? "新增" : same ? "相同" : "更新")
+                                               })
     }
 
     private func clearPreview() {

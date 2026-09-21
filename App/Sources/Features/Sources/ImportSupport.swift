@@ -6,7 +6,14 @@ struct ManagementImportPreview {
     let overwriteCount: Int
     let unsupportedCount: Int
     var jsSourceCount: Int = 0
+    var items: [ManagementImportItem] = []
     var importableCount: Int { newCount + overwriteCount }
+}
+
+struct ManagementImportItem: Identifiable {
+    let id: String
+    let title: String
+    let status: String
 }
 
 enum ManagementImportError: LocalizedError {

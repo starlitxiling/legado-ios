@@ -4,13 +4,19 @@ import LegadoCore
 struct SourcesView: View {
     @State private var model: SourcesViewModel
     @State private var importEntry: ManagementImportEntry?
-    @State private var editingSource: BookSource?
-    @State private var showEditor = false
+    @State private var editor: SourceEditorRequest?
     @State private var shareText = ""
     @State private var showShare = false
     @State private var groupText = ""
     @State private var showGroup = false
     @State private var removingGroup = false
+    @State private var selecting = false
+    @State private var showsGroups = false
+    @State private var showsQR = false
+    @AppStorage("showSourceCheckState") private var showsStatus = true
+    @AppStorage("sourceGroupByDomain") private var groupByDomain = false
+    @AppStorage("blockSourceNavigation") private var blockNavigation = false
+    @Environment(\.themeColors) private var colors
     private let initialImportURL: String?
     private let repository: BookSourceRepository
     private let replaceRules: ReplaceRuleRepository
@@ -33,44 +39,23 @@ struct SourcesView: View {
 
     var body: some View {
         @Bindable var model = model
-        List(selection: $model.selectedURLs) {
-            if let error = model.errorMessage, importEntry == nil {
-                Text(error).foregroundStyle(.red)
-                Button("重试") { Task { await model.load() } }
+        VStack(spacing: 0) {
+            if showsStatus {
+                Picker("校验状态", selection: $model.statusFilter) {
+                    ForEach(SourceStatusFilter.allCases) { Text($0.rawValue).tag($0) }
+                }.pickerStyle(.segmented).padding(.horizontal, 12).frame(height: 48)
             }
-            ForEach(model.filteredSources, id: \.bookSourceUrl) { source in
-                Toggle(isOn: Binding(get: { source.enabled }, set: { enabled in
-                    Task { await model.setEnabled(source, enabled: enabled) }
-                })) {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(source.bookSourceName.isEmpty ? "未命名书源" : source.bookSourceName)
-                        if !(source.mainJs ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                            Text("JS 书源").font(.caption).foregroundStyle(.secondary)
-                        }
-                        Text(source.bookSourceUrl).font(.caption).foregroundStyle(.secondary).lineLimit(1)
-                        if let group = source.bookSourceGroup, !group.isEmpty {
-                            Text(group).font(.caption).foregroundStyle(.secondary)
-                        }
+            List {
+                if let error = model.errorMessage, importEntry == nil {
+                    Text(error).foregroundStyle(.red)
+                    Button("重试") { Task { await model.load() } }
+                }
+                if groupByDomain {
+                    ForEach(domains, id: \.self) { domain in
+                        Section(domain) { sourceRows(model.filteredSources.filter { host($0) == domain }) }
                     }
-                }
-                .disabled(model.isBusy)
-                .tag(source.bookSourceUrl)
-                .contextMenu {
-                    Button("编辑") { editingSource = loginSource(source); showEditor = true }
-                    Button("置顶") { Task { await model.move(selected: [source.bookSourceUrl], toTop: true) } }
-                    Button("置底") { Task { await model.move(selected: [source.bookSourceUrl], toTop: false) } }
-                    Button("导出与二维码") { export(selected: [source.bookSourceUrl]) }
-                    if let entity = loginSource(source) {
-                        NavigationLink("调试") { SourceDebugView(source: entity, client: httpClient) }
-                        NavigationLink("登录") { SourceLoginDestination(source: entity, service: sourceLogin) }
-                        NavigationLink("校验") { CheckSourceView(sources: [entity], checker: sourceChecker) }
-                    }
-                }
-                .swipeActions {
-                    Button("删除", role: .destructive) { Task { await model.delete(source) } }
-                        .disabled(model.isBusy)
-                }
-            }
+                } else { sourceRows(model.filteredSources) }
+            }.listStyle(.plain)
         }
         .overlay {
             if model.isBusy { ProgressView() }
@@ -80,38 +65,50 @@ struct SourcesView: View {
             }
         }
         .legadoNavigationTitle("书源")
-        .searchable(text: $model.keyword, prompt: "名称、地址或分组")
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            if selecting {
+                SelectActionBar(selectedCount: model.selectedURLs.count, totalCount: model.filteredSources.count,
+                    onSelectAll: { model.selectedURLs = Set(model.filteredSources.map(\.bookSourceUrl)) }) {
+                    Button("反选") { model.selectedURLs = Set(model.filteredSources.map(\.bookSourceUrl)).subtracting(model.selectedURLs) }
+                    Button("启用") { Task { await model.batchEnabled(true) } }.disabled(model.selectedURLs.isEmpty)
+                    Menu { selectionActions } label: { Image(systemName: "ellipsis") }
+                }
+            }
+        }
         .refreshable { await model.load() }
         .toolbar {
-            ToolbarItem(placement: .topBarTrailing) { EditButton() }
+            ToolbarItem(placement: .principal) { CapsuleSearchField(text: $model.keyword, prompt: "书源 / group:分组", navigationColors: true) }
+            ToolbarItem(placement: .topBarTrailing) { Button(selecting ? "完成" : "多选") { selecting.toggle(); if !selecting { model.selectedURLs = [] } } }
             ToolbarItem(placement: .topBarLeading) {
                 Menu {
-                    Picker("分组", selection: $model.selectedGroup) {
-                        Text("全部").tag(nil as String?)
-                        ForEach(model.groups, id: \.self) { Text($0).tag(Optional($0)) }
+                    Button("分组管理") { showsGroups = true }
+                    ForEach(SourceFilter.allCases) { filter in
+                        Button(filter.rawValue) { model.filter = filter; model.keyword = ""; model.selectedGroup = nil }
+                    }
+                    ForEach(model.groups, id: \.self) { group in
+                        Button(group) { model.keyword = "group:" + group; model.filter = .all; model.selectedGroup = nil }
                     }
                     Picker("排序", selection: $model.sort) {
                         ForEach(SourceSort.allCases) { Text($0.rawValue).tag($0) }
                     }
-                    Toggle("默认方向", isOn: $model.ascending)
+                    Toggle("反序", isOn: Binding(get: { !model.ascending }, set: { model.ascending = !$0 }))
                 } label: { Label(model.selectedGroup ?? "分组", systemImage: "line.3.horizontal.decrease.circle") }
             }
             ToolbarItem(placement: .topBarTrailing) {
                 Menu {
                     Button("从 URL 导入") { importEntry = .url }
-                    Button("新建书源") { editingSource = nil; showEditor = true }
-                    Button("导出当前列表") { export(selected: nil) }
-                    if !model.selectedURLs.isEmpty {
-                        Button("启用所选") { Task { await model.batchEnabled(true) } }
-                        Button("停用所选") { Task { await model.batchEnabled(false) } }
-                        Button("启用所选发现") { Task { await model.batchExploreEnabled(true) } }
-                        Button("停用所选发现") { Task { await model.batchExploreEnabled(false) } }
-                        Button("置顶所选") { Task { await model.move(selected: model.selectedURLs, toTop: true) } }
-                        Button("置底所选") { Task { await model.move(selected: model.selectedURLs, toTop: false) } }
-                        Button("添加分组") { removingGroup = false; groupText = ""; showGroup = true }
-                        Button("移除分组") { removingGroup = true; groupText = ""; showGroup = true }
-                        Button("导出所选") { export(selected: model.selectedURLs) }
+                    Button("新建书源") { editor = SourceEditorRequest(source: nil) }
+                    Button("新建 JS 书源") {
+                        var source = BookSource(); source.mainJs = "function search(key, page) { return []; }"
+                        editor = SourceEditorRequest(source: source)
                     }
+                    Button("二维码导入") { showsQR = true }
+                    Toggle("按域名分组显示", isOn: $groupByDomain)
+                    Toggle("显示校验状态", isOn: $showsStatus)
+                    Toggle("禁止网页跳转", isOn: $blockNavigation)
+                    Link("帮助", destination: URL(string: "https://github.com/gedoor/legado/wiki")!)
+                    Button("导出当前列表") { export(selected: nil) }
+                    if !model.selectedURLs.isEmpty { selectionActions }
                     Button("从文件导入") { importEntry = .file }
                     Button("从剪贴板导入") { importEntry = .clipboard }
                     NavigationLink("Cookie 管理") { CookieManagementView(service: sourceLogin) }
@@ -133,16 +130,30 @@ struct SourcesView: View {
                               confirm: {
                                   await model.confirmImport()
                                   return model.importPreview == nil && model.errorMessage == nil
-                              }, cancel: { model.cancelImport() }, keepEnable: $model.keepEnable, sourceReplacement: $model.useSourceReplacement)
+                              }, cancel: { model.cancelImport() }, selectedIDs: $model.selectedImportURLs, group: $model.importGroup, keepEnable: $model.keepEnable, sourceReplacement: $model.useSourceReplacement)
         }
         .task {
             await model.load()
+            model.importGroup = UserDefaults.standard.string(forKey: "importSourceGroup") ?? ""
             if let initialImportURL { importEntry = .url; await model.prepareImport(url: initialImportURL) }
         }
+        .onChange(of: model.importGroup) { _, value in UserDefaults.standard.set(value, forKey: "importSourceGroup") }
+        .sheet(isPresented: $showsQR) {
+            SourceQRImportView { text in
+                showsQR = false
+                importEntry = .url
+                Task {
+                    if text.hasPrefix("http://") || text.hasPrefix("https://") { await model.prepareImport(url: text) }
+                    else if let url = URL(string: text), let query = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "src" || $0.name == "url" })?.value { await model.prepareImport(url: query) }
+                    else { await model.prepareImport(text: text) }
+                }
+            }
+        }
+        .sheet(isPresented: $showsGroups) { SourceGroupManagementView(model: model) }
         .onChange(of: model.useSourceReplacement) { _, value in UserDefaults.standard.set(value, forKey: "importReplaceSource") }
-        .sheet(isPresented: $showEditor) {
+        .sheet(item: $editor) { request in
             NavigationStack {
-                BookSourceEditView(source: editingSource, repository: repository, client: httpClient,
+                BookSourceEditView(source: request.source, repository: repository, client: httpClient,
                     login: sourceLogin, checker: sourceChecker, onSave: { await model.load() })
             }
         }
@@ -154,6 +165,84 @@ struct SourcesView: View {
         }
     }
 
+    private func host(_ row: BookSourceRow) -> String { URL(string: row.bookSourceUrl)?.host ?? "其他" }
+    private var domains: [String] { Set(model.filteredSources.map(host)).sorted() }
+
+    @ViewBuilder private func sourceRows(_ rows: [BookSourceRow]) -> some View {
+        ForEach(rows, id: \.bookSourceUrl) { source in
+            if model.sort == .custom && !selecting {
+                sourceRow(source).draggable(source.bookSourceUrl)
+                    .dropDestination(for: String.self) { items, _ in
+                        guard let first = items.first else { return false }
+                        Task { await model.reorder(first, before: source.bookSourceUrl) }; return true
+                    }
+            } else { sourceRow(source) }
+        }
+    }
+
+    private func sourceRow(_ source: BookSourceRow) -> some View {
+        HStack(spacing: 8) {
+            if selecting {
+                Button {
+                    if model.selectedURLs.contains(source.bookSourceUrl) { model.selectedURLs.remove(source.bookSourceUrl) }
+                    else { model.selectedURLs.insert(source.bookSourceUrl) }
+                } label: { Image(systemName: model.selectedURLs.contains(source.bookSourceUrl) ? "checkmark.square.fill" : "square") }
+                .accessibilityLabel("选择 " + source.bookSourceName)
+            }
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 4) {
+                    Text(source.bookSourceName.isEmpty ? "未命名书源" : source.bookSourceName).font(.system(size: 16)).lineLimit(1)
+                    if !(source.mainJs ?? "").isEmpty { Text("JS").font(.system(size: 10)).foregroundStyle(colors.accent) }
+                }
+                Text("书架使用 \(model.metadata[source.bookSourceUrl]?.usageCount ?? 0)").font(.system(size: 12)).foregroundStyle(colors.textSecondary)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            Toggle("启用 " + source.bookSourceName, isOn: Binding(get: { source.enabled }, set: { enabled in Task { await model.setEnabled(source, enabled: enabled) } }))
+                .labelsHidden().scaleEffect(0.8).fixedSize()
+            Button { edit(source) } label: { Image(systemName: "pencil").frame(width: 36, height: 36) }.accessibilityLabel("编辑 " + source.bookSourceName)
+            Menu { rowActions(source) } label: {
+                Image(systemName: "ellipsis").frame(width: 36, height: 36)
+                    .overlay(alignment: .topTrailing) {
+                        if source.enabledExplore && !(source.exploreUrl ?? "").isEmpty { Circle().fill(colors.discoveryDot).frame(width: 8, height: 8) }
+                    }
+            }.accessibilityLabel("更多 " + source.bookSourceName)
+        }.buttonStyle(.borderless).listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+            .disabled(model.isBusy).contextMenu { rowActions(source) }
+            .swipeActions { Button("删除", role: .destructive) { Task { await model.delete(source) } } }
+    }
+
+    @ViewBuilder private func rowActions(_ source: BookSourceRow) -> some View {
+        Button("编辑") { edit(source) }
+        Button("置顶") { Task { await model.move(selected: [source.bookSourceUrl], toTop: true) } }
+        Button("置底") { Task { await model.move(selected: [source.bookSourceUrl], toTop: false) } }
+        Button(source.enabledExplore ? "禁用发现" : "启用发现") {
+            model.selectedURLs = [source.bookSourceUrl]; Task { await model.batchExploreEnabled(!source.enabledExplore) }
+        }
+        Button("导出与二维码") { export(selected: [source.bookSourceUrl]) }
+        if let entity = loginSource(source) {
+            NavigationLink("调试") { SourceDebugView(source: entity, client: httpClient) }
+            NavigationLink("登录") { SourceLoginDestination(source: entity, service: sourceLogin) }
+            NavigationLink("校验") { CheckSourceView(sources: [entity], checker: sourceChecker) }
+        }
+        Button("删除", role: .destructive) { Task { await model.delete(source) } }
+    }
+
+    @ViewBuilder private var selectionActions: some View {
+        Button("启用所选") { Task { await model.batchEnabled(true) } }
+        Button("停用所选") { Task { await model.batchEnabled(false) } }
+        Button("启用所选发现") { Task { await model.batchExploreEnabled(true) } }
+        Button("停用所选发现") { Task { await model.batchExploreEnabled(false) } }
+        Button("置顶所选") { Task { await model.move(selected: model.selectedURLs, toTop: true) } }
+        Button("置底所选") { Task { await model.move(selected: model.selectedURLs, toTop: false) } }
+        Button("添加分组") { removingGroup = false; groupText = ""; showGroup = true }
+        Button("移除分组") { removingGroup = true; groupText = ""; showGroup = true }
+        Button("导出所选") { export(selected: model.selectedURLs) }
+    }
+
+    private func edit(_ row: BookSourceRow) {
+        do { editor = SourceEditorRequest(source: try JSONDecoder().decode(BookSource.self, from: JSONEncoder().encode(row))) }
+        catch { model.errorMessage = error.localizedDescription }
+    }
+
     private func export(selected: Set<String>?) {
         do { shareText = try model.exportText(selected: selected); showShare = true }
         catch { model.errorMessage = error.localizedDescription }
@@ -163,3 +252,5 @@ struct SourcesView: View {
         try? JSONDecoder().decode(BookSource.self, from: JSONEncoder().encode(row))
     }
 }
+
+private struct SourceEditorRequest: Identifiable { let id = UUID(); let source: BookSource? }

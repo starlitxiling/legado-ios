@@ -44,3 +44,25 @@ extension Repository where Record == BookSourceRow {
         }
     }
 }
+
+public struct SourceManagementMetadata: Sendable {
+    public let usageCount: Int
+    public let check: BookSourceCheckState?
+}
+
+extension Repository where Record == BookSourceRow {
+    public func managementMetadata() async throws -> [String: SourceManagementMetadata] {
+        try await database.writer.read { db in
+            let rows = try Row.fetchAll(db, sql: """
+                SELECT s.bookSourceUrl, (SELECT COUNT(*) FROM books b WHERE b.origin = s.bookSourceUrl AND (b.type & 1024) = 0) AS usageCount,
+                       state.value AS checkState
+                FROM book_sources s LEFT JOIN source_state state ON state.source = s.bookSourceUrl AND state.key = 'checkState'
+                """)
+            return try Dictionary(uniqueKeysWithValues: rows.map { row in
+                let state: String? = row["checkState"]
+                let check = try state.map { try JSONDecoder().decode(BookSourceCheckState.self, from: Data($0.utf8)) }
+                return (row["bookSourceUrl"] as String, SourceManagementMetadata(usageCount: row["usageCount"], check: check))
+            })
+        }
+    }
+}

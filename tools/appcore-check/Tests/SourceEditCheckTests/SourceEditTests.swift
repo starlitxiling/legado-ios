@@ -4,6 +4,46 @@ import LegadoCore
 
 @MainActor
 final class SourceEditTests: XCTestCase {
+    func testAndroidFieldOrderAndSeparateReviewTab() {
+        let groups = BookSourceEditModel.groups
+        XCTAssertEqual(groups.map { $0.title }, ["基本","搜索","发现","详情","目录","正文","段评"])
+        XCTAssertEqual(groups[0].fields.prefix(5), ["bookSourceUrl","bookSourceName","bookSourceGroup","bookSourceComment","loginUrl"])
+        XCTAssertEqual(groups[1].fields.prefix(2), ["searchUrl","ruleSearch.checkKeyWord"])
+        XCTAssertEqual(groups[5].fields.last, "ruleContent.maxBatchSize")
+        XCTAssertEqual(groups[6].fields.count, 20)
+    }
+
+    func testGroupQueryAndStatusFilters() async throws {
+        let repository = BookSourceRepository(database: try AppDatabase.inMemory())
+        var a = BookSourceRow(); a.bookSourceUrl = "a"; a.bookSourceName = "A"; a.bookSourceGroup = "One,Two"
+        var b = BookSourceRow(); b.bookSourceUrl = "b"; b.bookSourceName = "B"; b.enabled = false
+        try await repository.upsert([a,b])
+        let model = SourcesViewModel(repository: repository, httpClient: ReplayHttpClient())
+        await model.load(); model.keyword = "group:One"
+        XCTAssertEqual(model.filteredSources.map { $0.bookSourceUrl }, ["a"])
+        model.keyword = ""; model.filter = .disabled
+        XCTAssertEqual(model.filteredSources.map { $0.bookSourceUrl }, ["b"])
+        model.filter = .ungrouped
+        XCTAssertEqual(model.filteredSources.map { $0.bookSourceUrl }, ["b"])
+    }
+
+    func testSelectiveImportRetainsUnselectedAndAddsGroup() async throws {
+        let db = try AppDatabase.inMemory(), repository = BookSourceRepository(database: db)
+        var row = BookSourceRow(); row.bookSourceUrl = "a"; row.bookSourceName = "Old"
+        try await repository.upsert(row)
+        let model = SourcesViewModel(repository: repository, httpClient: ReplayHttpClient())
+        await model.prepareImport(text: #"[{"bookSourceUrl":"a","bookSourceName":"Changed"},{"bookSourceUrl":"b","bookSourceName":"New"}]"#)
+        XCTAssertEqual(Set(model.importPreview?.items.map { $0.status } ?? []), ["新增","更新"])
+        model.selectedImportURLs = ["b"]; model.importGroup = "Remembered"
+        await model.confirmImport()
+        XCTAssertEqual(model.sources.first { $0.bookSourceUrl == "a" }?.bookSourceName, "Old")
+        XCTAssertEqual(model.sources.first { $0.bookSourceUrl == "b" }?.bookSourceGroup, "Remembered")
+        var book = BookRow(); book.bookUrl = "book"; book.name = "Book"; book.origin = "a"
+        try await BookshelfRepository(database: db).insert(book)
+        await model.load()
+        XCTAssertEqual(model.metadata["a"]?.usageCount, 1)
+    }
+
     func testValidationAndJSONPaste() throws {
         let model = BookSourceEditModel()
         XCTAssertThrowsError(try model.validated(existingURLs: [], now: 1))
