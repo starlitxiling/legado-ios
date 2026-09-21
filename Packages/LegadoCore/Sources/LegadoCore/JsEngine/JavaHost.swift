@@ -33,6 +33,7 @@ private final class JavaElement: NSObject, JavaElementExport {
 public final class JavaHost {
     private weak var parser: AnalyzeRule?
     private let crypto = JavaHostCrypto()
+    private let fonts = JavaHostFont()
     private let platformServices: JsPlatformServices
     private let extraParams: [String: String]
     private let timeZone: TimeZone
@@ -122,6 +123,14 @@ public final class JavaHost {
                     });
                     return object;
                 }
+                if (value && value.__legadoFont !== undefined) {
+                    const font = {__legadoFont: value.__legadoFont};
+                    ['getGlyfById','getGlyfIdByUnicode','getGlyfByUnicode','getUnicodeByGlyf','isBlankUnicode'].forEach(name => {
+                        font[name] = function() { return response(invoke('font.'+name,[value.__legadoFont].concat(nativeArguments(arguments)))); };
+                    });
+                    ['unicodeToGlyph','unicodeToGlyphId','glyphToUnicode'].forEach(name => { font[name] = javaMap(value[name], false); });
+                    return font;
+                }
                 if (value && value.__legadoFile) {
                     const path = value.__legadoFile;
                     const info = () => invoke('file.info', [path]);
@@ -147,7 +156,7 @@ public final class JavaHost {
                 }
                 return result;
             }
-            const methods = ['get','put','getString','getStringList','getElement','getElements','getElementsRaw','cacheContent','reGetBook','refreshTocUrl','setContent',
+            const methods = ['queryTTF','queryBase64TTF','replaceFont','get','put','getString','getStringList','getElement','getElements','getElementsRaw','cacheContent','reGetBook','refreshTocUrl','setContent',
                 't2s','s2t','timeFormat','timeFormatUTC','log','toast','longToast','logType','randomUUID','androidId',
                 'getReadBookConfig','getReadBookConfigMap','getThemeMode','getThemeConfig','getThemeConfigMap',
                 'base64DecodeToByteArray','hexDecodeToByteArray','hexEncodeToString','strToBytes','bytesToStr','decodeURI','htmlFormat','toURL','base64Decode','base64Encode','hexDecodeToString','toNumChapter',
@@ -219,6 +228,9 @@ public final class JavaHost {
     }
 
     private func call(_ method: String, _ arguments: [Any]) throws -> Any? {
+        if JavaHostFont.methods.contains(method) || method.hasPrefix("font.") {
+            return try fonts.call(method, arguments: arguments, network: network, bindings: try parser?.scriptBindings ?? [:])
+        }
         if JavaHostNetwork.fileMethods.contains(method) || method == "file.info" {
             return try network.callFile(method, arguments)
         }

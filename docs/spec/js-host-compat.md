@@ -139,3 +139,11 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 - `getDouble` 可读取 JS 数值内存；JS 数字在 Rhino/JSC 均按 Double 输入。磁盘 Int/Long 的溢出仍返回 null。
 
 `JavaHostCacheTests` 的输入输出：字节 0,255,65 原样回读；对象 values=['a','b'] 回读 a,b；同 key 的 Memory / Disk / Text 分别由 get / get(onlyDisk) / getFile 返回；1000ms 写入一秒缓存，1999ms 有效、2000ms 失效；访问 a 后写 c 淘汰较旧的 b。
+
+## 字体（轮次 5 / P3g）
+
+`queryTTF` 接受 HTTP(S)、Base64 和字节数组，默认 SHA-256 缓存；第二参数 false 绕过缓存。`queryBase64TTF` 为带弃用日志的兼容入口。返回对象提供五种查询方法及三个 Java Map 形式的映射表；`replaceFont` 按 Unicode code point 替换，可过滤缺失字形并保留原版规定的空白字符。
+
+以 `2bdd3c58b` 的 `model/analyzeRule/QueryTTF.java` 为准，支持 cmap 0/4/6、长短 loca、简单和复合 glyf。原版不解析 cmap 12、CFF/WOFF，也没有注释中所称的本地文件自动识别；本地文件可使用 `java.queryTTF(java.readFile(path))`。重复轮廓的反查取 Unicode 升序中的最后一个，避免依赖 JVM HashMap 的遍历顺序。
+
+简单轮廓保留相对坐标；复合轮廓保留原版的无符号缩放读取及默认 0.0。直接编译运行原版 Java 类得到 `10,20` 和完整复合轮廓字符串，与 Swift fixture 逐字一致。损坏表、越界和重复标志溢出会报告字体解析错误。专项 4 项、Core 全量 736 项通过；应用构建通过。
