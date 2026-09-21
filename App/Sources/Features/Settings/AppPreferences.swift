@@ -10,7 +10,7 @@ extension AppPreferences {
         values["showSearchReadRecord"] = .boolean(true)
         values["precisionSearch"] = .boolean(false)
         for key in ["searchScope", "searchGroup", "searchResultFilter", "bookImportFileName"] { values[key] = .string("") }
-        for key in "showUnread coverShowName coverShowAuthor coverShowNameN coverShowAuthorN coverTitleAdaptive welcomeShowText welcomeShowIcon welcomeShowTextDark welcomeShowIconDark replaceEnableDefault autoClearExpired showAddToShelfAlert showMangaUi jsSourceApiTokenRequired".split(separator: " ") {
+        for key in "showUnread coverShowName coverShowAuthor coverShowNameN coverShowAuthorN coverTitleAdaptive welcomeShowText welcomeShowIcon welcomeShowTextDark welcomeShowIconDark replaceEnableDefault autoClearExpired showAddToShelfAlert bookInfoDeleteAlert showMangaUi jsSourceApiTokenRequired".split(separator: " ") {
             values[String(key)] = .boolean(true)
         }
         for key in "showLastUpdateTime showWaitUpCount showBookshelfFastScroller showBookshelfRecentReading showBookshelfStats importReplaceSource transparentNavBar transparentNavBarNight coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome useDefaultCover showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore".split(separator: " ") {

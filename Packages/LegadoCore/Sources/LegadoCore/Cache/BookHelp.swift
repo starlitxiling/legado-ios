@@ -46,6 +46,24 @@ public enum BookHelp {
             || (try? content(directory: directory, book: book, chapter: chapter)) != nil
     }
 
+    public static func clearCache(directory: URL, book: Book, chapters: [BookChapter]) throws {
+        let root = directory.appendingPathComponent("book_cache", isDirectory: true)
+        if FileManager.default.fileExists(atPath: root.path) {
+            guard try root.resourceValues(forKeys: [.isSymbolicLinkKey]).isSymbolicLink != true else {
+                throw CocoaError(.fileReadInvalidFileName, userInfo: [NSFilePathErrorKey: root.path])
+            }
+            let suffix = md5(book.bookUrl ?? "")
+            for entry in try FileManager.default.contentsOfDirectory(at: root, includingPropertiesForKeys: nil)
+                where entry.lastPathComponent.hasSuffix(suffix) {
+                try FileManager.default.removeItem(at: entry)
+            }
+        }
+        for chapter in chapters {
+            let legacy = try ReaderCacheStatus.fileURL(book: book, chapter: chapter, directory: directory)
+            if FileManager.default.fileExists(atPath: legacy.path) { try FileManager.default.removeItem(at: legacy) }
+        }
+    }
+
     @discardableResult
     public static func clearInvalidCache(directory: URL, books: [Book]) throws -> Int {
         let retained = Set(books.map { md5($0.bookUrl ?? "") })

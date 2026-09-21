@@ -5,7 +5,7 @@ import LegadoCore
 @Observable
 @MainActor
 final class BookDetailViewModel {
-    let results: [SearchBook]
+    private(set) var results: [SearchBook]
     private(set) var selectedSourceIndex = 0
     private(set) var book: Book?
     private(set) var source: BookSource?
@@ -68,6 +68,14 @@ final class BookDetailViewModel {
                 loaded.totalChapterNum = old.totalChapterNum
             }
             guard request == generation, !Task.isCancelled else { return }
+            if saved != nil, let current = try await bookshelf.get(bookUrl: loaded.bookUrl ?? "") {
+                var updated = try DiscoveryStorage.preservingReading(current, in: DiscoveryStorage.row(loaded, defaults: current))
+                updated.totalChapterNum = current.totalChapterNum
+                guard request == generation, !Task.isCancelled else { return }
+                try await bookshelf.upsert(updated)
+                loaded = try DiscoveryStorage.book(updated)
+            }
+            guard request == generation, !Task.isCancelled else { return }
             book = loaded
             source = selected
             isOnBookshelf = saved.map { $0.type & DiscoveryStorage.hiddenBook == 0 } ?? false
@@ -82,8 +90,94 @@ final class BookDetailViewModel {
             let saved = try await bookshelf.get(bookUrl: url)
             let sourceRow = try await sources.get(bookSourceUrl: book?.origin ?? "")
             guard book?.bookUrl == url else { return }
+            if let saved { book = try DiscoveryStorage.book(saved) }
             source = try sourceRow.map(DiscoveryStorage.source)
             isOnBookshelf = saved.map { $0.type & DiscoveryStorage.hiddenBook == 0 } ?? false
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func selectResult(_ result: SearchBook) async {
+        if let index = results.firstIndex(where: { $0.bookUrl == result.bookUrl }) {
+            await selectSource(index)
+        } else {
+            results.append(result)
+            await selectSource(results.count - 1)
+        }
+    }
+
+    func prepareForReading(database: AppDatabase) async -> Book? {
+        guard let book, !isLoading, !isSaving else { return nil }
+        isSaving = true; errorMessage = nil
+        defer { isSaving = false }
+        do {
+            if let matching = try await DiscoveryStorage.matchingBook(book, in: bookshelf),
+               matching.bookUrl != book.bookUrl, let source {
+                var updated = book
+                let chapters = try await WebBook(source: source, client: client).chapterList(book: &updated)
+                let rows = try chapters.map { try DiscoveryStorage.row($0, defaults: BookChapterRow()) }
+                self.book = try await SourceChangeTransaction.save(book: updated, previous: book, chapters: rows, database: database)
+            } else {
+                self.book = try DiscoveryStorage.book(try await storedBook())
+            }
+            await refreshShelfState()
+            return self.book
+        } catch { errorMessage = error.localizedDescription; return nil }
+    }
+
+    func setCanUpdate(_ enabled: Bool) async {
+        await edit { book in
+            book.canUpdate = enabled
+            if !enabled { book.type &= ~16 }
+        }
+    }
+
+    func setSplitLongChapter(_ enabled: Bool) async {
+        await edit { book in
+            var config = book.readConfig ?? ReadConfig()
+            config.splitLongChapter = enabled; book.readConfig = config
+        }
+    }
+
+    func setVariable(_ value: String) async {
+        do {
+            if !value.isEmpty {
+                guard try JSONSerialization.jsonObject(with: Data(value.utf8)) is [String: String] else {
+                    throw BookDetailActionError.invalidVariable
+                }
+            }
+            await edit { $0.variable = value.isEmpty ? nil : value }
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func setGroups(_ mask: Int64) async { await edit { $0.group = mask } }
+
+    func moveToTop() async {
+        guard isOnBookshelf, !isSaving else { return }
+        isSaving = true; errorMessage = nil
+        defer { isSaving = false }
+        do { book = try DiscoveryStorage.book(try await bookshelf.saveAtTop(try await storedBook())) }
+        catch { errorMessage = error.localizedDescription }
+    }
+
+    func storedBook() async throws -> BookRow {
+        guard let book, let url = book.bookUrl, !url.isEmpty else { throw BookshelfEditError.missingBook }
+        if let saved = try await bookshelf.get(bookUrl: url) { return saved }
+        var row = try DiscoveryStorage.row(book, defaults: BookRow())
+        row.type |= DiscoveryStorage.hiddenBook
+        try await bookshelf.upsert(row)
+        return row
+    }
+
+    private func edit(_ change: (inout Book) -> Void) async {
+        guard book != nil, !isSaving, !isLoading else { return }
+        isSaving = true; errorMessage = nil
+        defer { isSaving = false }
+        do {
+            let row = try await storedBook()
+            var updated = try DiscoveryStorage.book(row)
+            change(&updated)
+            try await bookshelf.upsert(DiscoveryStorage.row(updated, defaults: row))
+            book = updated
         } catch { errorMessage = error.localizedDescription }
     }
 
@@ -110,4 +204,9 @@ final class BookDetailViewModel {
             isOnBookshelf = !wasVisible
         } catch { errorMessage = error.localizedDescription }
     }
+}
+
+enum BookDetailActionError: LocalizedError {
+    case invalidVariable
+    var errorDescription: String? { "书籍变量必须是字符串键值组成的 JSON 对象。" }
 }

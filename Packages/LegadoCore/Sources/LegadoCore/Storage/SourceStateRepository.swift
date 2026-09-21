@@ -37,7 +37,7 @@ public struct SourceStateRepository: Sendable {
         }
     }
 
-    func merge(source: String, original: [String: String], updated: [String: String]) async throws {
+    public func merge(source: String, original: [String: String], updated: [String: String]) async throws {
         try await database.write { db in
             for key in Set(original.keys).union(updated.keys) where original[key] != updated[key] {
                 if let value = updated[key] {
