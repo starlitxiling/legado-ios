@@ -185,3 +185,11 @@
 - UI 测试发现 SwiftUI 导航栏 TextField 的 FocusState 未获得焦点；自动聚焦输入使用局部 UITextField 桥接，在加入窗口后请求焦点。无延时猜测，实测不点击搜索框即可键入；页面与其它组件继续使用 SwiftUI。
 - 来源完成次序不保证，UI 标识改为合并后的书名/作者。全量默认设置契约加入新增搜索选项；Core 667/0、AppCore 272/0、CLI 7/0。模拟器两项 UI 测试通过，覆盖自动聚焦、历史长按删除、结果、屏蔽词、范围及重启持久化。
 - 日志 u3-core-full / u3-appcore-final / u3-cli-full / u3-focus-window / u3-ios-final；截图 assets/u3-input-help.png、u3-search-results.png 已检查。Android 同屏人类目视验收仍待最终交付，暂不进行 iPhone 真机测试。
+
+
+## P7-1 UMD 与 AZW 入口
+
+- UMD 头部、标题/作者/类型、章节偏移/标题、封面及分块 zlib 解码接入 LocalBook，章节 URL 为十进制索引。读取器与缓存均有大小/数量边界，缓存按文件签名失效，Files 与远程书库入口支持 UMD/AZW。
+- 新增合成 fixture 与生成脚本；直接编译固定 Android Java 读取器完成元数据及首末章正文对拍，见 docs/spec/localbook-compat.md。逐字节截断、损坏压缩、非法偏移和大小上限均验证。
+- Core 全量 670/0，追加缓存测试后 UMD 4/0；AppCore 272/0，generic iOS 构建通过。AppCore 初次因 SwiftPM 未重新枚举新增文件失败，刷新 manifest 后通过，没有修改业务以绕过测试。
+- 日志 p7-umd-core-full / p7-umd-appcore-retest / p7-umd-cache / p7-umd-ios。U3 未签名 IPA 归档成功（u3-ipa），未安装设备。P7 其它条目继续实现，不将本提交标为本地书全格式验收完成。

@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 2026-09-21：P0、批次 1、P5/P6/U1/U2/U3 已完成；当前准备 P7，P4 真实门禁与去重取舍待收口。
+- 2026-09-21：P0、批次 1、P5/P6/U1/U2/U3 已完成；当前 P7 本地书，P4 真实门禁与去重取舍待收口。
 - 起始提交：`30d180ecf`；P0 已拆为 ff6f50452、f82ddf72c、284834405 三笔本地提交。
 - 用户 2026-09-21 最新要求：持续完成全部计划，暂不进行 iPhone 真机测试；两次真机验收均暂缓，其余回归继续。
 - 用户最新指示：全部由主会话亲自执行，不再启动子代理。已停止全部在途子代理，保留已完成产出。
@@ -33,6 +33,7 @@
 | 批次 2：U1 | 完成 | 主会话 | RootTabView / MainTabObserver | 模拟器 UI 4 项及回调 1 项通过，iOS 构建通过 |
 | 批次 2：U2 | 完成 | 主会话 | BookshelfLayout / 书单与远程入口 | Core 667/0、AppCore 268/0；模拟器 UI 3 项与 iOS 构建通过 |
 | 批次 2：U3 | 完成 | 主会话 | SearchView / SearchScope / assets/u3-* | Core 667/0、AppCore 272/0、CLI 7/0；模拟器 UI 2 项通过 |
+| P7-1 UMD | 完成 | 主会话 | UmdFile / localbook-compat.md | Core 670/0 + 缓存测试；AppCore 272/0；iOS 构建通过 |
 | 批次 3-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -41,6 +42,6 @@
 
 ## 下一步
 
-最近提交 8e1a1fb2b（U2 菜单收口）；U3 已完成，等待本地提交；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6 已完成，继续 P7 本地书。全程不推送；WebDAV 凭据只用于读取。
+最近提交 b10d37495（U3 搜索页）；P7 从 UMD 开始实现；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6 已完成，继续 P7 本地书。全程不推送；WebDAV 凭据只用于读取。
 
 P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。

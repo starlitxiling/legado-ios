@@ -110,6 +110,6 @@ final class RemoteBooksModel {
     }
 
     private nonisolated static func supported(_ filename: String) -> Bool {
-        ["txt", "epub", "mobi", "azw3", "pdf"].contains((filename as NSString).pathExtension.lowercased())
+        ["txt", "epub", "umd", "mobi", "azw3", "azw", "pdf"].contains((filename as NSString).pathExtension.lowercased())
     }
 }

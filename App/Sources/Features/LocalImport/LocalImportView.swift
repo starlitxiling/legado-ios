@@ -16,7 +16,7 @@ struct LocalImportView: View {
     var body: some View {
         List {
             Section {
-                Button("选择 TXT、EPUB、MOBI 或 PDF 文件") { showsPicker = true }.disabled(model.isImporting)
+                Button("选择本地书籍文件") { showsPicker = true }.disabled(model.isImporting)
                 ForEach(model.conflictingURLs, id: \.self) { url in
                     Button("确认保留副本：\(url.lastPathComponent)") {
                         Task { await model.confirmKeepCopy(url) }
@@ -46,7 +46,7 @@ private struct LocalDocumentPicker: UIViewControllerRepresentable {
     let selected: ([URL]) -> Void
     func makeCoordinator() -> Coordinator { Coordinator(selected: selected) }
     func makeUIViewController(context: Context) -> UIDocumentPickerViewController {
-        let types: [UTType] = [.plainText, .pdf] + ["epub", "mobi", "azw3"].map { UTType(filenameExtension: $0) ?? .data }
+        let types: [UTType] = [.plainText, .pdf] + ["epub", "umd", "mobi", "azw3", "azw"].map { UTType(filenameExtension: $0) ?? .data }
         let picker = UIDocumentPickerViewController(forOpeningContentTypes: types, asCopy: false)
         picker.allowsMultipleSelection = true
         picker.delegate = context.coordinator
