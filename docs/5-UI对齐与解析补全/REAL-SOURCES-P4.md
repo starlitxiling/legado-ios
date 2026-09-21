@@ -33,3 +33,7 @@ rtk proxy xcodebuild -project App/Legado.xcodeproj -scheme Legado \
 命令行工具新增可选 `--error-log`，仅在显式指定时将原始错误写到本地文件；标准输出继续脱敏。该文件可能含地址或书源变量，只保存在忽略目录，不提交。此次原始日志位于 `.build/round5/real-sources/`，模拟器日志为 `.build/round5/p4-live-simulator.log`。
 
 真机按计划在批次 3 和批次 5 验证；此轮未声称 iPhone 验收通过。
+
+## 最终复验
+
+2026-09-22 新固定候选集合 CLI 8/8、iOS 模拟器 7/8，已达到 P4 的 6/8 门槛。候选选择方法与具体编号见 [REAL-SOURCES-FINAL.md](REAL-SOURCES-FINAL.md)；上文保留早期门禁结果，不覆盖历史失败。

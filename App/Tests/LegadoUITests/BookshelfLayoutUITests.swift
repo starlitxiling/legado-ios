@@ -113,7 +113,9 @@ final class BookshelfLayoutUITests: XCTestCase {
     @MainActor private func openLayout(_ app: XCUIApplication) {
         let menu = app.buttons["bookshelf.menu"]
         XCTAssertTrue(menu.waitForExistence(timeout: 15))
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: menu)], timeout: 5), .completed)
         menu.tap()
+        XCTAssertTrue(app.buttons["书架布局"].waitForExistence(timeout: 5))
         app.buttons["书架布局"].tap()
         XCTAssertTrue(app.navigationBars["书架布局"].waitForExistence(timeout: 5))
     }

@@ -2,68 +2,37 @@
 
 ## 当前阶段
 
-- 2026-09-22：P0、批次 1、P5/P6/U1/U2/U3 已完成；P7/P8 已完成，U6 已完成，批次 4 已完成，当前真实回归收口，P4 真实门禁待收口。
-- 起始提交：`30d180ecf`；P0 已拆为 ff6f50452、f82ddf72c、284834405 三笔本地提交。
-- 用户 2026-09-21 最新要求：持续完成全部计划，暂不进行 iPhone 真机测试；两次真机验收均暂缓，其余回归继续。
-- 用户最新指示：全部由主会话亲自执行，不再启动子代理。已停止全部在途子代理，保留已完成产出。
-- 本机未找到 `/review-loop`，使用 `code-review-excellence` 检查，后续由主会话自行审查与测试。
+- 2026-09-22：P0-P9、U0-U9 实现与本机回归已交付；计划仍有外部验收和真实样本覆盖缺口，不能标为全部验收完成。
+- 最近业务提交：`bbe2b6a5a`；最终测试修正和报告随本文件提交，完整记录见 SUMMARY.md / REVIEW.md。
+- 起始提交：`30d180ecf`；Kotlin 固定规格：`2bdd3c58b`。
+- 用户最新要求：全部由主会话执行，不启动子代理；暂不进行 iPhone 真机测试。没有安装或测试已连接 iPhone。
+- 本机没有 `/review-loop`，按 code-review-excellence 自行审查；未推送，WebDAV 凭据仅用于读取。
 
 ## 任务表
 
-| 任务 | 状态 | 通道 | 产物 | 验证 |
+| 任务 | 状态 | 执行 | 产物 | 验证 |
 | --- | --- | --- | --- | --- |
-| P0 PDF 标题与 Core 基线 | 完成 | astra / medium | `.build/round5/p0-report.md` | Core 549/0；AppCore PDF 5/0，已抽查 diff |
-| P0 既有修复独立审查与真机条件 | 完成 | astra / medium | `.build/round5/p0-review.md` | 发现备份口令接线、零用例假绿；设备开发模式开启 |
-| P0 备份接线与运行器返修 | 完成 | 已收回 | `.build/round5/p0-fixes-report.md` | AppCore 236/0；CLI 7/0；已核验 diff |
-| P0 iOS 构建与冷启动测试 | 完成 | 已收回 | `.build/round5/p0-ios-report.md` | generic iOS 构建与模拟器启动测试通过 |
-| P7 压缩依赖前置实证 | 完成 | 已收回 | `.build/round5/archive-probe.md` | 3/0 与 generic iOS 构建；尚未接入业务 |
-| P0 拆分提交与轮次 4 总结 | 完成 | 主会话 | `docs/4-收尾与真机验证/SUMMARY.md` | 已验收并拆分提交 |
-| P1 七项解析修复 | 完成 | 主会话 | RuleParityTests / .build/round5/p1-*.log | Core 562/0、AppCore 236/0、CLI 7/0 |
-| P2 脚本上下文与 URL 变量宿主 | 完成 | 主会话 | ScriptContextTests / .build/round5/p2-*.log | Core 574/0、AppCore 236/0、CLI 7/0 |
-| P3a UI 与系统宿主 | 完成 | 主会话 | JavaHostPlatformTests / ScriptHostConfigurationTests | Core 580/0、AppCore 238/0、generic iOS 构建通过 |
-| P3b 字节桥与编解码 | 完成 | 主会话 | JavaHostEncodingTests / .build/round5/p3b-*.log | Core 586/0、AppCore 238/0、CLI 7/0 |
-| P3c 加密与 CryptoJS | 完成 | 主会话 | JavaHostCryptoTests / .build/round5/p3c-*.log | Core 595/0、AppCore 238/0、CLI 7/0、iOS 构建通过 |
-| P3d 时间 | 完成 | 主会话 | JavaHostTimeTests / .build/round5/p3d-*.log | Core 599/0 |
-| U0 主题基础 | 完成 | 主会话 | ThemeStoreTests / assets/theme-*.png | AppCore 244/0；iOS 构建与模拟器 5 项通过 |
-| U9 通用组件 | 完成 | 主会话 | Shared/Components / assets/components*.png | 逻辑 3/0；iOS 图标与交互 2/0 |
-| 批次 1 门禁 | 完成 | 主会话 | .build/round5/batch1-*.log | Core 599/0、AppCore 247/0、CLI 7/0；iOS 构建/启动通过 |
-| 批次 2：P4 | 在途 | 主会话 | WebBook 四流程 | Core 634/0、AppCore 249/0、CLI 7/0、iOS 构建通过；真实门禁未达标 |
-| 批次 2：P5 | 完成 | 主会话 | docs/spec/content-compat.md | Core 649/0、AppCore 254/0、iOS 构建通过 |
-| 批次 2：P6 | 完成 | 主会话 | docs/spec/network-compat.md | Core 667/0、AppCore 256/0、iOS 构建通过 |
-| 批次 2：U1 | 完成 | 主会话 | RootTabView / MainTabObserver | 模拟器 UI 4 项及回调 1 项通过，iOS 构建通过 |
-| 批次 2：U2 | 完成 | 主会话 | BookshelfLayout / 书单与远程入口 | Core 667/0、AppCore 268/0；模拟器 UI 3 项与 iOS 构建通过 |
-| 批次 2：U3 | 完成 | 主会话 | SearchView / SearchScope / assets/u3-* | Core 667/0、AppCore 272/0、CLI 7/0；模拟器 UI 2 项通过 |
-| P7-1 UMD | 完成 | 主会话 | UmdFile / localbook-compat.md | Core 670/0 + 缓存测试；AppCore 272/0；iOS 构建通过 |
-| P7-2 压缩包 | 完成 | 主会话 | BookArchive / LocalImport / RemoteBooks | Core 675/0、AppCore 275/0；iOS 构建通过 |
-| P7-16 导入入口 | 完成 | 主会话 | LocalDirectoryScanner / onOpenURL / project.yml | AppCore 277/0；iOS 构建通过；系统文件打开与自动导入已通过模拟器验证 |
-| P7-7 编码 | 完成 | 主会话 | TextEncodingDetector / 8 种 fixture | Core 677/0、AppCore 277/0；iOS 构建通过 |
-| P7-3/4/5/6/8 TXT | 完成 | 主会话 | TextTocParityTests / localbook-compat.md | Core 682/0、AppCore 277/0；修改重建 3/0 |
-| P7-9 文件名脚本 | 完成 | 主会话 | LocalBook.nameAuthor / 通用设置 | Core 专项 6/0、AppCore 279/0；iOS 构建通过 |
-| P7-10/11/12/13 EPUB | 完成 | 主会话 | EpubParser / LocalBookTocNode / 本地图片与封面 | Core 685/0；App 专项与 iOS 构建通过，目录 UI 在 U6 接入 |
-| P7-14 PDF | 完成 | 主会话 | PdfFile / scanned.pdf / 页图与大纲 | Core 686/0；扫描页、旧链接及阅读器验证；iOS 构建通过 |
-| P7-15 MOBI | 完成 | 主会话 | MobiBook / KF6/KF8 图片与目录 | Core 688/0、AppCore 283/0；iOS 构建通过 |
-| P7 模拟器验收 | 完成 | 主会话 | LocalBookUITests / assets/p7-* | 十格式导入末章通过；EPUB/PDF/AZW3 显图与系统打开通过 |
-| P8 书架与缓存 | 完成 | 主会话 | storage-notes.md / assets/p8-refresh-failures.png | Core 692/0 + 边界 5/0；AppCore 284/0；模拟器 4/0；iOS 构建通过 |
-| P3e 文件宿主 | 完成 | 主会话 | JavaHostFiles / DiskHostDownloadStore / js-host-compat.md | Core 698/0、AppCore 284/0、iOS 构建通过 |
-| P3f 缓存宿主 | 完成 | 主会话 | CacheMemoryValue / JavaHostCacheTests | Core 701/0、AppCore 284/0、iOS 构建通过 |
-| U4 发现页 | 完成 | 主会话 | ExploreView / ExploreKinds / explore-ui-compat.md | Core 703/0、AppCore 286/0、专项 16/0；模拟器交互与渲染 1/0；截图已复核 |
-| U5 书籍详情 | 完成 | 主会话 | book-detail-compat.md / assets/u5-* | Core 706/0、AppCore 289/0；模拟器 2/0；iOS 构建通过 |
-| U6 阅读器 | 完成 | 主会话 | reader-ui-compat.md / 样式、菜单、输入、设置与独立目录 | Core 723/0、AppCore 318/0；模拟器 8/0；Release IPA 通过 |
-| 批次 3 门禁 | 完成 | 主会话 | dist/Legado-1.0-eeb012746.ipa | 全量单测、模拟器、Release archive 通过；真机暂缓 |
-| P9 JSONPath / XPath | 完成 | 主会话 | jsonpath-completion.md / xpath-compat.md | Core 732/0、App 318/0、iOS 构建通过；Java 原依赖对拍通过 |
-| P3g/h 字体、书籍及并发 | 完成 | 主会话 | QueryTTF / SourceLock / js-host-compat.md | Core 739/0、App 318/0、iOS 构建通过；Java 字体对拍通过 |
-| U7/U8 | 完成 | 主会话 | d3ed56eb4 / 709874808 / assets/u7-*、u8-* | App 322/0、模拟器各 1/0、iOS 构建通过 |
-| 批次 5 真实回归 | 在途 | 主会话 | 全量 4198 源、精选 20 源、模拟器 8 源 | 全量归因中；精选 16/20、模拟器 7/8；宿主缺口已回流测试 |
+| P0 基线及轮次 4 收尾 | 完成 | 历史协作后主会话核验 | ../4-收尾与真机验证/SUMMARY.md | 已拆分提交 |
+| P1/P2/P3a-h 解析与宿主 | 完成 | 主会话 | docs/spec/js-host-compat.md 等 | Core 747/0 |
+| P4/P5/P6 四流程、净化、网络 | 完成 | 主会话 | WebBook / content-compat / network-compat | 离线契约通过；真实固定 8 源 CLI 8/8、模拟器 7/8 |
+| P7/P8 本地书、书架与缓存 | 完成 | 主会话 | localbook-compat / storage-notes | 十格式导入末章和图片 UI 通过 |
+| P9 JSONPath/XPath | 完成 | 主会话 | jsonpath-completion / xpath-compat | Core 通过，Java 原依赖对拍通过 |
+| U0-U9 界面与设置 | 完成 | 主会话 | App/Sources / assets/ | App 322/0；最终 25 项 UI 均有通过记录 |
+| 全量搜索冒烟 | 完成 | 主会话 | ALL-SOURCES.md | 4198 条首轮；189 条相关重测后合并 356 通过 |
+| 精选真实四流程数量门槛 | 完成 | 主会话 | REAL-SOURCES-FINAL.md | 17/20，超过 16/20 门槛 |
+| 最终构建与包 | 完成 | 主会话 | dist/Legado-1.0-bbe2b6a5a.ipa | Release archive 成功，ZIP CRC 校验通过 |
+| Android 互导与同屏 | 待核验 | 主会话 | DEVICE-READING-2026-09-22.md | 无设备/SDK/AVD，官方两域名及另一 SSL 客户端均连接失败 |
+| 真实覆盖与失败定因 | 待核验 | 主会话 | ALL-SOURCES.md / REAL-SOURCES-FINAL.md | 缺纯 JS 样本；登录样本未全流程通过；526 条待核、3 条 Java 类缺口 |
+| 两次 iPhone 验收 | 待核验 | 按用户要求暂缓 | DEVICE-READING-2026-09-22.md | 未测整架更新、真机阅读和内存峰值 |
 
-## 执行方式
+## 执行方式与证据
 
-无在途代理。后续实现、测试、审查、提交全部由主会话逐项执行。已有报告仅作历史证据。
+无在途代理或测试进程。后半程实现、测试、审查与提交全部由主会话完成。历史分项结果已汇总到 SUMMARY.md，原始日志保留在 .build/round5。
 
-## 下一步
+最终 Core 747/0、App 322/0、WebBook CLI 5/0、conformance CLI 7/0；语料仍为 134/142，8 条替换预览 unsupported。UI 首轮 23/25，两类测试修正后 8/8，合并 25 个唯一用例的最新结果均通过；见 final-ui.xcresult / final-ui-retry.xcresult。
 
-完成真实回归报告与最终 UI / Release IPA 门禁。P0–P9、U0–U9 实现完成；回归发现的宿主修复 Core 747/0。全程不推送；WebDAV 凭据只用于读取。Android 设备/模拟器不可用，互导与同屏验收尚未执行。
+## 下一步与未决问题
 
-P4-8 按可执行规格收口：Kotlin SearchBook.kt:65、BookChapter.kt:118 均按 URL 判断相等，沿用 URL 去重。计划的全字段描述与源码及章节主键冲突，此处以固定 Kotlin 基线为准。
+恢复 Android 可执行环境后完成备份应用内恢复与并排截图，进一步对拍待核书源；取得纯 JS 真实样本后补覆盖。iPhone 验收仅在用户恢复此项工作后执行，不将模拟器结果冒充真机指标。当前无可继续推进的本机实现门禁。
 
-- U7 已提交 d3ed56eb4：模型 13/0，模拟器 1/0；U8 已完成：AppCore 322/0、核心新增 2/0、模拟器 1/0、iOS 构建通过。
-- 全量搜索 4198：333 通过 / 3498 失败 / 367 超时；四流程候选 120：65 通过 / 54 失败 / 1 超时，正在归因及回流宿主缺口。
+P4-8 按固定 Kotlin 可执行规格收口：SearchBook.kt:65、BookChapter.kt:118 按 URL 判断相等；计划的全字段去重描述与源码及章节主键冲突，以源码为准。

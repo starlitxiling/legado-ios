@@ -64,8 +64,12 @@ final class StartupUITests: XCTestCase {
         }
         app.buttons["bookshelf.search"].tap()
         XCTAssertTrue(app.navigationBars["搜索"].waitForExistence(timeout: 5))
+        app.navigationBars["搜索"].buttons.element(boundBy: 0).tap()
+        XCTAssertTrue(app.navigationBars["书架"].waitForExistence(timeout: 5))
         openSettings(app)
-        app.buttons["书源管理"].tap()
+        let sources = app.staticTexts["书源管理"]
+        XCTAssertTrue(sources.waitForExistence(timeout: 5))
+        sources.tap()
         XCTAssertTrue(app.navigationBars["书源"].waitForExistence(timeout: 5))
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "u1-source-entry"
