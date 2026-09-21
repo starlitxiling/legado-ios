@@ -2,6 +2,8 @@ import Foundation
 import GRDB
 
 public enum LocalBook {
+    public static let fileExtensions: Set<String> = ["txt", "epub", "umd", "pdf", "mobi", "azw3", "azw"]
+
     public static func isLocal(_ book: Book) -> Bool {
         (book.origin == "loc_book" && (fileURL(book) != nil || book.type & 256 != 0)) || book.origin?.hasPrefix("webDav::") == true
     }
@@ -31,7 +33,7 @@ public enum LocalBook {
     }
 
     public static func parse(url: URL, rules: [TxtTocRule] = TxtTocRule.builtIn) throws -> (book: Book, chapters: [BookChapter], cover: Data?) {
-        guard url.isFileURL, ["txt", "epub", "umd", "mobi", "azw3", "azw", "pdf"].contains(url.pathExtension.lowercased()) else { throw LocalBookError.unsupportedFile }
+        guard url.isFileURL, fileExtensions.contains(url.pathExtension.lowercased()) else { throw LocalBookError.unsupportedFile }
         var book = Book()
         let identity = nameAuthor(url.lastPathComponent)
         book.name = identity.name; book.author = identity.author

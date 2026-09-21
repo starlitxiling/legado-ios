@@ -1,6 +1,8 @@
 from pathlib import Path
 import struct
 import zlib
+import zipfile
+import warnings
 
 ROOT = Path(__file__).resolve().parents[2]
 OUTPUT = ROOT / "Tests" / "Fixtures" / "localbook"
@@ -36,6 +38,22 @@ def umd() -> bytes:
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     (OUTPUT / "synthetic.umd").write_bytes(umd())
+    with zipfile.ZipFile(OUTPUT / "two-books.zip", "w") as archive:
+        for name in ["First.txt", "nested/Second.txt"]:
+            archive.writestr(zipfile.ZipInfo(name), "The final page of " + name)
+        archive.writestr(zipfile.ZipInfo("notes.json"), "{}")
+    with zipfile.ZipFile(OUTPUT / "traversal.zip", "w") as archive:
+        archive.writestr(zipfile.ZipInfo("../escape.txt"), "Invalid")
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", UserWarning)
+        with zipfile.ZipFile(OUTPUT / "duplicate.zip", "w") as archive:
+            archive.writestr(zipfile.ZipInfo("same.txt"), "First")
+            archive.writestr(zipfile.ZipInfo("same.txt"), "Second")
+    with zipfile.ZipFile(OUTPUT / "symlink.zip", "w") as archive:
+        entry = zipfile.ZipInfo("link.txt")
+        entry.create_system = 3
+        entry.external_attr = 0o120777 << 16
+        archive.writestr(entry, "../outside.txt")
 
 
 if __name__ == "__main__":

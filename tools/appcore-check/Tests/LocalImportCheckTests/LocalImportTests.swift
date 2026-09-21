@@ -4,6 +4,53 @@ import LegadoCore
 
 @MainActor
 final class LocalImportTests: XCTestCase {
+    func testArchiveImportsEveryBookAndKeepsStableURLsAndProgress() async throws {
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Tests/Fixtures/localbook/two-books.zip")
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let db = try AppDatabase.inMemory()
+        let model = LocalImportViewModel(database: db, booksDirectory: root)
+        await model.importFiles([fixture])
+        XCTAssertTrue(model.errors.isEmpty, model.errors.joined())
+        XCTAssertEqual(model.importedCount, 2)
+        let books = try await BookshelfRepository(database: db).list()
+        let first = try XCTUnwrap(books.first)
+        try await BookshelfRepository(database: db).updateProgress(bookUrl: first.bookUrl, chapterIndex: 0,
+            chapterPos: 3, chapterTitle: "Page", readTime: 123)
+        await model.importFiles([fixture])
+        XCTAssertTrue(model.errors.isEmpty, model.errors.joined())
+        let repeated = try await BookshelfRepository(database: db).list()
+        XCTAssertEqual(Set(repeated.map(\.bookUrl)), Set(books.map(\.bookUrl)))
+        XCTAssertEqual(repeated.first { $0.bookUrl == first.bookUrl }?.durChapterPos, 3)
+        for row in repeated {
+            let book = try JSONDecoder().decode(Book.self, from: JSONEncoder().encode(row))
+            let chapter = try XCTUnwrap(LocalBook.chapterList(book: book).last)
+            XCTAssertTrue(try LocalBook.content(book: book, chapter: chapter).contains("final page"))
+        }
+    }
+
+    func testArchiveKeepCopyOnlyRetriesConflictingMembers() async throws {
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Tests/Fixtures/localbook/two-books.zip")
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let db = try AppDatabase.inMemory()
+        var existing = BookRow(); existing.bookUrl = "fixture:existing"; existing.name = "First"; existing.author = ""
+        try await BookshelfRepository(database: db).insert(existing)
+        let model = LocalImportViewModel(database: db, booksDirectory: root)
+        await model.importFiles([fixture])
+        XCTAssertEqual(model.importedCount, 1)
+        XCTAssertEqual(model.conflictingURLs, [fixture])
+        await model.confirmKeepCopy(fixture)
+        XCTAssertTrue(model.errors.isEmpty, model.errors.joined())
+        XCTAssertEqual(model.importedCount, 1)
+        let books = try await BookshelfRepository(database: db).list()
+        XCTAssertEqual(Set(books.map(\.name)), ["First", "First (2)", "Second"])
+    }
+
     func testImportPersistsBookAndChapters() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

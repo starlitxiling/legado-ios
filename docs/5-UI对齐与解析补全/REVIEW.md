@@ -193,3 +193,11 @@
 - 新增合成 fixture 与生成脚本；直接编译固定 Android Java 读取器完成元数据及首末章正文对拍，见 docs/spec/localbook-compat.md。逐字节截断、损坏压缩、非法偏移和大小上限均验证。
 - Core 全量 670/0，追加缓存测试后 UMD 4/0；AppCore 272/0，generic iOS 构建通过。AppCore 初次因 SwiftPM 未重新枚举新增文件失败，刷新 manifest 后通过，没有修改业务以绕过测试。
 - 日志 p7-umd-core-full / p7-umd-appcore-retest / p7-umd-cache / p7-umd-ios。U3 未签名 IPA 归档成功（u3-ipa），未安装设备。P7 其它条目继续实现，不将本提交标为本地书全格式验收完成。
+
+
+## P7-2 压缩包后端与导入
+
+- ZIP/RAR/7z 共用 BookArchive 成员元数据与逐项读取。复审 SWCompression 发现 BitByteData 短读 precondition 可终止进程、公开接口全量解压难以限制，因此改用已列入计划候选的 PLzmaSDK 1.6.1 处理 7z，RAR 仍用 Unrar.swift 0.5.4。先独立验证 LZMA/LZMA2 solid、所有截断前缀及 iOS 编译再接入；未宣称 PLzmaSDK 支持 RAR。许可证随应用资源打包。
+- 校验目录穿越、绝对路径、规范化重复名、ZIP 符号链接、成员数和展开大小；原生后端只输出 Data，不交给第三方库创建路径或链接。RAR 内存输入的临时文件随归档对象释放，读操作取消、成员缺失和大小不符显式报错。
+- 本地压缩包逐本导入，原归档 URL + 成员路径决定稳定身份；复导保留进度，确认副本只重试冲突成员。远程书库支持压缩包，保留 serverID/archiveEntry，缺失文件恢复读取正确成员；部分失败保留已成功入库文件，失败临时目录清理。
+- Core 675/0、AppCore 275/0、generic iOS 构建通过；新增 Core 4 项、App 3 项。末次清理/计数复审后导入与远程 9 项复跑通过。日志 p7-archive-*；原生探测日志 p7-native-7z-*。不使用真实 WebDAV 写操作，未安装或测试 iPhone。系统打开、目录扫描和在线文件导入继续作为 P7 后续项。

@@ -4,6 +4,39 @@ import LegadoCore
 
 @MainActor
 final class RemoteBooksTests: XCTestCase {
+    func testRemoteArchiveImportsAndRestoresSelectedMember() async throws {
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Tests/Fixtures/localbook/two-books.zip")
+        let data = try Data(contentsOf: fixture)
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let db = try AppDatabase.inMemory(), client = ReplayHttpClient()
+        let url = URL(string: "https://dav.test/books/two-books.zip")!
+        for _ in 0..<3 { await client.enqueue(url: url, response: .init(status: 200, body: data, finalURL: url)) }
+        let dav = WebDavClient(baseURL: url, username: "user", password: "pass", httpClient: client)
+        let endpoint = RemoteBooksEndpoint(client: dav, root: url.deletingLastPathComponent(), serverID: 9)
+        let model = RemoteBooksModel(database: db, endpoint: endpoint, destination: directory)
+        let file = WebDavFile(url: url, displayName: "two-books.zip")
+        await model.importBook(file, groupID: 2)
+        XCTAssertNil(model.errorMessage)
+        let books = try await BookshelfRepository(database: db).all()
+        XCTAssertEqual(books.count, 2)
+        let book = try XCTUnwrap(books.first { $0.name == "Second" })
+        XCTAssertEqual(try CustomUrl(String(book.origin.dropFirst(8))).getAttr()["archiveEntry"] as? String, "nested/Second.txt")
+        await model.importBook(file, groupID: 4)
+        let repeated = try await BookshelfRepository(database: db).all()
+        XCTAssertEqual(repeated.count, 2)
+        XCTAssertTrue(repeated.allSatisfy { $0.group == 6 })
+        try FileManager.default.removeItem(at: XCTUnwrap(URL(string: book.bookUrl)))
+        let restored = try await WebDavLocalBookRestore(client: dav, destination: directory).restore(book, enabled: true)
+        let entity = try DiscoveryStorage.book(restored)
+        let chapter = try XCTUnwrap(LocalBook.chapterList(book: entity).last)
+        XCTAssertTrue(try LocalBook.content(book: entity, chapter: chapter).contains("final page"))
+        let requests = await client.requests
+        XCTAssertEqual(requests.map(\.method), ["GET", "GET", "GET"])
+    }
+
     func testListingFiltersSelfAndUnsupportedFilesAndSortsDirectoriesFirst() async throws {
         let db = try AppDatabase.inMemory(), client = ReplayHttpClient()
         let url = URL(string: "https://dav.test/books/")!

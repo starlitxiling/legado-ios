@@ -8,14 +8,18 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/scinfu/SwiftSoup.git", exact: "2.13.9"),
         .package(url: "https://github.com/tid-kijyun/Kanna.git", exact: "6.1.0"),
-        .package(url: "https://github.com/groue/GRDB.swift.git", exact: "7.11.1")
+        .package(url: "https://github.com/groue/GRDB.swift.git", exact: "7.11.1"),
+        .package(url: "https://github.com/mtgto/Unrar.swift", exact: "0.5.4"),
+        .package(url: "https://github.com/OlehKulykov/PLzmaSDK.git", revision: "1b27a1c9df85805342d1b049427d6d1dc7ce713d")
     ],
     targets: [
         .target(name: "LegadoCore", dependencies: [.product(name: "SwiftSoup", package: "SwiftSoup"),
                                                   .product(name: "Kanna", package: "Kanna"),
-                                                  .product(name: "GRDB", package: "GRDB.swift")],
+                                                  .product(name: "GRDB", package: "GRDB.swift"),
+                                                  .product(name: "Unrar", package: "Unrar.swift"),
+                                                  .product(name: "PLzmaSDK", package: "PLzmaSDK")],
                 exclude: ["Resources/public_suffix_list.dat", "Resources/PUBLIC_SUFFIX_LIST_LICENSE.md"],
-                resources: [.copy("Resources/crypto-js.js"), .copy("Resources/CRYPTO_JS_LICENSE.txt"), .copy("Resources/OpenCC")],
+                resources: [.copy("Resources/crypto-js.js"), .copy("Resources/CRYPTO_JS_LICENSE.txt"), .copy("Resources/OpenCC"), .copy("Resources/ArchiveLicenses")],
                 swiftSettings: [.swiftLanguageMode(.v5)]),
         .testTarget(name: "LegadoCoreTests", dependencies: ["LegadoCore"],
                     swiftSettings: [.swiftLanguageMode(.v5)])

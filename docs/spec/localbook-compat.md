@@ -27,3 +27,11 @@ rtk proxy swift test --package-path Packages/LegadoCore --filter UmdFileTests
 ```
 
 The generator derives paths from its location and produces synthetic content only.
+
+## ZIP, RAR and 7z
+
+`BookArchive` provides ordered metadata, per-member bytes and extraction of all supported book files. ZIP uses the existing CRC-checked reader; RAR uses Unrar.swift 0.5.4; 7z uses the pinned PLzmaSDK revision in ArchiveLicenses/PROVENANCE.md. The initial SWCompression probe was superseded after source review found fatal short-read preconditions and unbounded eager header/content expansion. The replacement passed the required standalone macOS tests and iOS compilation before integration.
+
+Members are validated for absolute/traversal paths and normalized collisions, ZIP symlinks are rejected, and native formats are decoded into data streams instead of allowing native extraction to create filesystem links. Default limits are 256 MiB compressed/expanded and 10,000 entries. Native codec internal header/dictionary allocations are controlled by the codec and are not a hard process-memory ceiling. RAR multivolume archives require a complete single archive; password parameters are available in the core API.
+
+Local import hashes the original archive URL plus member path, preserving identity/progress on repeat import. Conflicts retain the original archive and only the conflicting members are retried when keeping copies. Remote members retain serverID and an archiveEntry attribute in their origin; missing-file restore fetches and reads that member. Network replay tests assert GET-only behavior.

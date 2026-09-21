@@ -71,6 +71,11 @@ final class RemoteBooksModel {
             let name = file.displayName
             guard Self.supported(name), name == (name as NSString).lastPathComponent,
                   !name.contains("\\"), name != ".", name != ".." else { throw LocalBookError.unsupportedFile }
+            if BookArchive.formats.contains((name as NSString).pathExtension.lowercased()) {
+                persisted = try await importArchive(file, folder: folder, groupID: groupID)
+                if errorMessage == nil && !Task.isCancelled { imported.insert(file.url) }
+                return
+            }
             let remote = CustomUrl(file.url.absoluteString)
             if let serverID = endpoint.serverID { try remote.putAttribute("serverID", serverID) }
             let origin = "webDav::" + remote.description
@@ -109,7 +114,63 @@ final class RemoteBooksModel {
         }
     }
 
+    private func importArchive(_ file: WebDavFile, folder: URL, groupID: Int64) async throws -> Bool {
+        let data = try await endpoint.client.get(file.url, maximumResponseBytes: 256 * 1024 * 1024)
+        let opening = Task.detached(priority: .userInitiated) { try BookArchive(data: data, format: file.url.pathExtension) }
+        let archive = try await withTaskCancellationHandler { try await opening.value } onCancel: { opening.cancel() }
+        let entries = archive.entries.filter { LocalBook.fileExtensions.contains(($0.name as NSString).pathExtension.lowercased()) }
+        guard !entries.isEmpty else { throw BookArchiveError.invalid("No supported books in archive") }
+        let repository = BookshelfRepository(database: database)
+        var existing = Dictionary((try await repository.all()).filter { $0.origin.hasPrefix("webDav::") }.map { ($0.origin, $0) }, uniquingKeysWith: { first, _ in first })
+        let rules = try await TxtTocRuleRepository(database: database).list(enabledOnly: true)
+        var persisted = false, failures: [String] = []
+        for entry in entries {
+            var pendingDirectory: URL?
+            do {
+                try Task.checkCancellation()
+                let remote = CustomUrl(file.url.absoluteString)
+                if let serverID = endpoint.serverID { try remote.putAttribute("serverID", serverID) }
+                try remote.putAttribute("archiveEntry", entry.name)
+                let origin = "webDav::" + remote.description
+                if var saved = existing[origin] {
+                    saved.type &= ~DiscoveryStorage.hiddenBook
+                    if groupID > 0 { saved.group |= groupID }
+                    try await repository.update(saved)
+                    continue
+                }
+                let directory = folder.appendingPathComponent(UUID().uuidString, isDirectory: true)
+                try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                pendingDirectory = directory
+                let local = directory.appendingPathComponent((entry.name as NSString).lastPathComponent)
+                let parsing = Task.detached(priority: .userInitiated) {
+                    try archive.read(entry.name).write(to: local, options: .atomic)
+                    return try LocalBook.parse(url: local, rules: rules)
+                }
+                var parsed = try await withTaskCancellationHandler { try await parsing.value } onCancel: { parsing.cancel() }
+                parsed.book.origin = origin
+                if groupID > 0 { parsed.book.group = groupID }
+                if let cover = parsed.cover {
+                    let coverURL = directory.appendingPathComponent("cover")
+                    try cover.write(to: coverURL, options: .atomic)
+                    parsed.book.coverUrl = coverURL.absoluteString
+                }
+                try Task.checkCancellation()
+                let saved = try await LocalBook.save(book: parsed.book, chapters: parsed.chapters, database: database)
+                existing[origin] = saved
+                persisted = true
+                pendingDirectory = nil
+            } catch {
+                if let pendingDirectory { try? FileManager.default.removeItem(at: pendingDirectory) }
+                if error is CancellationError || Task.isCancelled { break }
+                failures.append(entry.name + "：" + error.localizedDescription)
+            }
+        }
+        if !failures.isEmpty { errorMessage = failures.joined(separator: "\n") }
+        return persisted
+    }
+
     private nonisolated static func supported(_ filename: String) -> Bool {
-        ["txt", "epub", "umd", "mobi", "azw3", "azw", "pdf"].contains((filename as NSString).pathExtension.lowercased())
+        let ext = (filename as NSString).pathExtension.lowercased()
+        return LocalBook.fileExtensions.contains(ext) || BookArchive.formats.contains(ext)
     }
 }

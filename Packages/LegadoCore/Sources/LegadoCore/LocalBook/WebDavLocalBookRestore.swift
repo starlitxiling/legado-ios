@@ -30,8 +30,15 @@ public struct WebDavLocalBookRestore: Sendable {
         let filename = book.originName
         guard !filename.isEmpty, filename == (filename as NSString).lastPathComponent,
               filename != ".", filename != "..", !filename.contains("\\") else { throw LocalBookError.unsupportedFile }
-        let data = try await client.get(remote, maximumResponseBytes: 256 * 1024 * 1024)
+        let response = try await client.get(remote, maximumResponseBytes: 256 * 1024 * 1024)
         try Task.checkCancellation()
+        let data: Data
+        if !explicit.isEmpty, let entry = try CustomUrl(explicit).getAttr()["archiveEntry"] as? String {
+            let reading = Task.detached(priority: .userInitiated) {
+                try BookArchive(data: response, format: remote.pathExtension).read(entry)
+            }
+            data = try await withTaskCancellationHandler { try await reading.value } onCancel: { reading.cancel() }
+        } else { data = response }
         // bookUrl 是章节及标注的关联键；恢复路径独立保存，不能改写书籍身份。
         let folder = destination.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)

@@ -12,6 +12,8 @@ public final class ZipReader {
     private let data: Data
     private let entries: [String: Entry]
     public let entryNames: Set<String>
+    public let orderedEntries: [BookArchiveEntry]
+    public let totalEntryCount: Int
     public let byteCount: Int
     private let lock = NSLock()
     private var reads: [String: Int] = [:]
@@ -67,10 +69,13 @@ public final class ZipReader {
         let centralStart = cursor
         var files: [String: Entry] = [:]
         var names = Set<String>()
+        var ordered: [BookArchiveEntry] = []
         var total = 0
         for _ in 0..<count {
             guard try number(cursor, 4) == 0x02014b50 else { throw BackupArchiveError.invalidArchive }
             let flags = try number(cursor + 8, 2)
+            let mode = try number(cursor + 38, 4) >> 16
+            guard mode & 0o170000 != 0o120000 else { throw BackupArchiveError.unsupportedFormat }
             let method = try number(cursor + 10, 2)
             let crc = try number(cursor + 16, 4)
             let packed = try number(cursor + 20, 4)
@@ -94,6 +99,7 @@ public final class ZipReader {
                 throw BackupArchiveError.unsafePath(name)
             }
             guard names.insert(name).inserted else { throw BackupArchiveError.duplicatePath(name) }
+            if !name.hasSuffix("/") { ordered.append(.init(name: name, size: expanded)) }
             cursor += 46 + nameLength + extraLength + commentLength
             guard cursor <= end, local < centralStart, try number(local, 4) == 0x04034b50,
                   try number(local + 6, 2) == flags, try number(local + 8, 2) == method else {
@@ -111,6 +117,8 @@ public final class ZipReader {
         guard cursor == end else { throw BackupArchiveError.invalidArchive }
         self.data = data; self.entries = files; self.byteCount = data.count
         self.entryNames = Set(files.keys.filter { !$0.hasSuffix("/") })
+        self.orderedEntries = ordered
+        self.totalEntryCount = count
     }
 
     private static func rebuildDirectory(_ data: Data) throws -> Data {
