@@ -17,6 +17,12 @@ public final class MobiFile {
     private let book: MobiBook
     public var title: String { book.header.title }
     public var author: String { book.header.author }
+    public var tocNodes: [LocalBookTocNode] {
+        book.directory.enumerated().map { index, node in
+            LocalBookTocNode(id: index, parentId: node.parentId, depth: node.depth,
+                title: node.title, href: "mobi:\(index)")
+        }
+    }
     public var cover: Data? { try? book.getCover() }
     var cacheCost: Int { book.cacheCost }
     public init(url: URL) throws {
@@ -38,11 +44,11 @@ public final class MobiFile {
         guard let sectionIndex = book.directory[index].sectionIndex else { return "" }
         let doc = try SwiftSoup.parse(book.sections[sectionIndex].html)
         try doc.select("title, script, style, [style*=display:none]").remove()
-        for image in try doc.select("img") {
-            let alt = try image.attr("alt")
-            try image.before(alt.isEmpty ? "[图片]" : "[图片：\(alt)]"); try image.remove()
+        for image in try doc.select("img[recindex]") {
+            let index = try image.attr("recindex")
+            try image.attr("src", "recindex:" + index)
         }
-        return HtmlFormatter.format(try doc.body()?.html())
+        return HtmlFormatter.formatKeepImg(try doc.body()?.html())
     }
     public func getImage(_ href: String) throws -> Data? { try book.getResourceByHref(href) }
 }

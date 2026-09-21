@@ -42,4 +42,18 @@ final class LocalIllustratedBookTests: XCTestCase {
         XCTAssertTrue(requests.isEmpty)
         XCTAssertThrowsError(try LocalBook.image(book: parsed.book, href: "../outside"))
     }
+
+    func testGeneratedMobiAZWAndAZW3ReadFinalChapterAndRealBitmap() throws {
+        for ext in ["mobi", "azw3", "azw"] {
+            let parsed = try LocalBook.parse(url: fixture("illustrated." + ext))
+            XCTAssertEqual(parsed.book.name, "Illustrated " + ext.uppercased())
+            let content = try LocalBook.content(book: parsed.book, chapter: XCTUnwrap(parsed.chapters.last))
+            XCTAssertTrue(content.contains("The final page."))
+            let href = ext == "azw3" ? "kindle:embed:0001?mime=image/png" : "recindex:1"
+            XCTAssertTrue(content.contains(href))
+            let data = try XCTUnwrap(LocalBook.image(book: parsed.book, href: href))
+            let source = try XCTUnwrap(CGImageSourceCreateWithData(data as CFData, nil))
+            XCTAssertNotNil(CGImageSourceCreateImageAtIndex(source, 0, nil))
+        }
+    }
 }

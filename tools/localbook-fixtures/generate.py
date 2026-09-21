@@ -106,12 +106,77 @@ def scanned_pdf() -> bytes:
     return output + f"trailer\n<< /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{start}\n%%EOF\n".encode()
 
 
+def mobi(kf8: bool, title: str) -> bytes:
+    def put(data: bytearray, offset: int, value: int, size: int = 4) -> None:
+        data[offset:offset + size] = value.to_bytes(size, "big")
+
+    def variable(value: int) -> bytes:
+        output = bytearray([value & 127 | 128])
+        value >>= 7
+        while value:
+            output.insert(0, value & 127)
+            value >>= 7
+        return bytes(output)
+
+    def index(tags: list[tuple[int, int]], entries: list[tuple[str, list[int]]]) -> list[bytes]:
+        root = bytearray(68 + len(tags) * 4)
+        root[:4] = b"INDX"
+        put(root, 4, 56); put(root, 24, 1)
+        root[56:60] = b"TAGX"
+        put(root, 60, 12 + len(tags) * 4); put(root, 64, 1)
+        for i, (kind, width) in enumerate(tags):
+            root[68 + i * 4:72 + i * 4] = bytes([kind, width, 1 << i, 0])
+        record = bytearray(56)
+        record[:4] = b"INDX"
+        put(record, 24, len(entries))
+        offsets = []
+        for label, values in entries:
+            offsets.append(len(record))
+            record += bytes([len(label)]) + label.encode() + bytes([(1 << len(tags)) - 1])
+            record += b"".join(variable(v) for v in values)
+        put(record, 20, len(record))
+        record += b"IDXT" + b"".join(struct.pack(">H", v) for v in offsets)
+        return [bytes(root), bytes(record)]
+
+    image = '<img src="kindle:embed:0001?mime=image/png"/>' if kf8 else '<img recindex="1"/>'
+    body = ('<h1>Illustrated chapter</h1><p>Opening body</p>' + image + '<p>The final page.</p>').encode()
+    skeleton = b"<body></body>"
+    raw = skeleton + body if kf8 else body
+    header = bytearray(264)
+    put(header, 0, 1, 2); put(header, 4, len(raw)); put(header, 8, 1, 2); put(header, 10, 4096, 2)
+    header[16:20] = b"MOBI"
+    put(header, 20, 248); put(header, 28, 65001); put(header, 36, 8 if kf8 else 6)
+    put(header, 128, 64); put(header, 244, 0xffffffff); put(header, 260, 0xffffffff)
+    exth = b""
+    for kind, value in [(503, title.encode()), (100, b"Fixture Writer"), (201, struct.pack(">I", 0))]:
+        exth += struct.pack(">II", kind, len(value) + 8) + value
+    header += b"EXTH" + struct.pack(">II", len(exth) + 12, 3) + exth
+    records = [bytes(header), raw]
+    if kf8:
+        put(header, 252, 2); put(header, 248, 4)
+        records += index([(1, 1), (6, 2)], [("skeleton", [1, 0, len(skeleton)])])
+        records += index([(6, 2)], [("6", [0, len(body)])])
+    put(header, 108, len(records))
+    records[0] = bytes(header)
+    records.append(png(50, 160, 90))
+    output = bytearray(78 + 8 * len(records) + 2)
+    output[60:68] = b"BOOKMOBI"
+    put(output, 76, len(records), 2)
+    offset = len(output)
+    for i, record in enumerate(records):
+        put(output, 78 + 8 * i, offset)
+        offset += len(record)
+    return bytes(output) + b"".join(records)
+
+
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     (OUTPUT / "synthetic.umd").write_bytes(umd())
     text_encodings()
     epub_navigation()
     (OUTPUT / "scanned.pdf").write_bytes(scanned_pdf())
+    for extension in ["mobi", "azw3", "azw"]:
+        (OUTPUT / ("illustrated." + extension)).write_bytes(mobi(extension == "azw3", "Illustrated " + extension.upper()))
     with zipfile.ZipFile(OUTPUT / "two-books.zip", "w") as archive:
         for name in ["First.txt", "nested/Second.txt"]:
             archive.writestr(zipfile.ZipInfo(name), "The final page of " + name)

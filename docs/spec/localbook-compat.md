@@ -90,3 +90,12 @@ PDF reading segments retain Android's ten-page grouping and `pdf_<index>` identi
 Outline nodes preserve preorder identity, parent, depth and optional page index, independently of persisted reading segments. Traversal is cycle-aware and capped at 10,000 nodes / depth 64, matching Kotlin PdfOutline limits. The synthetic scanned PDF contains only raster page content plus a non-clickable parent and second-page child; it verifies actual nonblank pixel data, dimensions and final-page reading. App reader tests load two image pages with zero HTTP calls. Local raw-content cache identities carry a format revision so previous extracted-text/image-placeholder caches are not reused.
 
 Validation: Core 686/0 (`p7-pdf-core.log`), PDF cases 6/0 (`p7-pdf-second.log`), iOS build passed (`p7-pdf-ios.log`). The App full run found one old PDF-text expectation, updated to assert page images and rerun in `p7-pdf-app-final.log`.
+
+
+## MOBI KF6/KF8 review
+
+The existing PDB/PalmDoc/HUFF decoder, NCX byte offsets, EXTH metadata, KF8 skeleton/fragment reconstruction and lazy record reads remain covered by binary tests. NCX now propagates preorder parent/depth through both KF6 and KF8 reconstruction. Volume and first child sharing a resource remain distinct navigation nodes; the volume has empty content, matching Kotlin skip-volume behavior. Traversal rejects cycles and excessive depth/node counts.
+
+KF6 img[recindex] becomes src=recindex:<value>; KF8 kindle:embed references remain intact. Formatting retains img and the local provider resolves their resource records without HTTP. Synthetic MOBI, AZW and genuine KF8 AZW3 fixtures contain real PNGs and a final paragraph; all read through the last chapter. Native encrypted MOBI remains an explicit unsupported error, unchanged from the existing reader.
+
+Validation: binary cases 10/0; Core 688/0 (`p7-mobi-core.log`), AppCore 283/0 (`p7-mobi-app.log`), generic iOS build passed (`p7-mobi-ios.log`).

@@ -18,12 +18,17 @@ public final class MobiBook {
         public let title: String
         public let isVolume: Bool
         public let sectionIndex: Int?
+        public let parentId: Int?
+        public let depth: Int
     }
     private struct Cut {
         var offset: Int
         let title: String
         var isVolume = false
         var reference: String? = nil
+        var nodeID: Int? = nil
+        var parentId: Int? = nil
+        var depth = 0
     }
     struct IndexEntry { let label: String; let tags: [Int: [Int]] }
     struct IndexData { let table: [IndexEntry]; let cncx: [Int: String] }
@@ -33,6 +38,7 @@ public final class MobiBook {
     private let resourceStart: Int
     public private(set) var sections: [Section] = []
     public private(set) var directory: [DirectoryNode] = []
+    private var directoryIDs: [Int: Int] = [:]
     private var raw = Data()
     private var records: MobiTextRecords!
     public let cacheCost: Int
@@ -147,7 +153,7 @@ public final class MobiBook {
         return IndexData(table: table, cncx: cncx)
     }
 
-    private func orderedNCX(_ index: IndexData) throws -> [(entry: IndexEntry, isVolume: Bool)] {
+    private func orderedNCX(_ index: IndexData) throws -> [(entry: IndexEntry, isVolume: Bool, id: Int, parentId: Int?, depth: Int)] {
         var children: [Int: [Int]] = [:]
         for (number, entry) in index.table.enumerated() {
             if let parent = entry.tags[21]?.first, index.table.indices.contains(parent), parent != number {
@@ -155,14 +161,16 @@ public final class MobiBook {
             }
         }
         var visited = Set<Int>(), active = Set<Int>()
-        var result: [(IndexEntry, Bool)] = []
-        func visit(_ number: Int) throws {
+        var result: [(IndexEntry, Bool, Int, Int?, Int)] = []
+        func visit(_ number: Int, parent: Int? = nil, depth: Int = 0) throws {
             guard !active.contains(number) else { throw MobiError.invalid("NCX 目录循环引用") }
             if visited.contains(number) { return }
+            guard depth <= 64, result.count < 10_000 else { throw MobiError.invalid("NCX navigation exceeds supported depth or node count") }
             active.insert(number); visited.insert(number)
             let entry = index.table[number], descendants = children[number] ?? []
-            result.append((entry, !descendants.isEmpty))
-            for child in descendants { try visit(child) }
+            let id = result.count
+            result.append((entry, !descendants.isEmpty, id, parent, depth))
+            for child in descendants { try visit(child, parent: id, depth: depth + 1) }
             active.remove(number)
         }
         for (number, entry) in index.table.enumerated() {
@@ -180,8 +188,10 @@ public final class MobiBook {
         let ends = Dictionary(uniqueKeysWithValues: starts.enumerated().map { ($0.element, $0.offset + 1 < starts.count ? starts[$0.offset + 1] : extent) })
         for (index, cut) in cuts.enumerated() {
             guard cut.offset >= 0, cut.offset < extent else { throw MobiError.invalid("目录偏移越界") }
+            let parent = cut.parentId.flatMap { directoryIDs[$0] }
+            if let nodeID = cut.nodeID { directoryIDs[nodeID] = directory.count }
             if cut.isVolume, index + 1 < cuts.count, cuts[index + 1].reference == cut.reference {
-                directory.append(DirectoryNode(title: cut.title, isVolume: true, sectionIndex: nil))
+                directory.append(DirectoryNode(title: cut.title, isVolume: true, sectionIndex: nil, parentId: parent, depth: cut.depth))
                 continue
             }
             let end = ends[cut.offset] ?? extent
@@ -192,7 +202,7 @@ public final class MobiBook {
                 let html = try MobiBytes(raw).string(first.lowerBound, first.count, header.encoding)
                 title = try sectionTitle(html, index: directory.count)
             }
-            directory.append(DirectoryNode(title: title, isVolume: cut.isVolume, sectionIndex: result.count))
+            directory.append(DirectoryNode(title: title, isVolume: cut.isVolume, sectionIndex: result.count, parentId: parent, depth: cut.depth))
             result.append(Section(title: title, ranges: spans, records: records, encoding: header.encoding))
         }
     }
@@ -212,7 +222,7 @@ public final class MobiBook {
             let index = try getIndexData(header.indx)
             for node in try orderedNCX(index) {
                 if let offset = node.entry.tags[1]?.first, let label = node.entry.tags[3]?.first {
-                    cuts.append(Cut(offset: offset, title: index.cncx[label] ?? "", isVolume: node.isVolume, reference: "filepos:\(offset)"))
+                    cuts.append(Cut(offset: offset, title: index.cncx[label] ?? "", isVolume: node.isVolume, reference: "filepos:\(offset)", nodeID: node.id, parentId: node.parentId, depth: node.depth))
                 }
             }
         }
@@ -273,11 +283,11 @@ public final class MobiBook {
         let skeletons = try getIndexData(header.skel).table
         let fragments = try getIndexData(header.frag).table
         let ncx = header.indx != 0xffffffff ? try getIndexData(header.indx) : nil
-        var references: [(fid: Int, offset: Int, title: String, isVolume: Bool)] = []
+        var references: [(fid: Int, offset: Int, title: String, isVolume: Bool, nodeID: Int?, parentId: Int?, depth: Int)] = []
         if let ncx {
             for node in try orderedNCX(ncx) {
                 if let position = node.entry.tags[6], position.count >= 2, let label = node.entry.tags[3]?.first {
-                    references.append((position[0], position[1], ncx.cncx[label] ?? "", node.isVolume))
+                    references.append((position[0], position[1], ncx.cncx[label] ?? "", node.isVolume, node.id, node.parentId, node.depth))
                 }
             }
         }
@@ -285,7 +295,7 @@ public final class MobiBook {
             let guide = try getIndexData(header.guide)
             for entry in guide.table {
                 if let position = entry.tags[6], let fid = position.first, let label = entry.tags[1]?.first {
-                    references.append((fid, position.count > 1 ? position[1] : 0, guide.cncx[label] ?? "", false))
+                    references.append((fid, position.count > 1 ? position[1] : 0, guide.cncx[label] ?? "", false, nil, nil, 0))
                 }
             }
         }
@@ -317,7 +327,7 @@ public final class MobiBook {
             for reference in references {
                 guard let position = positions[reference.fid] else { continue }
                 guard reference.offset >= 0, reference.offset < position.length else { throw MobiError.invalid("KF8 目录偏移越界") }
-                cuts.append(Cut(offset: position.offset + reference.offset, title: reference.title, isVolume: reference.isVolume, reference: "\(reference.fid):\(reference.offset)"))
+                cuts.append(Cut(offset: position.offset + reference.offset, title: reference.title, isVolume: reference.isVolume, reference: "\(reference.fid):\(reference.offset)", nodeID: reference.nodeID, parentId: reference.parentId, depth: reference.depth))
             }
             if let first = cuts.first, first.offset > 0 {
                 let prefixSpans = slice(spans, from: 0, to: first.offset)

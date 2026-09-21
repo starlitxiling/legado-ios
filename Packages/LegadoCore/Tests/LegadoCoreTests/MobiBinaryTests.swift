@@ -156,6 +156,9 @@ final class MobiBinaryTests: XCTestCase {
             let url = try file(pdb(records))
             let decodedBook = try MobiBook(data: pdb(records))
             XCTAssertEqual(decodedBook.directory.count, 2)
+            let toc = try MobiFile(url: url).tocNodes
+            XCTAssertEqual(toc.map(\.depth), [0, 1])
+            XCTAssertEqual(toc.map(\.parentId), [nil, 0])
             XCTAssertEqual(decodedBook.sections.count, 1)
             let parsed = try LocalBook.parse(url: url)
             XCTAssertEqual(parsed.chapters.map(\.title), ["Volume", "One"], "KF8=\(kf8)")
@@ -166,6 +169,38 @@ final class MobiBinaryTests: XCTestCase {
         }
     }
 
+
+    func testKF6AndKF8ImageReferencesReachLocalProvider() async throws {
+        for kf8 in [false, true] {
+            let imageTag = kf8 ? "<img src='kindle:embed:0001?mime=image/png'/>" : "<img recindex='1'/>"
+            let body = Data(("<h1>Illustrated</h1><p>Before</p>" + imageTag + "<p>Final page</p>").utf8)
+            let skeleton = Data("<body></body>".utf8)
+            let raw = kf8 ? skeleton + body : body
+            var header = try PdbReader(data: MobiPdfTests.mobi()).getRecordData(0)
+            put(&header, 0, 1, 2); put(&header, 4, raw.count); put(&header, 244, 0xffffffff)
+            var records = [header, raw]
+            if kf8 {
+                put(&header, 36, 8); put(&header, 248, 4); put(&header, 252, 2); put(&header, 260, 0xffffffff)
+                records += index(tags: [(1, 1), (6, 2)], entries: [("skeleton", [1, 0, skeleton.count])])
+                records += index(tags: [(6, 2)], entries: [("6", [0, body.count])])
+            }
+            put(&header, 108, records.count)
+            records[0] = header
+            let bytes = Data([137, 80, 78, 71])
+            records.append(bytes)
+            let url = try file(pdb(records))
+            let parsed = try LocalBook.parse(url: url)
+            let content = try LocalBook.content(book: parsed.book, chapter: XCTUnwrap(parsed.chapters.last))
+            let href = kf8 ? "kindle:embed:0001?mime=image/png" : "recindex:1"
+            XCTAssertTrue(content.contains("<img src=\"" + href + "\">"), content)
+            XCTAssertTrue(content.contains("Final page"))
+            let client = ReplayHttpClient()
+            let loaded = try await ImageDownloader(client: client).load(url: href, book: parsed.book, isCover: false)
+            XCTAssertEqual(loaded, bytes)
+            let requests = await client.requests
+            XCTAssertTrue(requests.isEmpty)
+        }
+    }
     private func file(_ data: Data) throws -> URL {
         let directory = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent(".build/tmp")
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
