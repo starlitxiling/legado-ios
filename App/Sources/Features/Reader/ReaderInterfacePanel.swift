@@ -96,7 +96,7 @@ struct ReaderInterfacePanel: View {
         .alert("阅读样式", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("好", role: .cancel) { error = nil }
         } message: { Text(error ?? "") }
-        .fileImporter(isPresented: $importing, allowedContentTypes: importingImage ? [.image] : [.json]) { result in
+        .fileImporter(isPresented: $importing, allowedContentTypes: importingImage ? [.image] : [.json, .zip]) { result in
             enqueue {
                 let url = try result.get()
                 let access = url.startAccessingSecurityScopedResource()
@@ -119,7 +119,7 @@ struct ReaderInterfacePanel: View {
                 } else { try await store.importStyles(data); await adoptStyle() }
             }
         }
-        .fileExporter(isPresented: $exporting, document: document, contentType: .json, defaultFilename: "readConfig") { result in
+        .fileExporter(isPresented: $exporting, document: document, contentType: .zip, defaultFilename: "readConfig") { result in
             if case .failure(let failure) = result { error = failure.localizedDescription }
         }
     }
@@ -300,7 +300,7 @@ struct ReaderInterfacePanel: View {
 }
 
 struct ReaderStyleDocument: FileDocument {
-    static var readableContentTypes: [UTType] { [.json] }
+    static var readableContentTypes: [UTType] { [.zip, .json] }
     var data: Data
     init(data: Data) { self.data = data }
     init(configuration: ReadConfiguration) throws { data = configuration.file.regularFileContents ?? Data() }

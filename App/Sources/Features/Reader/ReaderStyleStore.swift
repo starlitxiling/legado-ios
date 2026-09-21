@@ -1,5 +1,6 @@
 import Foundation
 import Observation
+import CoreText
 import LegadoCore
 
 @Observable
@@ -11,9 +12,14 @@ final class ReaderStyleStore {
     private var shared = ReadBookConfig()
     private let database: AppDatabase
     private let defaults: UserDefaults
+    private let resourceDirectory: URL
+    private let fontDirectory: URL
 
-    init(database: AppDatabase, defaults: UserDefaults = .standard) {
+    init(database: AppDatabase, defaults: UserDefaults = .standard,
+         resourceDirectory: URL = URL.applicationSupportDirectory.appendingPathComponent("Legado/bg"),
+         fontDirectory: URL = URL.applicationSupportDirectory.appendingPathComponent("fonts")) {
         self.database = database; self.defaults = defaults
+        self.resourceDirectory = resourceDirectory; self.fontDirectory = fontDirectory
     }
 
     var current: ReadBookConfig {
@@ -60,14 +66,57 @@ final class ReaderStyleStore {
     }
 
     func importStyles(_ data: Data) async throws {
-        let imported = try ReadBookConfig.importThemes(data)
+        let imported: [ReadBookConfig]
+        if data.starts(with: [0x50, 0x4b]) {
+            let archive = try ReaderStyleArchive.decode(data)
+            var config = archive.configuration
+            var installed: [String: String] = [:]
+            for (type, path) in [(config.bgType, \ReadBookConfig.bgStr), (config.bgTypeNight, \.bgStrNight), (config.bgTypeEInk, \.bgStrEInk)] where type == 2 {
+                let name = config[keyPath: path]
+                if installed[name] == nil {
+                    let target = UUID().uuidString + "-" + name
+                    try FileManager.default.createDirectory(at: resourceDirectory, withIntermediateDirectories: true)
+                    try archive.files[name]!.write(to: resourceDirectory.appendingPathComponent(target), options: .atomic)
+                    installed[name] = target
+                }
+                config[keyPath: path] = installed[name]!
+            }
+            for path in [\ReadBookConfig.textFont, \.titleFont] where !config[keyPath: path].isEmpty {
+                let name = config[keyPath: path]
+                let target = fontDirectory.appendingPathComponent(UUID().uuidString + "-" + name)
+                try FileManager.default.createDirectory(at: fontDirectory, withIntermediateDirectories: true)
+                try archive.files[name]!.write(to: target, options: .atomic)
+                guard let descriptors = CTFontManagerCreateFontDescriptorsFromURL(target as CFURL) as? [CTFontDescriptor],
+                      let first = descriptors.first, let fontName = CTFontDescriptorCopyAttribute(first, kCTFontNameAttribute) as? String else {
+                    try FileManager.default.removeItem(at: target)
+                    throw CocoaError(.fileReadCorruptFile, userInfo: [NSFilePathErrorKey: name])
+                }
+                CTFontManagerRegisterFontsForURL(target as CFURL, .process, nil)
+                config[keyPath: path] = fontName
+            }
+            imported = [config]
+        } else { imported = try ReadBookConfig.importThemes(data) }
         guard !imported.isEmpty else { throw ReaderStyleError.empty }
         selected = styles.count
         styles += imported.map { ReaderSettings(configuration: $0).normalized.configuration }
         try await persist()
     }
 
-    func exportSelected() throws -> Data { try ReadBookConfig.exportThemes([current]) }
+    func exportSelected() throws -> Data {
+        try ReaderStyleArchive.encode(current, background: { name in
+            let url = resourceDirectory.appendingPathComponent(URL(fileURLWithPath: name).lastPathComponent)
+            return try Data(contentsOf: url)
+        }, font: { name in
+            guard FileManager.default.fileExists(atPath: fontDirectory.path) else { return nil }
+            for url in try FileManager.default.contentsOfDirectory(at: fontDirectory, includingPropertiesForKeys: nil) {
+                let descriptors = CTFontManagerCreateFontDescriptorsFromURL(url as CFURL) as? [CTFontDescriptor] ?? []
+                if descriptors.contains(where: { CTFontDescriptorCopyAttribute($0, kCTFontNameAttribute) as? String == name }) {
+                    return (url.lastPathComponent, try Data(contentsOf: url))
+                }
+            }
+            return nil
+        })
+    }
 
     func deleteSelected() async throws {
         guard styles.count > 5 else { throw ReaderStyleError.minimumStyles }

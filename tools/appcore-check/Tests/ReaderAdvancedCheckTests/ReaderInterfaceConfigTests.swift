@@ -4,6 +4,27 @@ import LegadoCore
 
 final class ReaderInterfaceConfigTests: XCTestCase {
     @MainActor
+    func testStyleArchiveImportsWithoutOverwritingExistingBackground() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        let suite = "StyleArchive." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { try? FileManager.default.removeItem(at: root); defaults.removePersistentDomain(forName: suite) }
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        try Data("existing".utf8).write(to: root.appendingPathComponent("day.png"))
+        var config = ReadBookConfig(); config.bgType = 2; config.bgStr = "day.png"
+        let packed = try ReaderStyleArchive.encode(config, background: { _ in Data("imported".utf8) })
+        let store = ReaderStyleStore(database: try AppDatabase.inMemory(), defaults: defaults,
+            resourceDirectory: root, fontDirectory: root.appendingPathComponent("fonts"))
+        try await store.load()
+        try await store.importStyles(packed)
+        XCTAssertFalse(store.current.bgStr.hasPrefix("/"))
+        XCTAssertNotEqual(store.current.bgStr, "day.png")
+        XCTAssertEqual(try Data(contentsOf: root.appendingPathComponent("day.png")), Data("existing".utf8))
+        let exported = try ReaderStyleArchive.decode(store.exportSelected())
+        XCTAssertEqual(exported.files[store.current.bgStr], Data("imported".utf8))
+    }
+
+    @MainActor
     func testStringBackedNumericPreferencesLoadWithoutDiscardingStyles() async throws {
         let suite = "ReaderArguments." + UUID().uuidString
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))

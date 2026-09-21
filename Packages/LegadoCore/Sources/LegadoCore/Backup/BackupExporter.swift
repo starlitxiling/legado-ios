@@ -134,7 +134,7 @@ public struct BackupExporter {
         }
     }
 
-    private static func zip(_ files: [(String, Data)]) throws -> Data {
+    static func zip(_ files: [(String, Data)]) throws -> Data {
         var data = Data(), central = Data()
         func number(_ value: Int, _ bytes: Int, into output: inout Data) {
             for shift in 0..<bytes { output.append(UInt8(truncatingIfNeeded: value >> (shift * 8))) }
