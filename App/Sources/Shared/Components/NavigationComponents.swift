@@ -60,21 +60,28 @@ struct CapsuleSearchField: View {
     @Binding var text: String
     var prompt = "搜索"
     var onSubmit: () -> Void = {}
-    @FocusState private var focused: Bool
+    var autofocus = false
+    var navigationColors = false
     @Environment(\.themeColors) private var colors
 
     var body: some View {
         HStack(spacing: 6) {
-            Image(systemName: "magnifyingglass").foregroundStyle(colors.textSecondary)
-            TextField(prompt, text: $text).textInputAutocapitalization(.never).autocorrectionDisabled()
-                .focused($focused).onSubmit { focused = false; onSubmit() }.submitLabel(.search)
+            Image(systemName: "magnifyingglass").foregroundStyle(navigationColors ? colors.onPrimary : colors.textSecondary)
+            if autofocus {
+                FocusedSearchInput(text: $text, prompt: prompt,
+                    color: UIColor(navigationColors ? colors.onPrimary : colors.textPrimary), onSubmit: onSubmit)
+            } else {
+                TextField(prompt, text: $text).textInputAutocapitalization(.never).autocorrectionDisabled()
+                    .onSubmit(onSubmit).submitLabel(.search)
+                    .foregroundStyle(navigationColors ? colors.onPrimary : colors.textPrimary)
+            }
             if !text.isEmpty {
-                Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(colors.textSecondary) }
+                Button { text = "" } label: { Image(systemName: "xmark.circle.fill").foregroundStyle(navigationColors ? colors.onPrimary : colors.textSecondary) }
                     .accessibilityLabel("清空")
             }
         }
         .font(.system(size: 14)).padding(.horizontal, 12).frame(height: 30)
-        .background(colors.textPrimary.opacity(0.1), in: RoundedRectangle(cornerRadius: 35))
+        .background(navigationColors ? Color.black.opacity(0.1) : colors.textPrimary.opacity(0.1), in: RoundedRectangle(cornerRadius: 35))
         .overlay { RoundedRectangle(cornerRadius: 35).stroke(colors.divider, lineWidth: 0.5) }
     }
 }
@@ -98,5 +105,57 @@ struct SelectActionBar<Actions: View>: View {
         .padding(.horizontal, 16).frame(minHeight: 48)
         .background(colors.bottomBackground)
         .overlay(alignment: .top) { Rectangle().fill(colors.divider).frame(height: 0.5) }
+    }
+}
+
+private struct FocusedSearchInput: UIViewRepresentable {
+    @Binding var text: String
+    let prompt: String
+    let color: UIColor
+    let onSubmit: () -> Void
+
+    final class Input: UITextField, UITextFieldDelegate {
+        var onChange: (String) -> Void = { _ in }
+        var onSubmit: () -> Void = {}
+        private var requestedFocus = false
+
+        override func didMoveToWindow() {
+            super.didMoveToWindow()
+            guard window != nil, !requestedFocus else { return }
+            requestedFocus = true
+            DispatchQueue.main.async { [weak self] in
+                guard let self, self.window != nil else { return }
+                self.becomeFirstResponder()
+            }
+        }
+
+        @objc func changed() { onChange(text ?? "") }
+        func textFieldShouldReturn(_ textField: UITextField) -> Bool {
+            resignFirstResponder()
+            onSubmit()
+            return false
+        }
+    }
+
+    func makeUIView(context: Context) -> Input {
+        let input = Input()
+        input.delegate = input
+        input.font = .systemFont(ofSize: 14)
+        input.autocapitalizationType = .none
+        input.autocorrectionType = .no
+        input.returnKeyType = .search
+        input.setContentHuggingPriority(.defaultLow, for: .horizontal)
+        input.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
+        input.addTarget(input, action: #selector(Input.changed), for: .editingChanged)
+        return input
+    }
+
+    func updateUIView(_ input: Input, context: Context) {
+        if input.text != text { input.text = text }
+        input.textColor = color
+        input.tintColor = color
+        input.attributedPlaceholder = NSAttributedString(string: prompt, attributes: [.foregroundColor: color.withAlphaComponent(0.65)])
+        input.onChange = { text = $0 }
+        input.onSubmit = onSubmit
     }
 }

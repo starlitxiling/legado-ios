@@ -48,7 +48,7 @@ struct LabelsBar: View {
     }
 }
 
-private struct LabelFlowLayout: Layout {
+struct LabelFlowLayout: Layout {
     func sizeThatFits(proposal: ProposedViewSize, subviews: Subviews, cache: inout ()) -> CGSize {
         let proposedWidth = proposal.width.flatMap { $0.isFinite ? max(0, $0) : nil }
         let sizes = subviews.map { $0.sizeThatFits(ProposedViewSize(width: proposedWidth, height: nil)) }
