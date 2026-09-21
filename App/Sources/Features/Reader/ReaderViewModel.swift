@@ -593,6 +593,90 @@ final class ReaderViewModel {
         await openChapter(ChapterRequest(index: result.chapterIndex, offset: result.offset), token: token)
     }
 
+    func directoryPresentation() async throws -> (chapters: [BookChapterRow], nodes: [LocalBookTocNode]) {
+        guard let entity else { return ([], []) }
+        let rows = chapters
+        let rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
+        let converter = chineseConverterType(), replace = replaceEnableDefault()
+        let task = Task.detached {
+            let processor = ContentProcessor(rules: try rules.map { try ReaderEntityBridge.decode(ReplaceRule.self, row: $0) },
+                chineseConverterType: converter, replaceEnableDefault: replace)
+            let chapters = try rows.map { row in
+                try Task.checkCancellation()
+                var row = row
+                row.title = try processor.title(book: entity, chapter: ReaderEntityBridge.decode(BookChapter.self, row: row))
+                return row
+            }
+            let nodes = try LocalBook.tocNodes(book: entity).map { node in
+                var chapter = BookChapter(); chapter.title = node.title; chapter.url = node.href
+                return LocalBookTocNode(id: node.id, parentId: node.parentId, depth: node.depth,
+                    title: try processor.title(book: entity, chapter: chapter), href: node.href, pageIndex: node.pageIndex)
+            }
+            return (chapters, nodes)
+        }
+        return try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+    }
+
+    func openTocEntry(_ entry: ReaderTocEntry) async {
+        guard let chapter = entry.chapterIndex else { return }
+        await goToChapter(chapter)
+        if let page = entry.pageIndex, let index = pagination?.pages.firstIndex(where: { Int(URL(string: $0.imageURL ?? "")?.lastPathComponent ?? "") == page }) {
+            await selectPage(index)
+        }
+    }
+
+    func rebuildLocalDirectory(charset: String? = nil, rule: TxtTocRule? = nil, automatic: Bool = false) async {
+        guard var updated = entity, LocalBook.isLocal(updated), let url = updated.bookUrl else { return }
+        await saveProgress()
+        let token = beginRequest(), position = chapterIndex, oldChapters = chapters
+        await cache.cancelPending()
+        isLoading = true; errorMessage = nil
+        if let charset { updated.charset = charset }
+        if automatic { updated.tocUrl = "" }
+        else if let rule { updated.tocUrl = rule.persistedValue }
+        do {
+            let rules = try await TxtTocRuleRepository(database: database).list(enabledOnly: true)
+            let input = updated
+            let task = Task.detached {
+                var book = input
+                let chapters = try LocalBook.chapterList(book: &book, rules: rules.isEmpty ? TxtTocRule.builtIn : rules)
+                return (book, chapters)
+            }
+            let (book, parsed) = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+            guard token == generation, !Task.isCancelled else { return }
+            guard !parsed.isEmpty else { throw ReaderError.emptyChapters }
+            try BookHelp.clearCache(directory: cacheDirectory, book: book,
+                chapters: oldChapters.map { try ReaderEntityBridge.decode(BookChapter.self, row: $0) })
+            try await LocalBook.save(book: book, chapters: parsed, database: database)
+            guard token == generation else { return }
+            await load(bookURL: url, chapterIndex: min(position, parsed.count - 1))
+        } catch {
+            guard token == generation else { return }
+            isLoading = false; errorMessage = error.localizedDescription
+        }
+    }
+
+    func loadChapterWordCounts(progress: (Int, Int) -> Void) async throws {
+        guard let entity else { return }
+        let token = generation, chapters = chapters
+        for (position, row) in chapters.enumerated() {
+            try Task.checkCancellation()
+            guard token == generation else { throw CancellationError() }
+            let chapter = try ReaderEntityBridge.decode(BookChapter.self, row: row)
+            let cached = try await cache.content(book: entity, chapter: chapter, nextURL: chapters.dropFirst(position + 1).first?.url, source: source, client: client)
+            try Task.checkCancellation()
+            let count = String(cached.rawContent.utf16.count)
+            try await database.write { db in
+                try db.execute(sql: "UPDATE chapters SET wordCount = ? WHERE bookUrl = ? AND url = ? AND \"index\" = ?",
+                    arguments: [count, row.bookUrl, row.url, row.index])
+            }
+            guard token == generation else { throw CancellationError() }
+            if let index = self.chapters.firstIndex(where: { $0.index == row.index && $0.url == row.url }) { self.chapters[index].wordCount = count }
+            progress(position + 1, chapters.count)
+        }
+        await refreshCacheStatus()
+    }
+
     func searchText(_ query: String, progress: (Int, Int) -> Void) async throws -> [ReaderSearchMatch] {
         guard let entity, !query.isEmpty else { return [] }
         let token = generation, chapters = chapters

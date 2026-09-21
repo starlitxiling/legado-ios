@@ -136,7 +136,7 @@ public enum LocalBook {
         let chapters = try parser.chapters(bookURL: book.bookUrl ?? url.absoluteString, rules: rules, book: book,
             selectedRule: rule, splitLongChapters: book.readConfig?.splitLongChapter ?? true, autoSelectRule: false)
         book.charset = parser.charset
-        book.tocUrl = rule.map { $0.rule + TxtTitleProcessor.ruleSeparator + $0.replacement } ?? ""
+        book.tocUrl = rule?.persistedValue ?? ""
         return chapters
     }
 

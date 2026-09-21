@@ -3,6 +3,33 @@ import LegadoCore
 @testable import ReaderCheck
 
 final class LocalBookReaderTests: XCTestCase {
+    @MainActor
+    func testReaderRebuildsExplicitRuleAndLoadsWordCounts() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("sections.txt")
+        try Data("SECTION A\nFirst body\nSECTION B\nSecond body".utf8).write(to: url)
+        let database = try AppDatabase.inMemory()
+        let parsed = try LocalBook.parse(url: url, rules: [])
+        try await LocalBook.save(book: parsed.book, chapters: parsed.chapters, database: database)
+        let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: root.appendingPathComponent("cache"), preDownloadCount: { 0 })
+        await model.load(bookURL: url.absoluteString)
+        XCTAssertEqual(model.chapters.count, 1)
+        let rule = TxtTocRule(id: 1, name: "Sections", rule: "^SECTION [A-Z]$")
+        await model.rebuildLocalDirectory(charset: "UTF-8", rule: rule)
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(model.chapters.map(\.title), ["SECTION A", "SECTION B"])
+        XCTAssertEqual(model.readerBook?.tocUrl, rule.persistedValue)
+        XCTAssertEqual(model.readerBook?.charset, "UTF-8")
+        try await model.loadChapterWordCounts { _, _ in }
+        XCTAssertTrue(model.chapters.allSatisfy { Int($0.wordCount ?? "") ?? 0 > 0 })
+        await model.openTocEntry(.init(id: "chapter:1", parent: nil, depth: 0, title: "SECTION B", chapterIndex: 1))
+        XCTAssertEqual(model.chapterIndex, 1)
+        XCTAssertTrue(model.pagination?.text.string.contains("Second body") == true)
+        await model.close()
+    }
+
     func testRefreshDoesNotReuseOldLocalBodyCache() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)

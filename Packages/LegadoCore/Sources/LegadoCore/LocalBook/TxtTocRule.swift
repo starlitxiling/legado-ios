@@ -10,6 +10,7 @@ public struct TxtTocRule: Codable, FetchableRecord, PersistableRecord, Equatable
     public var example: String?
     public var serialNumber: Int
     public var enable: Bool
+    public var persistedValue: String { rule + TxtTitleProcessor.ruleSeparator + replacement }
 
     public init(id: Int64, name: String, rule: String, replacement: String = "", example: String? = nil,
                 serialNumber: Int = 0, enable: Bool = true) {

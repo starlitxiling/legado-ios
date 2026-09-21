@@ -189,7 +189,7 @@ struct ReaderView: View {
         .alert("阅读样式加载失败", isPresented: Binding(get: { styleError != nil }, set: { if !$0 { styleError = nil } })) {
             Button("好", role: .cancel) { styleError = nil }
         } message: { Text(styleError ?? "") }
-        .sheet(isPresented: $showsChapters) { chapterPanel }
+        .fullScreenCover(isPresented: $showsChapters) { ReaderTocView(model: model, database: container.database) }
         .sheet(isPresented: $showsReadAloud) { ReadAloudPanel(controller: readAloud) }
         .sheet(isPresented: $showsBookmarks) { BookmarkListView(model: model) }
         .sheet(isPresented: $showsSelection) { selectionPanel }
@@ -241,7 +241,7 @@ struct ReaderView: View {
                readAloud.engine.chapterIndex == model.chapterIndex,
                readAloud.engine.characterOffset != offset { readAloud.stop() }
         }
-        .onDisappear { device.end(); networkMonitor?.cancel(); networkMonitor = nil; autoRead.stop(); readAloud.detach(); Task { await model.close() } }
+        .onDisappear { guard !showsChapters else { return }; device.end(); networkMonitor?.cancel(); networkMonitor = nil; autoRead.stop(); readAloud.detach(); Task { await model.close() } }
     }
 
     private var animation: Int {
@@ -280,7 +280,7 @@ struct ReaderView: View {
         case .toggleReplace:
             let enabled = !(model.readerBook?.useReplaceRule(defaultEnabled: model.replaceEnableDefault()) ?? true)
             Task { await model.updateReadConfig { $0.useReplaceRule = enabled } }
-        case .toc: showsChapters = true
+        case .toc: showsControls = false; showsChapters = true
         case .search: showPanel("search")
         case .sync: Task { await model.syncWebDavProgress() }
         case .readAloud: readAloud.toggle()
@@ -402,31 +402,6 @@ struct ReaderView: View {
             ForEach(0..<count, id: \.self) { column in
                 pageContent(index: index + column, size: size, preview: preview, currentChapter: currentChapter)
             }
-        }
-    }
-
-    private var chapterPanel: some View {
-        NavigationStack {
-            List(model.chapters, id: \.index) { chapter in
-                Button {
-                    showsChapters = false
-                    Task { await model.goToChapter(chapter.index) }
-                } label: {
-                    HStack {
-                        Text(chapter.title)
-                        if model.cachedChapterIndices.contains(chapter.index) {
-                            Image(systemName: "circle.fill").font(.system(size: 5)).accessibilityLabel("已缓存")
-                        }
-                        if chapter.index == model.chapterIndex { Spacer(); Image(systemName: "checkmark") }
-                    }
-                }.disabled(model.isLoading)
-            }
-            .legadoNavigationTitle("目录")
-            .safeAreaInset(edge: .bottom) {
-                Text("已缓存 \(model.cachedChapterIndices.count) / \(model.chapters.count) 章").font(.caption).padding()
-            }
-            .task { await model.waitForPrefetch(); await model.refreshCacheStatus() }
-            .toolbar { Button("完成") { showsChapters = false } }
         }
     }
 
