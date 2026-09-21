@@ -1,4 +1,5 @@
 import Foundation
+import CoreFoundation
 
 /// NSDictionary 桥接保留既有对象接口；键枚举遵循 JsonSmartJsonProvider 的插入顺序。
 final class JsonPathObject: NSDictionary {
@@ -119,7 +120,10 @@ struct JsonPathJSONParser {
             guard position > start else { throw invalid() }
         }
         let text = String(decoding: bytes[start..<position], as: UTF8.self)
-        if !floating, let integer = Int64(text) { return NSNumber(value: integer) }
+        if !floating {
+            if let integer = Int64(text) { return NSNumber(value: integer) }
+            return JsonPathBigInteger(description: text)
+        }
         guard let double = Double(text), double.isFinite else { throw invalid() }
         return NSNumber(value: double)
     }
@@ -147,4 +151,26 @@ struct JsonPathJSONParser {
     }
 
     private func invalid() -> JsonPathError { .invalidPath("JSON byte \(position)") }
+}
+
+struct JsonPathBigInteger: CustomStringConvertible {
+    let description: String
+
+    static func compare(_ lhs: Any?, _ rhs: Any?) -> ComparisonResult? {
+        guard lhs is Self || rhs is Self else { return nil }
+        func digits(_ value: Any?) -> String? {
+            if let big = value as? Self { return big.description }
+            guard let number = value as? NSNumber, CFGetTypeID(number) != CFBooleanGetTypeID(),
+                  !["d", "f"].contains(String(cString: number.objCType)) else { return nil }
+            return number.stringValue
+        }
+        guard let a = digits(lhs), let b = digits(rhs) else { return nil }
+        let negative = a.hasPrefix("-")
+        if negative != b.hasPrefix("-") { return negative ? .orderedAscending : .orderedDescending }
+        let x = negative ? String(a.dropFirst()) : a
+        let y = negative ? String(b.dropFirst()) : b
+        let result: ComparisonResult = x.count == y.count ? x.compare(y, options: .literal) : x.count < y.count ? .orderedAscending : .orderedDescending
+        if !negative || result == .orderedSame { return result }
+        return result == .orderedAscending ? .orderedDescending : .orderedAscending
+    }
 }

@@ -50,7 +50,7 @@
 | U5 书籍详情 | 完成 | 主会话 | book-detail-compat.md / assets/u5-* | Core 706/0、AppCore 289/0；模拟器 2/0；iOS 构建通过 |
 | U6 阅读器 | 完成 | 主会话 | reader-ui-compat.md / 样式、菜单、输入、设置与独立目录 | Core 723/0、AppCore 318/0；模拟器 8/0；Release IPA 通过 |
 | 批次 3 门禁 | 完成 | 主会话 | dist/Legado-1.0-eeb012746.ipa | 全量单测、模拟器、Release archive 通过；真机暂缓 |
-| P9 JSONPath / XPath | 在途 | 主会话 | JsonPathCompletionTests | JSONPath 红 17 处；首轮修复专项 4/0 |
+| P9 JSONPath / XPath | 在途 | 主会话 | JsonPathCompletionTests | JSONPath Core 727/0、App 318/0 与构建通过；当前 XPath DOM |
 | P3g/h、U7/U8、批次 5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式

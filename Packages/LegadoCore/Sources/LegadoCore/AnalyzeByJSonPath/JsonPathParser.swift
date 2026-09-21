@@ -8,7 +8,7 @@ public enum JsonPathError: Error, Equatable {
 
 indirect enum JsonPathStep {
     case property([String]), wildcard, indices([Int]), slice(Int?, Int?, Int)
-    case recursive(JsonPathStepBox), filter(JsonPathPredicate), function(String)
+    case recursive(JsonPathStepBox), filter(JsonPathPredicate), function(String, [JsonPathPredicate])
 
     func indefinite(isLeaf: Bool) -> Bool {
         switch self {
@@ -51,9 +51,9 @@ struct JsonPathParser {
                 guard position > start else { throw invalid() }
                 let name = String(chars[start..<position])
                 if position < chars.count, chars[position] == "(" {
-                    guard position + 1 < chars.count, chars[position + 1] == ")" else { throw invalid() }
-                    position += 2
-                    step = .function(name)
+                    let text = try Self.balanced(chars, position: &position)
+                    var arguments = try JsonPathPredicateParser(String(text.dropFirst().dropLast()))
+                    step = .function(name, try arguments.arguments())
                 } else { step = .property([name]) }
             }
             steps.append(recursive ? .recursive(JsonPathStepBox(step: step)) : step)
@@ -106,9 +106,10 @@ struct JsonPathParser {
                 continue
             }
             if char == "'" || char == "\"" || char == "/" { quote = char; continue }
-            if char == "[" { stack.append("]") }
+            if char == "{" { stack.append("}") }
+            else if char == "[" { stack.append("]") }
             else if char == "(" { stack.append(")") }
-            else if char == "]" || char == ")" {
+            else if char == "]" || char == ")" || char == "}" {
                 guard stack.popLast() == char else { throw JsonPathError.invalidPath(String(chars)) }
                 if stack.isEmpty { return String(chars[start..<position]) }
             }

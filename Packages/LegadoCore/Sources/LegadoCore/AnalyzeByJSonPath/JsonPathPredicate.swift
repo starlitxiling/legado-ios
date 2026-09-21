@@ -22,6 +22,15 @@ indirect enum JsonPathPredicate {
                 guard let values = right as? [Any] else { return false }
                 let found = values.contains { Self.equal(left, $0) }
                 return op == "in" ? found : !found
+            case "contains":
+                if let values = left as? [Any] { return values.contains { Self.equal($0, right) } }
+                if let text = left as? String, let value = right as? String { return text.contains(value) }
+                return false
+            case "subsetof", "anyof", "noneof":
+                guard let values = left as? [Any], let others = right as? [Any] else { return false }
+                let matches = values.map { value in others.contains { Self.equal(value, $0) } }
+                if op == "subsetof" { return matches.allSatisfy { $0 } }
+                return op == "anyof" ? matches.contains(true) : !matches.contains(true)
             case "size":
                 guard let count = Self.size(left), let number = Self.number(right) else { return false }
                 return Double(count) == number
@@ -35,7 +44,8 @@ indirect enum JsonPathPredicate {
                 return regex.firstMatch(in: text, range: range)?.range == range
             default:
                 let order: ComparisonResult
-                if let a = Self.number(left), let b = Self.number(right) {
+                if let exact = JsonPathBigInteger.compare(left, right) { order = exact }
+                else if let a = Self.number(left), let b = Self.number(right) {
                     order = a < b ? .orderedAscending : a > b ? .orderedDescending : .orderedSame
                 } else if let a = left as? String, let b = right as? String { order = a.compare(b, options: .literal) }
                 else { return false }
@@ -56,6 +66,7 @@ indirect enum JsonPathPredicate {
     }
 
     static func number(_ value: Any?) -> Double? {
+        if let value = value as? JsonPathBigInteger { return Double(value.description) }
         guard let value = value as? NSNumber, CFGetTypeID(value) != CFBooleanGetTypeID() else { return nil }
         return value.doubleValue
     }
@@ -68,6 +79,7 @@ indirect enum JsonPathPredicate {
 
     private static func equal(_ lhs: Any?, _ rhs: Any?) -> Bool {
         guard let lhs, let rhs else { return lhs == nil && rhs == nil }
+        if let exact = JsonPathBigInteger.compare(lhs, rhs) { return exact == .orderedSame }
         if lhs is NSNull || rhs is NSNull { return lhs is NSNull && rhs is NSNull }
         if let a = lhs as? NSNumber, let b = rhs as? NSNumber {
             guard (CFGetTypeID(a) == CFBooleanGetTypeID()) == (CFGetTypeID(b) == CFBooleanGetTypeID()) else { return false }
@@ -109,11 +121,12 @@ struct JsonPathPredicateParser {
             } else if char == "@" || char == "$" {
                 index += 1
                 while index < chars.count {
-                    if chars[index] == "[" { _ = try JsonPathParser.balanced(chars, position: &index) }
+                    if chars[index] == "[" || chars[index] == "(" { _ = try JsonPathParser.balanced(chars, position: &index) }
                     else if chars[index].isWhitespace || "=!<>&|),".contains(chars[index]) { break }
                     else { index += 1 }
                 }
-            } else if "()[],".contains(char) { index += 1 }
+            } else if char == "{" { _ = try JsonPathParser.balanced(chars, position: &index) }
+            else if "()[],".contains(char) { index += 1 }
             else if "=!<>&|".contains(char) {
                 index += 1
                 if index < chars.count, "=~&|".contains(chars[index]) { index += 1 }
@@ -131,6 +144,14 @@ struct JsonPathPredicateParser {
         return result
     }
 
+    mutating func arguments() throws -> [JsonPathPredicate] {
+        if tokens.isEmpty { return [] }
+        var values: [JsonPathPredicate] = []
+        repeat { values.append(try atom()) } while consume(",")
+        guard position == tokens.count else { throw invalid() }
+        return values
+    }
+
     mutating func propertyNames() throws -> [String] {
         var names: [String] = []
         repeat {
@@ -144,7 +165,7 @@ struct JsonPathPredicateParser {
     private mutating func expression(_ level: Int) throws -> JsonPathPredicate {
         if level == 3 { return try atom() }
         var left = try expression(level + 1)
-        let operators = level == 0 ? ["||"] : level == 1 ? ["&&"] : ["==", "!=", "<", "<=", ">", ">=", "=~", "in", "nin", "size", "empty"]
+        let operators = level == 0 ? ["||"] : level == 1 ? ["&&"] : ["==", "!=", "<", "<=", ">", ">=", "=~", "in", "nin", "size", "empty", "contains", "subsetof", "anyof", "noneof"]
         while position < tokens.count, operators.contains(tokens[position]) {
             let op = tokens[position]; position += 1
             left = .binary(op, left, try expression(level + 1))
@@ -189,7 +210,8 @@ struct JsonPathPredicateParser {
         if token == "true" { return .literal(true) }
         if token == "false" { return .literal(false) }
         if token == "null" { return .literal(NSNull()) }
-        if let value = Double(token), value.isFinite { return .literal(value) }
+        var json = JsonPathJSONParser(token)
+        if let value = try? json.parse() { return .literal(value) }
         throw invalid()
     }
 

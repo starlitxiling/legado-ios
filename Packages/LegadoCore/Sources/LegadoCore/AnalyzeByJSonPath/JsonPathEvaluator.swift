@@ -79,23 +79,49 @@ enum JsonPathEvaluator {
         case .filter(let predicate):
             let candidates = (node as? [Any]) ?? (node is [String: Any] ? [node] : [])
             return candidates.filter { predicate.matches($0, root: root) }
-        case .function(let name):
+        case .function(let name, let arguments):
+            let values = arguments.map { $0.value(node, root: root) ?? NSNull() }
+            let parameters = values.flatMap { ($0 as? [Any]) ?? [$0] }
             switch name {
-            case "length":
-                if let list = node as? [Any] { return [list.count] }
-                if let object = node as? [String: Any] { return [object.count] }
-                throw JsonPathError.invalidFunction(name)
-            case "first", "last":
-                guard let list = node as? [Any], let value = name == "first" ? list.first : list.last else {
-                    throw JsonPathError.invalidFunction(name)
+            case "length", "size":
+                let target = values.first ?? node
+                if let list = target as? [Any] { return [list.count] }
+                if let object = target as? [String: Any] { return [object.count] }
+                return [NSNull()]
+            case "keys":
+                if let object = node as? JsonPathObject { return [object.orderedKeys] }
+                guard let object = node as? NSDictionary else { throw JsonPathError.invalidFunction(name) }
+                return [object.allKeys]
+            case "concat":
+                return [((node as? [Any] ?? []).compactMap { $0 as? String } + parameters.compactMap { $0 as? String }).joined()]
+            case "append":
+                guard let list = node as? [Any] else { return [node] }
+                return [list + values]
+            case "first", "last", "index":
+                guard let list = node as? [Any], !list.isEmpty else { throw JsonPathError.invalidFunction(name) }
+                let index: Int
+                if name == "first" { index = 0 }
+                else if name == "last" { index = list.count - 1 }
+                else {
+                    guard let raw = parameters.compactMap({ JsonPathPredicate.number($0) }).first,
+                          raw.isFinite, raw > Double(Int.min), raw < Double(Int.max) else { throw JsonPathError.invalidFunction(name) }
+                    let requested = Int(raw)
+                    index = requested < 0 ? list.count + requested : requested
+                    if requested < 0 && index <= 0 { throw JsonPathError.invalidFunction(name) }
                 }
-                return [value]
-            case "min", "max", "sum":
-                guard let list = node as? [Any] else { throw JsonPathError.invalidFunction(name) }
-                let numbers = list.compactMap { JsonPathPredicate.number($0) }
+                guard list.indices.contains(index) else { throw JsonPathError.invalidFunction(name) }
+                return [list[index]]
+            case "min", "max", "sum", "avg", "stddev":
+                let numbers = ((node as? [Any] ?? []) + parameters).compactMap { JsonPathPredicate.number($0) }
                 guard !numbers.isEmpty else { throw JsonPathError.invalidFunction(name) }
-                let result = name == "min" ? numbers.min()! : name == "max" ? numbers.max()! : numbers.reduce(0, +)
-                return [result]
+                let sum = numbers.reduce(0, +), count = Double(numbers.count)
+                switch name {
+                case "min": return [numbers.min()!]
+                case "max": return [numbers.max()!]
+                case "avg": return [sum / count]
+                case "stddev": return [sqrt(numbers.reduce(0) { $0 + $1 * $1 } / count - sum * sum / count / count)]
+                default: return [sum]
+                }
             default: throw JsonPathError.invalidFunction(name)
             }
         }
