@@ -47,3 +47,19 @@ Directory and online import behavior is covered by `LocalImportEntryTests`; syst
 Sampling is 512,000 bytes. BOM and explicit HTML meta charset take precedence, followed by Unicode detection, Japanese kana statistics, Foundation's statistical detector constrained to the supported Japanese/Korean/Cyrillic/Western/Chinese encodings, and the existing GB/Big5 frequency fallback. This uses system Foundation/CoreFoundation and adds no dependency. It does not claim byte-for-byte equivalence with all 26 Android ICU recognizers; short ambiguous byte sequences remain inherently ambiguous.
 
 Eight generated language fixtures decode through the final chapter without data loss, including Shift_JIS, EUC-JP, EUC-KR, Windows-1251/1252, ISO-8859-1, GBK and UTF-16. A Shift_JIS sample preceded by 70,000 ASCII spaces verifies the increased sampling window. HTML charset detection now accepts omitted/attributed head tags. The generator intentionally includes language text because encoding behavior is under test.
+
+
+## TXT chapter rules and persistence
+
+Specification: Kotlin `2bdd3c58b`, TextFile.kt:91-114,214-219,497-590. Scoring samples 512,000 bytes, counts headings separated by more than 1,000 UTF-16 units, penalizes gaps under 100, and replaces the selected rule only when its score exceeds the previous score by more than two. Short one/two-heading snippets can intentionally have no selected rule.
+
+| Synthetic input | Kotlin rule | Swift result |
+| --- | --- | --- |
+| Five CH headings separated by 1,250 characters, with four false VOLUME headings per chapter | Narrow CH rule | Narrow CH rule |
+| Single CH heading with short body | None | None |
+| Manual CH rule with a 132,000-byte first chapter | Volume plus numbered children | Volume plus numbered children |
+| Filename long.txt, index 0, title CH 1 | Middle 16 hex characters of MD5 | Fixed digest asserted |
+
+Title replacement exposes book/result/index/prevTitle/prevLength/lastVolumeTitle and java.putVolume; front matter also runs through replacement. Rules and charset persist in book.tocUrl/charset. Modification time invalidates selection/encoding and reader directories; stored chapter revisions prevent stale body cache reuse. The parser streams decoding and offsets rather than loading whole TXT files. Existing byte-offset tests select a rule explicitly so they remain independent of auto-selection scoring.
+
+Validation: `.build/round5/p7-toc-core.log` (682/0), `p7-toc-app.log` (277/0), `p7-modified-red.log` (3/0, the existing chapter reload already retained stored cache revisions). iPhone testing is deferred at the user's request.

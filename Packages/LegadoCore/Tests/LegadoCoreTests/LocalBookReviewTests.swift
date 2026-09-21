@@ -36,7 +36,7 @@ final class LocalBookReviewTests: XCTestCase {
         try file(Data("前文===标题===后文".utf8)) { url in
             let parser = try TextFileParser(url: url, blockSize: 7)
             let rules = [TxtTocRule(id: 1, name: "同行", rule: "===标题===")]
-            let chapters = try parser.chapters(bookURL: url.absoluteString, rules: rules)
+            let chapters = try parser.chapters(bookURL: url.absoluteString, rules: rules, selectedRule: rules[0])
             XCTAssertEqual(chapters.count, 2)
             guard chapters.count == 2 else { return }
             XCTAssertEqual(chapters[0].end, 6)
@@ -51,7 +51,7 @@ final class LocalBookReviewTests: XCTestCase {
         try file(Data(text.utf8)) { url in
             let parser = try TextFileParser(url: url, blockSize: 7)
             let rules = [TxtTocRule(id: 1, name: "双行", rule: #"第[一二]章\n[^\n]+"#)]
-            let chapters = try parser.chapters(bookURL: url.absoluteString, rules: rules)
+            let chapters = try parser.chapters(bookURL: url.absoluteString, rules: rules, selectedRule: rules[0])
             XCTAssertEqual(chapters.map(\.title), ["前言", "第一章\n副标题", "第二章\n另一副标题"])
             guard chapters.count == 3 else { return }
             XCTAssertEqual(try parser.content(chapter: chapters[1]), "\n正文\n")

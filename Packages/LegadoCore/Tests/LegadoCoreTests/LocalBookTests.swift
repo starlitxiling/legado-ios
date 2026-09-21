@@ -21,7 +21,7 @@ final class LocalBookTests: XCTestCase {
             defer { try? FileManager.default.removeItem(at: url) }
             let parser = try TextFileParser(url: url, blockSize: 7)
             XCTAssertEqual(parser.charset, charset)
-            let chapters = try parser.chapters(bookURL: url.absoluteString)
+            let chapters = try parser.chapters(bookURL: url.absoluteString, selectedRule: TxtTocRule(id: 1, name: "Manual", rule: "^第.*章.*$"))
             XCTAssertEqual(chapters.count, 2)
             guard chapters.count == 2 else { continue }
             XCTAssertEqual(try parser.content(chapter: chapters[0]).trimmingCharacters(in: .whitespacesAndNewlines), "中文正文")
@@ -38,7 +38,7 @@ final class LocalBookTests: XCTestCase {
             let lines = id == -19 ? "第一章 真正的标题\n第一章 这个不要\n正文" : "第一章 这个不要\n第一章 真正的标题\n正文"
             try Data(lines.utf8).write(to: url)
             let parser = try TextFileParser(url: url, blockSize: 7)
-            let chapters = try parser.chapters(bookURL: url.absoluteString, rules: [rule])
+            let chapters = try parser.chapters(bookURL: url.absoluteString, rules: [rule], selectedRule: rule)
             XCTAssertTrue(chapters.contains { $0.title == "第一章 真正的标题" }, "\(id)")
         }
     }

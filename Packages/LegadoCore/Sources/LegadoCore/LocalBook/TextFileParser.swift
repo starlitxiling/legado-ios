@@ -22,17 +22,39 @@ public struct TextFileParser {
     private let bomSize: Int
     private let blockSize: Int
 
-    public init(url: URL, blockSize: Int = 64 * 1024) throws {
+    public init(url: URL, blockSize: Int = 64 * 1024, charset preferredCharset: String? = nil) throws {
         self.url = url; self.blockSize = max(4, blockSize)
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         let data = try handle.read(upToCount: 512_000) ?? Data()
         guard !data.isEmpty else { throw LocalBookError.emptyFile }
         let detected = TextEncodingDetector.detect(data, truncated: data.count == 512_000)
-        charset = detected.name; encoding = detected.encoding; bomSize = detected.bomSize
+        if let preferredCharset, !preferredCharset.isEmpty {
+            charset = preferredCharset; encoding = try ResponseDecoder.encoding(for: preferredCharset)
+        } else { charset = detected.name; encoding = detected.encoding }
+        bomSize = detected.bomSize
     }
 
-    public func chapters(bookURL: String, rules: [TxtTocRule] = TxtTocRule.builtIn) throws -> [BookChapter] {
+    public func selectedRule(rules: [TxtTocRule], book: Book = Book()) throws -> TxtTocRule? {
+        try chooseRule(rules: rules, processor: TxtTitleProcessor(book: book))
+    }
+
+    private func chooseRule(rules: [TxtTocRule], processor: TxtTitleProcessor) throws -> TxtTocRule? {
+        let file = try FileHandle(forReadingFrom: url)
+        defer { try? file.close() }
+        try file.seek(toOffset: UInt64(bomSize))
+        let sample = try file.read(upToCount: 512_000) ?? Data()
+        for suffix in 0...min(3, sample.count) {
+            if let text = String(data: sample.dropLast(suffix), encoding: encoding) {
+                return try processor.select(content: text, rules: rules)
+            }
+        }
+        throw LocalBookError.invalidEncoding
+    }
+
+    public func chapters(bookURL: String, rules: [TxtTocRule] = TxtTocRule.builtIn, book: Book? = nil,
+                         selectedRule: TxtTocRule? = nil, splitLongChapters: Bool = true,
+                         autoSelectRule: Bool = true) throws -> [BookChapter] {
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
         let size = Int64(try handle.seekToEnd())
@@ -40,13 +62,16 @@ public struct TextFileParser {
         try handle.seek(toOffset: UInt64(bomSize))
         let window = 256 * 1024
         var buffer = Data(), base = Int64(bomSize), eligible = Int64(bomSize), lastEnd = Int64(bomSize)
-        var selected: (TxtTocRule, NSRegularExpression)?
-        var didSelect = false, eof = false
+        let processor = TxtTitleProcessor(book: book ?? Book())
+        let rule = try selectedRule ?? (autoSelectRule ? chooseRule(rules: rules, processor: processor) : nil)
+        processor.setVolumeTitle("")
+        let selected = try rule.map { ($0, try NSRegularExpression(pattern: $0.rule, options: [.anchorsMatchLines])) }
+        var eof = false
         var chapters: [BookChapter] = []
         func append(_ title: String, start: Int64) {
             var chapter = BookChapter()
             chapter.bookUrl = bookURL; chapter.baseUrl = bookURL
-            chapter.index = chapters.count; chapter.url = "txt:\(chapters.count)"
+            chapter.index = chapters.count
             chapter.title = title; chapter.start = start; chapter.end = size
             chapters.append(chapter)
         }
@@ -56,6 +81,24 @@ public struct TextFileParser {
             }
             throw LocalBookError.invalidEncoding
         }
+        func finishChapter(at end: Int64) throws {
+            guard !chapters.isEmpty else { return }
+            let index = chapters.count - 1
+            chapters[index].end = end
+            let length = end - (chapters[index].start ?? 0)
+            if selected != nil, splitLongChapters, length > 102_400 {
+                let children = try subdivide(chapters[index])
+                chapters[index].isVolume = true
+                chapters[index].end = chapters[index].start
+                processor.setVolumeTitle(chapters[index].title ?? "")
+                chapters.append(contentsOf: children)
+            } else if selected != nil, length < 400,
+                      try content(chapter: chapters[index]).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                chapters[index].isVolume = true
+                processor.setVolumeTitle(chapters[index].title ?? "")
+            }
+        }
+        if selected == nil { append("正文", start: Int64(bomSize)) }
         while !eof {
             while buffer.count < 3 * window {
                 let block = try handle.read(upToCount: min(blockSize, 3 * window - buffer.count)) ?? Data()
@@ -70,18 +113,6 @@ public struct TextFileParser {
             let text = prefix + decodedText
             let ns = text as NSString
             let range = NSRange(location: 0, length: ns.length)
-            if !didSelect {
-                var bestCount = 0
-                for rule in rules.filter({ $0.enable && !$0.rule.isEmpty }).sorted(by: { $0.serialNumber < $1.serialNumber }) {
-                    guard let regex = try? NSRegularExpression(pattern: rule.rule, options: [.anchorsMatchLines]) else { continue }
-                    let count = regex.numberOfMatches(in: text, range: range)
-                    if count > 0 && (selected == nil || count > bestCount + 2) {
-                        selected = (rule, regex); bestCount = count
-                    }
-                }
-                didSelect = true
-                if selected == nil { append("正文", start: Int64(bomSize)) }
-            }
             let safeEnd = eof ? size : base + Int64(try validPrefix(buffer, limit: decodedCount - window))
             var offsets = [Int64](repeating: base, count: ns.length + 1)
             var characterOffset = prefix.utf16.count, bytePosition = base
@@ -98,12 +129,39 @@ public struct TextFileParser {
                     let start = byteOffset(match.range.location), end = byteOffset(NSMaxRange(match.range))
                     guard start >= eligible, start >= lastEnd, start < safeEnd else { continue }
                     let raw = ns.substring(with: match.range)
-                    let title = (rule.replacement.isEmpty ? raw : regex.replacementString(for: match, in: text, offset: 0, template: rule.replacement))
-                        .trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !title.isEmpty else { continue }
-                    if chapters.isEmpty && start > Int64(bomSize) { append("前言", start: Int64(bomSize)) }
-                    if !chapters.isEmpty { chapters[chapters.count - 1].end = start }
-                    append(title, start: end); lastEnd = end
+                    if chapters.isEmpty && start > Int64(bomSize) {
+                        var front = BookChapter(); front.start = Int64(bomSize); front.end = start
+                        if try !content(chapter: front).trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            let heading = try processor.replace("前言", script: rule.replacement, index: 1,
+                                previousTitle: nil, previousLength: -1)
+                            for volume in heading.volumes {
+                                append(volume, start: Int64(bomSize))
+                                chapters[chapters.count - 1].end = Int64(bomSize)
+                                chapters[chapters.count - 1].isVolume = true
+                            }
+                            if !heading.title.isEmpty { append(heading.title, start: Int64(bomSize)) }
+                            if !chapters.isEmpty { chapters[chapters.count - 1].end = start }
+                        }
+                    }
+                    let previous = chapters.last
+                    var previousLength = -1
+                    if !rule.replacement.isEmpty, var previous {
+                        previous.end = start
+                        previousLength = try contentLength(chapter: previous)
+                        if splitLongChapters && start - (previous.start ?? 0) > 102_400 { processor.setVolumeTitle(previous.title ?? "") }
+                    }
+                    let replacement = try processor.replace(raw, script: rule.replacement, index: chapters.count + 1,
+                        previousTitle: previous?.title, previousLength: previousLength)
+                    let title = replacement.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                    guard !title.isEmpty || !replacement.volumes.isEmpty else { continue }
+                    try finishChapter(at: start)
+                    for volume in replacement.volumes {
+                        append(volume, start: start)
+                        chapters[chapters.count - 1].end = start
+                        chapters[chapters.count - 1].isVolume = true
+                    }
+                    if !title.isEmpty { append(title, start: end) }
+                    lastEnd = end
                 }
             } else {
                 let newline = try NSRegularExpression(pattern: "\\n")
@@ -122,7 +180,58 @@ public struct TextFileParser {
             }
         }
         if chapters.isEmpty { append("正文", start: Int64(bomSize)) }
+        try finishChapter(at: size)
+        let originName = book?.originName.flatMap { $0.isEmpty ? nil : $0 } ?? url.lastPathComponent
+        for index in chapters.indices {
+            chapters[index].index = index
+            chapters[index].url = TxtTitleProcessor.chapterURL(originName: originName, index: index, title: chapters[index].title ?? "")
+        }
         return chapters
+    }
+
+    private func forEachScalar(chapter: BookChapter, _ visit: (UnicodeScalar, Int64) -> Void) throws {
+        guard let start = chapter.start, let end = chapter.end, start >= 0, end >= start else { throw LocalBookError.invalidOffsets }
+        let file = try FileHandle(forReadingFrom: url)
+        defer { try? file.close() }
+        try file.seek(toOffset: UInt64(start))
+        var position = start, buffer = Data()
+        while position < end {
+            try Task.checkCancellation()
+            let read = try file.read(upToCount: Int(min(64 * 1024, end - position - Int64(buffer.count)))) ?? Data()
+            buffer.append(read)
+            var decoded: (String, Int)?
+            for suffix in 0...min(3, buffer.count) {
+                if let text = String(data: buffer.dropLast(suffix), encoding: encoding) { decoded = (text, buffer.count - suffix); break }
+            }
+            guard let (text, consumed) = decoded, consumed > 0 else { throw LocalBookError.invalidEncoding }
+            for scalar in text.unicodeScalars {
+                position += Int64(String(scalar).data(using: encoding)!.count)
+                visit(scalar, position)
+            }
+            buffer = Data(buffer.dropFirst(consumed))
+        }
+        guard buffer.isEmpty else { throw LocalBookError.invalidEncoding }
+    }
+
+    private func contentLength(chapter: BookChapter) throws -> Int {
+        var length = 0
+        try forEachScalar(chapter: chapter) { scalar, _ in length += scalar.value > 0xffff ? 2 : 1 }
+        return length
+    }
+
+    private func subdivide(_ chapter: BookChapter) throws -> [BookChapter] {
+        var result: [BookChapter] = [], start = chapter.start ?? 0
+        func append(end: Int64) {
+            var child = chapter
+            child.title = (chapter.title ?? "") + "(\(result.count + 1))"
+            child.start = start; child.end = end; child.isVolume = false
+            result.append(child); start = end
+        }
+        try forEachScalar(chapter: chapter) { scalar, offset in
+            if (scalar.value == 10 && offset - start >= 10 * 1024) || offset - start >= 512_000 { append(end: offset) }
+        }
+        if let end = chapter.end, start < end { append(end: end) }
+        return result
     }
 
     public func content(chapter: BookChapter) throws -> String {

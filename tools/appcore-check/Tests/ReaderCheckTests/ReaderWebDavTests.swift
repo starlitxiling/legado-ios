@@ -9,7 +9,7 @@ final class ReaderWebDavTests: XCTestCase {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let file = root.appendingPathComponent("book.txt")
-        try Data("第一章 开始\n正文。\n第二章 后续\n下章正文。".utf8).write(to: file)
+        try Data(("第一章 开始\n" + String(repeating: "正文。", count: 400) + "\n第二章 后续\n下章正文。").utf8).write(to: file)
         let parsed = try LocalBook.parse(url: file)
         let database = try AppDatabase.inMemory()
         let original = try await LocalBook.save(book: parsed.book, chapters: parsed.chapters, database: database)
@@ -75,7 +75,7 @@ extension ReaderWebDavTests {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let file = root.appendingPathComponent("book.txt")
-        try Data("第一章 开始\n正文。\n第二章 后续\n下章正文。".utf8).write(to: file)
+        try Data(("第一章 开始\n" + String(repeating: "正文。", count: 400) + "\n第二章 后续\n下章正文。").utf8).write(to: file)
         let parsed = try LocalBook.parse(url: file)
         let database = try AppDatabase.inMemory()
         let book = try await LocalBook.save(book: parsed.book, chapters: parsed.chapters, database: database)

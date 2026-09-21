@@ -56,7 +56,7 @@ final class LocalImportTests: XCTestCase {
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
         let input = root.appendingPathComponent("书名 by 作者.txt")
-        try Data("第一章 开始\n这是正文\n第二章 结束\n完结".utf8).write(to: input)
+        try Data(("第一章 开始\n" + String(repeating: "这是正文。", count: 250) + "\n第二章 结束\n完结").utf8).write(to: input)
         let database = try AppDatabase.inMemory()
         let model = LocalImportViewModel(database: database, booksDirectory: root.appendingPathComponent("Books"))
         await model.importFiles([input])

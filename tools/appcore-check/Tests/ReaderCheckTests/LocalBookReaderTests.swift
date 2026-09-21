@@ -18,7 +18,7 @@ final class LocalBookReaderTests: XCTestCase {
             let row = try XCTUnwrap(rows.first)
             let chapter = try JSONDecoder().decode(BookChapter.self, from: JSONEncoder().encode(row))
             let body = try await cache.content(book: parsed.book, chapter: chapter, nextURL: nil, source: nil, client: ReplayHttpClient())
-            XCTAssertEqual(body.rawContent, "\n\(content)")
+            XCTAssertEqual(body.rawContent, "第一章\n\(content)")
         }
     }
 
@@ -34,10 +34,36 @@ final class LocalBookReaderTests: XCTestCase {
         let cache = ReaderChapterCache(directory: root.appendingPathComponent("cache"))
         let first = try await cache.content(book: parsed.book, chapter: chapter, nextURL: nil,
                                             source: nil, client: ReplayHttpClient())
-        XCTAssertEqual(first.rawContent, "\n本地正文")
+        XCTAssertEqual(first.rawContent, "第一章 开始\n本地正文")
         try FileManager.default.removeItem(at: url)
         let cached = try await cache.content(book: parsed.book, chapter: chapter, nextURL: nil,
                                              source: nil, client: ReplayHttpClient())
         XCTAssertEqual(cached.rawContent, first.rawContent)
     }
+    @MainActor
+    func testReaderRebuildsChangedFileAndUsesNewCacheRevision() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let url = root.appendingPathComponent("book.txt")
+        try Data("Old content".utf8).write(to: url)
+        try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: 1000)], ofItemAtPath: url.path)
+        let db = try AppDatabase.inMemory()
+        let parsed = try LocalBook.parse(url: url)
+        try await LocalBook.save(book: parsed.book, chapters: parsed.chapters, database: db)
+        let model = ReaderViewModel(database: db, client: ReplayHttpClient(), cacheDirectory: root.appendingPathComponent("cache"), preDownloadCount: { 0 })
+        await model.load(bookURL: url.absoluteString)
+        XCTAssertNil(model.errorMessage)
+        XCTAssertTrue(model.pagination?.text.string.contains("Old content") == true)
+        for (index, text) in ["New content", "Latest content"].enumerated() {
+            try Data(text.utf8).write(to: url)
+            try FileManager.default.setAttributes([.modificationDate: Date(timeIntervalSince1970: Double(2000 + index))], ofItemAtPath: url.path)
+            await model.load(bookURL: url.absoluteString)
+            XCTAssertNil(model.errorMessage)
+            XCTAssertTrue(model.pagination?.text.string.contains(text) == true)
+            let chapters = try await ChapterRepository(database: db).list(bookUrl: url.absoluteString)
+            XCTAssertEqual(model.chapters.first?.variable, chapters.first?.variable)
+        }
+    }
+
 }

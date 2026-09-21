@@ -131,11 +131,19 @@ final class ReaderViewModel {
             let source = try sourceRow.map { try ReaderEntityBridge.decode(BookSource.self, row: $0) }
             let repository = ChapterRepository(database: database)
             var chapters = try await repository.list(bookUrl: bookURL)
-            if chapters.isEmpty, LocalBook.isLocal(entity) {
-                let parsed = try LocalBook.chapterList(book: entity)
+            if LocalBook.isLocal(entity), try chapters.isEmpty || LocalBook.isModified(entity) {
+                let rules = try await TxtTocRuleRepository(database: database).list(enabledOnly: true)
+                let input = entity
+                let parsing = Task.detached(priority: .userInitiated) {
+                    var updated = input
+                    let chapters = try LocalBook.chapterList(book: &updated, rules: rules)
+                    return (updated, chapters)
+                }
+                let (updated, parsed) = try await withTaskCancellationHandler { try await parsing.value } onCancel: { parsing.cancel() }
                 let restored = try parsed.map { try ReaderEntityBridge.decode(BookChapterRow.self, row: $0) }
-                guard generation == token else { return }
-                try await repository.replaceAll(bookUrl: bookURL, chapters: restored)
+                guard generation == token, !Task.isCancelled else { return }
+                book = try await LocalBook.save(book: updated, chapters: parsed, database: database)
+                entity = try ReaderEntityBridge.decode(Book.self, row: book)
                 chapters = restored
             }
             if chapters.isEmpty, !LocalBook.isLocal(entity) {

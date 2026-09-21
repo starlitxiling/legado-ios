@@ -64,33 +64,69 @@ public enum LocalBook {
             if !parser.title.isEmpty { book.name = parser.title }
             if !parser.author.isEmpty { book.author = parser.author }
         } else {
-            let parser = try TextFileParser(url: url)
-            book.charset = parser.charset
-            chapters = try parser.chapters(bookURL: url.absoluteString, rules: rules)
+            chapters = try textChapters(book: &book, url: url, rules: rules)
             cover = nil
         }
         book.totalChapterNum = chapters.count; book.latestChapterTitle = chapters.last?.title
         book.durChapterTitle = chapters.first?.title
+        book.latestChapterTime = try modificationTime(url)
         return (book, chapters, cover)
     }
 
     public static func chapterList(book: Book, rules: [TxtTocRule] = TxtTocRule.builtIn) throws -> [BookChapter] {
+        var copy = book
+        return try chapterList(book: &copy, rules: rules)
+    }
+
+    public static func chapterList(book: inout Book, rules: [TxtTocRule] = TxtTocRule.builtIn) throws -> [BookChapter] {
         guard isLocal(book), let url = fileURL(book) else { throw LocalBookError.unsupportedFile }
         let identity = book.bookUrl ?? url.absoluteString
+        let chapters: [BookChapter]
         switch url.pathExtension.lowercased() {
-        case "txt": return try TextFileParser(url: url).chapters(bookURL: identity, rules: rules)
-        case "epub": return try EpubParserCache.shared.parser(for: url).chapters(bookURL: identity)
-        case "mobi", "azw3", "azw": return try MobiParserCache.shared.parser(for: url).chapters(bookURL: identity)
-        case "umd": return try UmdParserCache.shared.parser(for: url).chapters(bookURL: identity)
-        case "pdf": return try PdfFile(url: url).chapters(bookURL: identity)
+        case "txt": chapters = try textChapters(book: &book, url: url, rules: rules)
+        case "epub": chapters = try EpubParserCache.shared.parser(for: url).chapters(bookURL: identity)
+        case "mobi", "azw3", "azw": chapters = try MobiParserCache.shared.parser(for: url).chapters(bookURL: identity)
+        case "umd": chapters = try UmdParserCache.shared.parser(for: url).chapters(bookURL: identity)
+        case "pdf": chapters = try PdfFile(url: url).chapters(bookURL: identity)
         default: throw LocalBookError.unsupportedFile
         }
+        book.latestChapterTime = try modificationTime(url)
+        book.totalChapterNum = chapters.count
+        book.latestChapterTitle = chapters.last?.title
+        return chapters
+    }
+
+    public static func isModified(_ book: Book) throws -> Bool {
+        guard isLocal(book), let url = fileURL(book) else { return false }
+        return try modificationTime(url) > book.latestChapterTime
+    }
+
+    private static func modificationTime(_ url: URL) throws -> Int64 {
+        guard let date = try url.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate else {
+            throw CocoaError(.fileReadUnknown)
+        }
+        return Int64(date.timeIntervalSince1970 * 1000)
+    }
+
+    private static func textChapters(book: inout Book, url: URL, rules: [TxtTocRule]) throws -> [BookChapter] {
+        let modified = try isModified(book)
+        let parser = try TextFileParser(url: url, charset: modified ? nil : book.charset)
+        let rule: TxtTocRule?
+        if let encoded = book.tocUrl, !encoded.isEmpty, !modified {
+            let parts = encoded.components(separatedBy: TxtTitleProcessor.ruleSeparator)
+            rule = TxtTocRule(id: 0, name: "Selected", rule: parts[0], replacement: parts.dropFirst().joined(separator: TxtTitleProcessor.ruleSeparator))
+        } else { rule = try parser.selectedRule(rules: rules, book: book) }
+        let chapters = try parser.chapters(bookURL: book.bookUrl ?? url.absoluteString, rules: rules, book: book,
+            selectedRule: rule, splitLongChapters: book.readConfig?.splitLongChapter ?? true, autoSelectRule: false)
+        book.charset = parser.charset
+        book.tocUrl = rule.map { $0.rule + TxtTitleProcessor.ruleSeparator + $0.replacement } ?? ""
+        return chapters
     }
 
     public static func content(book: Book, chapter: BookChapter) throws -> String {
         guard isLocal(book), let url = fileURL(book) else { throw LocalBookError.unsupportedFile }
         switch url.pathExtension.lowercased() {
-        case "txt": return try TextFileParser(url: url).content(chapter: chapter)
+        case "txt": return try TextFileParser(url: url, charset: book.charset).content(chapter: chapter)
         case "epub": return try EpubParserCache.shared.parser(for: url).content(chapter: chapter)
         case "mobi", "azw3", "azw": return try MobiParserCache.shared.parser(for: url).content(chapter: chapter)
         case "umd": return try UmdParserCache.shared.parser(for: url).content(chapter: chapter)
@@ -111,9 +147,9 @@ public enum LocalBook {
             if let existing = try BookRow.fetchOne(db, key: row.bookUrl) {
                 saved = existing
                 saved.name = row.name; saved.author = row.author; saved.coverUrl = row.coverUrl
-                saved.originName = row.originName; saved.charset = row.charset
+                saved.originName = row.originName; saved.charset = row.charset; saved.tocUrl = row.tocUrl
                 saved.totalChapterNum = row.totalChapterNum; saved.latestChapterTitle = row.latestChapterTitle
-                saved.latestChapterTime = 0
+                saved.latestChapterTime = row.latestChapterTime
                 try saved.update(db)
                 try db.execute(sql: "DELETE FROM chapters WHERE bookUrl = ?", arguments: [saved.bookUrl])
             } else {
