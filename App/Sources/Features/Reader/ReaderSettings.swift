@@ -1,4 +1,5 @@
 import Foundation
+import CoreFoundation
 import LegadoCore
 
 enum ReaderTheme: String, CaseIterable, Codable {
@@ -96,19 +97,49 @@ struct ReaderSettings: Equatable {
                 settings.configuration = try JSONDecoder().decode(ReadBookConfig.self, from: data)
             }
             var fields = try JSONSerialization.jsonObject(with: JSONEncoder().encode(settings.configuration)) as! [String: Any]
-            for key in fields.keys { if let value = defaults.object(forKey: key) { fields[key] = value } }
+            mergePreferences(into: &fields, defaults: defaults)
             settings.configuration = try JSONDecoder().decode(ReadBookConfig.self, from: JSONSerialization.data(withJSONObject: fields))
         } catch { NSLog("Unable to load reader configuration: %@", error.localizedDescription) }
         settings.autoReadSpeed = defaults.object(forKey: "autoReadSpeed") == nil ? 10 : defaults.double(forKey: "autoReadSpeed")
         settings.hideStatusBar = defaults.bool(forKey: "hideStatusBar")
         settings.theme = defaults.bool(forKey: "isNightTheme") ? .night :
             (defaults.bool(forKey: "Legado.readerEyeCare") || defaults.string(forKey: "bgStr") == "#CCE8CF" ? .eyeCare : .day)
-        settings.textFullJustify = defaults.object(forKey: "textFullJustify") as? Bool ?? true
-        settings.textBottomJustify = defaults.object(forKey: "textBottomJustify") as? Bool ?? true
+        settings.textFullJustify = defaults.object(forKey: "textFullJustify") == nil ? true : defaults.bool(forKey: "textFullJustify")
+        settings.textBottomJustify = defaults.object(forKey: "textBottomJustify") == nil ? true : defaults.bool(forKey: "textBottomJustify")
         settings.useZhLayout = defaults.bool(forKey: "useZhLayout")
         settings.hangingPunctuation = defaults.bool(forKey: "hangingPunctuation")
         settings.punctuationCompress = defaults.string(forKey: "punctuationCompress") ?? "none"
         return settings.normalized
+    }
+
+    static func mergePreferences(into fields: inout [String: Any], defaults: UserDefaults) {
+        for key in fields.keys {
+            guard let raw = defaults.object(forKey: key), let expected = fields[key] else { continue }
+            var value: Any?
+            if let number = expected as? NSNumber {
+                if CFGetTypeID(number) == CFBooleanGetTypeID() {
+                    switch String(describing: raw).lowercased() {
+                    case "true", "yes", "1": value = true
+                    case "false", "no", "0": value = false
+                    default: break
+                    }
+                } else if let numeric = Double(String(describing: raw)), numeric.isFinite {
+                    value = numeric
+                }
+            } else if expected is String { value = raw as? String }
+            else if expected is [Any] { value = raw as? [Any] }
+            guard let value else {
+                NSLog("Ignoring invalid reader preference: %@", key)
+                continue
+            }
+            var candidate = fields
+            candidate[key] = value
+            do {
+                let data = try JSONSerialization.data(withJSONObject: candidate)
+                _ = try JSONDecoder().decode(ReadBookConfig.self, from: data)
+                fields = candidate
+            } catch { NSLog("Ignoring invalid reader preference %@: %@", key, error.localizedDescription) }
+        }
     }
 
     var normalized: Self {

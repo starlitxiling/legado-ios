@@ -17,6 +17,7 @@ struct ScrollPageContainer<Content: View>: UIViewControllerRepresentable {
         let controller = UIViewController()
         let scroll = UIScrollView()
         scroll.alwaysBounceVertical = true
+        scroll.panGestureRecognizer.allowedScrollTypesMask = []
         scroll.delegate = context.coordinator
         scroll.translatesAutoresizingMaskIntoConstraints = false
         controller.view.addSubview(scroll)

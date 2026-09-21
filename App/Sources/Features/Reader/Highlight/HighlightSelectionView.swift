@@ -4,6 +4,7 @@ import UIKit
 struct HighlightSelectionView: View {
     let text: NSAttributedString
     let pageOffset: Int
+    var initialSelection: NSRange? = nil
     let save: (NSRange, String) -> Void
     let readAloud: (NSRange) -> Void
     @State private var note = ""
@@ -13,7 +14,7 @@ struct HighlightSelectionView: View {
 
     var body: some View {
         NavigationStack {
-            SelectableReaderText(text: text) { range, action in
+            SelectableReaderText(text: text, initialSelection: initialSelection) { range, action in
                 let chapterRange = NSRange(location: pageOffset + range.location, length: range.length)
                 switch action {
                 case .highlight: save(chapterRange, ""); dismiss()
@@ -36,6 +37,7 @@ private enum ReaderSelectionAction { case highlight, note, readAloud }
 
 private struct SelectableReaderText: UIViewRepresentable {
     let text: NSAttributedString
+    let initialSelection: NSRange?
     let action: (NSRange, ReaderSelectionAction) -> Void
 
     func makeCoordinator() -> Coordinator { Coordinator(action: action) }
@@ -46,9 +48,17 @@ private struct SelectableReaderText: UIViewRepresentable {
         view.delegate = context.coordinator
         return view
     }
-    func updateUIView(_ view: UITextView, context: Context) { view.attributedText = text }
+    func updateUIView(_ view: UITextView, context: Context) {
+        if !view.attributedText.isEqual(to: text) { view.attributedText = text }
+        if !context.coordinator.selectedInitially, let initialSelection {
+            context.coordinator.selectedInitially = true
+            view.selectedRange = initialSelection
+            view.becomeFirstResponder()
+        }
+    }
 
     final class Coordinator: NSObject, UITextViewDelegate {
+        var selectedInitially = false
         let action: (NSRange, ReaderSelectionAction) -> Void
         init(action: @escaping (NSRange, ReaderSelectionAction) -> Void) { self.action = action }
         func textView(_ textView: UITextView, editMenuForTextIn range: NSRange, suggestedActions: [UIMenuElement]) -> UIMenu? {

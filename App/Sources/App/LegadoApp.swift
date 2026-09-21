@@ -73,6 +73,10 @@ struct AppStartupView: View {
 
 @MainActor
 final class LegadoAppDelegate: NSObject, UIApplicationDelegate, ObservableObject {
+    func application(_ application: UIApplication, supportedInterfaceOrientationsFor window: UIWindow?) -> UIInterfaceOrientationMask {
+        ReaderDeviceController.orientationMask
+    }
+
     typealias BackgroundRegistration = (@escaping (BGTask) -> Void) -> Bool
 
     @Published private(set) var container: AppContainer?

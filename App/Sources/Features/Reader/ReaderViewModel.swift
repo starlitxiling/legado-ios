@@ -1,6 +1,7 @@
 import Foundation
 import Observation
 import LegadoCore
+import GRDB
 
 struct ReaderDestination: Hashable {
     let bookURL: String
@@ -72,7 +73,7 @@ final class ReaderViewModel {
     var replaceEnableDefault: () -> Bool = { true }
     var chineseConverterType: () -> Int = { 0 }
     private let cacheDirectory: URL
-    private let adaptSpecialStyle: Bool
+    private var adaptSpecialStyle: Bool
     var prepareLocalBook: (BookRow) async throws -> BookRow = { $0 }
     var synchronizeWebDav: (BookRow, Bool) async throws -> BookProgress? = { _, _ in nil }
     var pendingWebDavProgress: BookProgress?
@@ -262,6 +263,19 @@ final class ReaderViewModel {
         else { await nextChapter() }
     }
 
+    func advanceSpread(forward: Bool, columns: Int) async {
+        guard columns > 1 else { if forward { await nextPage() } else { await previousPage() }; return }
+        guard !isLoading, let pagination else { return }
+        if forward {
+            if pageIndex + columns < pagination.pages.count { await selectPage(pageIndex + columns) }
+            else { await nextChapter() }
+        } else if pageIndex >= columns { await selectPage(pageIndex - columns) }
+        else if chapterPosition > 0 {
+            await goToChapter(chapters[chapterPosition - 1].index, lastPage: true)
+            await selectPage(pageIndex / columns * columns)
+        }
+    }
+
     func previousPage() async {
         guard !isLoading else { return }
         if pageIndex > 0 { await selectPage(pageIndex - 1) }
@@ -313,6 +327,8 @@ final class ReaderViewModel {
         do {
             input.rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
             guard token == generation, layoutToken == layoutGeneration else { return }
+            if let entity { input.book = entity }
+            input.adaptSpecialStyle = adaptSpecialStyle
             input.chineseConverterType = chineseConverterType()
             input.replaceEnableDefault = replaceEnableDefault()
             layoutInput = input
@@ -498,6 +514,118 @@ final class ReaderViewModel {
         await openChapter(ChapterRequest(index: value.chapterIndex, offset: value.chapterPos), token: token)
     }
 
+    var readerBook: Book? { entity }
+    var readerSource: BookSource? { source }
+    var rawContent: String { layoutInput?.rawContent ?? "" }
+    var currentChapterURL: String { chapters.first(where: { $0.index == chapterIndex })?.url ?? "" }
+
+    func applyBehavior(_ configuration: ReaderBehaviorConfiguration) async {
+        configuration.save()
+        adaptSpecialStyle = configuration.boolean("adaptSpecialStyle")
+        var updated = ReaderSettings.load()
+        updated.isEInk = settings.isEInk
+        await reflow(settings: updated)
+    }
+
+    func updateReadConfig(_ change: @escaping @Sendable (inout ReadConfig) -> Void) async {
+        guard let book else { return }
+        let token = generation
+        do {
+            let url = book.bookUrl
+            let saved = try await database.write { db in
+                guard var row = try BookRow.fetchOne(db, key: url) else { throw ReaderError.missingBook }
+                var config = try ReaderEntityBridge.decode(Book.self, row: row).readConfig ?? ReadConfig()
+                change(&config)
+                row.readConfig = String(decoding: try JSONEncoder().encode(config), as: UTF8.self)
+                try row.update(db)
+                return row
+            }
+            guard token == generation else { return }
+            self.book = saved; entity = try ReaderEntityBridge.decode(Book.self, row: saved)
+            await reflow()
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func editContent(_ text: String) async {
+        guard let entity, var input = layoutInput else { return }
+        let token = generation
+        do {
+            try BookHelp.save(text, directory: cacheDirectory, book: entity, chapter: input.chapter)
+            guard token == generation else { return }
+            input.rawContent = text; layoutInput = input; errorMessage = nil
+            await reflow()
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func toggleBookmark() async {
+        guard let pagination, pagination.pages.indices.contains(pageIndex) else { return }
+        let range = pagination.pages[pageIndex].range
+        if let bookmark = bookmarks.first(where: { $0.chapterIndex == chapterIndex && NSLocationInRange($0.chapterPos, range) }) {
+            await deleteBookmark(bookmark)
+        } else { await addBookmark() }
+    }
+
+    func toggleRemoveSameTitle() async {
+        guard let entity, let input = layoutInput else { return }
+        do {
+            let enabled = BookHelp.removeSameTitle(directory: cacheDirectory, book: entity, chapter: input.chapter)
+            try BookHelp.setRemoveSameTitle(!enabled, directory: cacheDirectory, book: entity, chapter: input.chapter)
+            await reflow()
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func refreshContent() async {
+        guard let entity, let source, let input = layoutInput else { await retry(); return }
+        let token = generation
+        do {
+            let next = chapters.dropFirst(chapterPosition + 1).first?.url
+            let result = try await WebBook(source: source, client: client,
+                configuration: .init(adaptSpecialStyle: adaptSpecialStyle))
+                .content(book: entity, chapter: input.chapter, nextChapterUrl: next, includeTitle: false)
+            guard token == generation else { return }
+            await editContent(result.rawContent)
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func openSearchResult(_ result: ReaderSearchMatch) async {
+        guard chapters.contains(where: { $0.index == result.chapterIndex }) else { return }
+        let token = beginRequest()
+        await openChapter(ChapterRequest(index: result.chapterIndex, offset: result.offset), token: token)
+    }
+
+    func searchText(_ query: String, progress: (Int, Int) -> Void) async throws -> [ReaderSearchMatch] {
+        guard let entity, !query.isEmpty else { return [] }
+        let token = generation, chapters = chapters
+        let rules = try await ReplaceRuleRepository(database: database).list(enabled: true)
+        var matches: [ReaderSearchMatch] = []
+        for (position, row) in chapters.enumerated() {
+            try Task.checkCancellation()
+            guard generation == token else { throw CancellationError() }
+            let chapter = try ReaderEntityBridge.decode(BookChapter.self, row: row)
+            let cached = try await cache.content(book: entity, chapter: chapter, nextURL: chapters.dropFirst(position + 1).first?.url, source: source, client: client)
+            let input = ReaderLayoutInput(book: entity, chapter: chapter, rawContent: cached.rawContent, rules: rules,
+                replaceEnableDefault: replaceEnableDefault(), chineseConverterType: chineseConverterType(),
+                adaptSpecialStyle: adaptSpecialStyle, cacheDirectory: cacheDirectory)
+            let settings = settings, size = size
+            let rendered = try await Task.detached { try ReaderLayout.build(input: input, size: size, settings: settings, didStart: {}) }.value
+            try Task.checkCancellation()
+            let text = rendered.pagination.text.string as NSString
+            var start = 0
+            while start < text.length, matches.count < 1000 {
+                let range = text.range(of: query, options: .caseInsensitive, range: NSRange(location: start, length: text.length - start))
+                guard range.location != NSNotFound else { break }
+                let left = max(0, range.location - 24), right = min(text.length, NSMaxRange(range) + 48)
+                let snippetRange = text.rangeOfComposedCharacterSequences(for: NSRange(location: left, length: right - left))
+                matches.append(ReaderSearchMatch(chapterIndex: row.index, offset: range.location, title: row.title,
+                                                  snippet: text.substring(with: snippetRange)))
+                start = NSMaxRange(range)
+            }
+            progress(position + 1, chapters.count)
+            if matches.count >= 1000 { break }
+        }
+        return matches
+    }
+
     func close() async {
         rulesTask?.cancel(); rulesTask = nil
         _ = beginRequest(); isLoading = false
@@ -537,4 +665,12 @@ final class ReaderViewModel {
         let token = beginRequest()
         await openChapter(ChapterRequest(index: progress.durChapterIndex, offset: progress.durChapterPos), token: token)
     }
+}
+
+struct ReaderSearchMatch: Identifiable, Equatable {
+    let chapterIndex: Int
+    let offset: Int
+    let title: String
+    let snippet: String
+    var id: String { "\(chapterIndex):\(offset)" }
 }

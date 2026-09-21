@@ -28,7 +28,7 @@ final class ReaderStyleStore {
         selected = min(max(0, defaults.integer(forKey: "readStyleSelect")), loaded.count - 1)
         if saved == nil {
             var fields = try JSONSerialization.jsonObject(with: JSONEncoder().encode(loaded[selected])) as! [String: Any]
-            for key in fields.keys { if let value = defaults.object(forKey: key) { fields[key] = value } }
+            ReaderSettings.mergePreferences(into: &fields, defaults: defaults)
             loaded[selected] = try JSONDecoder().decode(ReadBookConfig.self, from: JSONSerialization.data(withJSONObject: fields))
         }
         styles = loaded.map { ReaderSettings(configuration: $0).normalized.configuration }

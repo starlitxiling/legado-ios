@@ -2,9 +2,9 @@ import Foundation
 import LegadoCore
 
 struct ReaderLayoutInput {
-    let book: Book
+    var book: Book
     let chapter: BookChapter
-    let rawContent: String
+    var rawContent: String
     var rules: [ReplaceRuleRow]
     var replaceEnableDefault = true
     var chineseConverterType = 0

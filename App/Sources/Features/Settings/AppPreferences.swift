@@ -6,10 +6,11 @@ extension AppPreferences {
 
     static let settingDefaults: [String: AndroidPreferenceValue] = {
         var values = AndroidBackupPreferences.defaults
+        values.merge(ReaderBehaviorConfiguration.defaults) { _, value in value }
         values["launcherIcon"] = .string("ic_launcher")
         values["showSearchReadRecord"] = .boolean(true)
         values["precisionSearch"] = .boolean(false)
-        for key in ["searchScope", "searchGroup", "searchResultFilter", "bookImportFileName"] { values[key] = .string("") }
+        for key in ["searchScope", "searchGroup", "searchResultFilter", "bookImportFileName", "prevKeys", "nextKeys", "readerMenuConfig", "textSelectMenuConfig"] { values[key] = .string("") }
         for key in "showUnread coverShowName coverShowAuthor coverShowNameN coverShowAuthorN coverTitleAdaptive welcomeShowText welcomeShowIcon welcomeShowTextDark welcomeShowIconDark replaceEnableDefault autoClearExpired showAddToShelfAlert bookInfoDeleteAlert showMangaUi jsSourceApiTokenRequired".split(separator: " ") {
             values[String(key)] = .boolean(true)
         }

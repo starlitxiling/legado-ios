@@ -109,6 +109,11 @@ final class AppPreferencesTests: XCTestCase {
             "colorAccentNight": 0xffd84315, "colorBackgroundNight": 0xff212121, "colorBottomBackgroundNight": 0xff303030] {
             expected[key] = .int(Int32(bitPattern: color))
         }
+        for key in "readBodyToLh textFullJustify textBottomJustify adaptSpecialStyle mouseWheelPage volumeKeyPage autoChangeSource selectText showBrightnessView showReadTitleAddition".split(separator: " ") { expected[String(key)] = .boolean(true) }
+        for key in "hideStatusBar hideNavigationBar paddingDisplayCutouts useZhLayout hangingPunctuation volumeKeyPageOnPlay keyPageOnLongPress pullToToggleBookmark longPressSelectParagraph twoFingerReplacePreview noAnimScrollPage optimizeRender disableReturnKey showReadTitleChapterNameOnly readBarStyleFollowPage showBookMemo".split(separator: " ") { expected[String(key)] = .boolean(false) }
+        for key in ["prevKeys", "nextKeys", "readerMenuConfig", "textSelectMenuConfig"] { expected[key] = .string("") }
+        for (key, value) in ["screenOrientation": "0", "keep_light": "0", "doubleHorizontalPage": "0", "progressBarBehavior": "page", "punctuationCompress": "none", "clickImgWay": "0", "highlightActionTrigger": "click"] { expected[key] = .string(value) }
+        for (key, value): (String, Int32) in ["mouseWheelScrollSpeed": 100, "pullBookmarkDistance": 0, "pageTouchSlop": 0, "pageTouchClick": 0] { expected[key] = .int(value) }
         XCTAssertEqual(preferences.snapshot, expected)
         for (key, value) in expected { preferences.set(key, value) }
         XCTAssertEqual(AppPreferences(defaults: defaults).snapshot, expected)

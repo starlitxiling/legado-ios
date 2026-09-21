@@ -77,6 +77,7 @@ struct ReaderInterfacePanel: View {
                                         .overlay(Circle().strokeBorder(index == store.selected ? Color.accentColor : .clear, lineWidth: 2))
                                 }
                                 .accessibilityLabel(style.name.isEmpty ? "预设 \(index)" : style.name)
+                                .accessibilityIdentifier("reader.style.\(index)")
                                 .simultaneousGesture(LongPressGesture().onEnded { _ in
                                     enqueue { try await store.select(index); await adoptStyle(); customizing = true }
                                 })

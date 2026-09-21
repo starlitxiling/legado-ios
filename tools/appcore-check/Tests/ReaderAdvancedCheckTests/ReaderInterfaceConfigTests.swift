@@ -3,6 +3,24 @@ import LegadoCore
 @testable import ReaderCheck
 
 final class ReaderInterfaceConfigTests: XCTestCase {
+    @MainActor
+    func testStringBackedNumericPreferencesLoadWithoutDiscardingStyles() async throws {
+        let suite = "ReaderArguments." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set("24", forKey: "textSize"); defaults.set("0.25", forKey: "letterSpacing")
+        defaults.set("YES", forKey: "showHeaderLine"); defaults.set("invalid", forKey: "paddingTop")
+        let settings = ReaderSettings.load(from: defaults)
+        XCTAssertEqual(settings.textSize, 24)
+        XCTAssertEqual(settings.letterSpacing, 0.25)
+        XCTAssertTrue(settings.configuration.showHeaderLine)
+        let store = ReaderStyleStore(database: try AppDatabase.inMemory(), defaults: defaults)
+        try await store.load()
+        XCTAssertEqual(store.styles.count, 6)
+        XCTAssertEqual(store.current.textSize, 24)
+        XCTAssertEqual(store.current.letterSpacing, 0.25)
+    }
+
     func testAllClickActionsRoundTripAndMenuCannotBeLost() {
         let name = "ReaderClick.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: name)!

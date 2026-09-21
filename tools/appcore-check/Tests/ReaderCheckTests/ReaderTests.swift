@@ -4,6 +4,77 @@ import LegadoCore
 @testable import ReaderCheck
 
 final class ReaderTests: XCTestCase {
+    @MainActor
+    func testSpreadCrossesChaptersAndSearchOpensMatchedOffset() async throws {
+        let database = try AppDatabase.inMemory()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var row = BookRow(); row.bookUrl = "https://spread.test/book"; row.origin = "https://spread.test"; row.name = "Spread"
+        try await BookshelfRepository(database: database).insert(row)
+        let book = try ReaderEntityBridge.decode(Book.self, row: row)
+        var chapters: [BookChapterRow] = []
+        for index in 0..<2 {
+            var chapter = BookChapterRow(); chapter.bookUrl = row.bookUrl
+            chapter.index = index; chapter.url = "https://spread.test/\(index)"; chapter.title = "Chapter \(index)"
+            chapters.append(chapter)
+            let body = String(repeating: "A long paragraph for pagination.\n", count: 100) + "UniqueNeedle \(index)"
+            try BookHelp.save(body, directory: directory, book: book, chapter: ReaderEntityBridge.decode(BookChapter.self, row: chapter))
+        }
+        try await ChapterRepository(database: database).replaceAll(bookUrl: row.bookUrl, chapters: chapters)
+        let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: directory, preDownloadCount: { 0 })
+        await model.load(bookURL: row.bookUrl)
+        let count = try XCTUnwrap(model.pagination?.pages.count)
+        XCTAssertGreaterThan(count, 4)
+        await model.advanceSpread(forward: true, columns: 2)
+        XCTAssertEqual(model.pageIndex, 2)
+        await model.selectPage(count - 1)
+        await model.advanceSpread(forward: true, columns: 2)
+        XCTAssertEqual(model.chapterIndex, 1)
+        XCTAssertEqual(model.pageIndex, 0)
+        await model.advanceSpread(forward: false, columns: 2)
+        XCTAssertEqual(model.chapterIndex, 0)
+        XCTAssertEqual(model.pageIndex, (count - 1) / 2 * 2)
+        var progress: [Int] = []
+        let matches = try await model.searchText("uniqueneedle") { completed, _ in progress.append(completed) }
+        XCTAssertEqual(progress, [1, 2]); XCTAssertEqual(matches.count, 2)
+        let match = try XCTUnwrap(matches.last)
+        await model.openSearchResult(match)
+        XCTAssertEqual(model.chapterIndex, 1)
+        XCTAssertEqual(model.characterOffset, match.offset)
+        XCTAssertEqual((model.pagination!.text.string as NSString).substring(with: NSRange(location: match.offset, length: 12)), "UniqueNeedle")
+        await model.close()
+    }
+
+    @MainActor
+    func testReaderActionsPersistContentSettingsAndBookmarks() async throws {
+        let database = try AppDatabase.inMemory()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var row = BookRow(); row.bookUrl = "https://actions.test/book"; row.origin = "https://actions.test"; row.name = "Actions"
+        try await BookshelfRepository(database: database).insert(row)
+        var chapter = BookChapterRow(); chapter.bookUrl = row.bookUrl; chapter.url = "https://actions.test/1"; chapter.title = "Chapter"
+        try await ChapterRepository(database: database).replaceAll(bookUrl: row.bookUrl, chapters: [chapter])
+        let book = try ReaderEntityBridge.decode(Book.self, row: row)
+        let entityChapter = try ReaderEntityBridge.decode(BookChapter.self, row: chapter)
+        try BookHelp.save("Original text", directory: directory, book: book, chapter: entityChapter)
+        let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: directory, preDownloadCount: { 0 })
+        await model.load(bookURL: row.bookUrl)
+        XCTAssertNil(model.errorMessage)
+        await model.updateReadConfig { $0.useReplaceRule = false; $0.pageAnim = 4 }
+        XCTAssertEqual(model.readerBook?.readConfig?.pageAnim, 4)
+        await model.editContent("Edited text")
+        XCTAssertTrue(model.pagination?.text.string.contains("Edited text") == true)
+        XCTAssertEqual(try BookHelp.content(directory: directory, book: book, chapter: entityChapter), "Edited text")
+        await model.toggleBookmark()
+        XCTAssertEqual(model.bookmarks.count, 1)
+        await model.toggleBookmark()
+        XCTAssertTrue(model.bookmarks.isEmpty)
+        await model.close()
+        let stored = try await BookshelfRepository(database: database).get(bookUrl: row.bookUrl)
+        let saved = try XCTUnwrap(stored)
+        XCTAssertEqual(try ReaderEntityBridge.decode(Book.self, row: saved).readConfig?.useReplaceRule, false)
+    }
+
     func testLayoutUsesTitleMarkerAndBookSegmentSetting() throws {
         var book = Book(); book.bookUrl = "https://reader.test/book"; book.name = "Book"
         book.readConfig = ReadConfig(); book.readConfig?.reSegment = false

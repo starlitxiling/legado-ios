@@ -19,6 +19,22 @@ struct ReaderPagination {
     let contentSize: CGSize
     var titleLength: Int = 0
 
+    func characterOffset(at point: CGPoint, on pageIndex: Int) -> Int? {
+        guard pages.indices.contains(pageIndex) else { return nil }
+        let page = pages[pageIndex]
+        let y = contentSize.height - point.y
+        for (index, line) in page.lines.enumerated() {
+            var ascent: CGFloat = 0, descent: CGFloat = 0
+            let width = CTLineGetTypographicBounds(line, &ascent, &descent, nil)
+            let origin = page.lineOrigins[index]
+            guard y >= origin.y - descent, y <= origin.y + ascent,
+                  point.x >= origin.x, point.x <= origin.x + width else { continue }
+            let offset = CTLineGetStringIndexForPosition(line, CGPoint(x: point.x - origin.x, y: y - origin.y))
+            return offset == kCFNotFound ? nil : offset
+        }
+        return nil
+    }
+
     func pageIndex(at characterOffset: Int) -> Int {
         guard !pages.isEmpty else { return 0 }
         let offset = max(0, min(characterOffset, max(0, text.length - 1)))
