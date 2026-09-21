@@ -40,6 +40,13 @@ struct GeneralSettingsView: View {
                 }
                 if let cacheMessage { Text(cacheMessage).foregroundStyle(.secondary) }
             }
+            Section("导入文件名规则") {
+                TextEditor(text: string("bookImportFileName"))
+                    .font(.system(.body, design: .monospaced)).frame(minHeight: 100)
+                    .autocorrectionDisabled().textInputAutocapitalization(.never)
+                Text("JavaScript 从 src 读取不含扩展名的文件名，并定义 name 和 author。留空使用默认规则。")
+                    .font(.footnote).foregroundStyle(.secondary)
+            }
             Section("自动备份") {
                 Toggle("自动备份", isOn: boolean("autoBackup"))
                 Toggle("自动上传 WebDAV", isOn: boolean("autoBackupWebDav"))

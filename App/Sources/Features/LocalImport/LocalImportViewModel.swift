@@ -15,8 +15,11 @@ final class LocalImportViewModel {
     private(set) var ruleError: String?
     private let database: AppDatabase
     private let booksDirectory: URL
+    private let filenameScript: () -> String
 
-    init(database: AppDatabase, booksDirectory: URL = URL.documentsDirectory.appendingPathComponent("Books", isDirectory: true)) {
+    init(database: AppDatabase, booksDirectory: URL = URL.documentsDirectory.appendingPathComponent("Books", isDirectory: true),
+         filenameScript: @escaping () -> String = { UserDefaults.standard.string(forKey: "bookImportFileName") ?? "" }) {
+        self.filenameScript = filenameScript
         self.database = database; self.booksDirectory = booksDirectory
     }
 
@@ -78,6 +81,7 @@ final class LocalImportViewModel {
         do {
             guard LocalBook.fileExtensions.contains((name as NSString).pathExtension.lowercased()) else { throw LocalBookError.unsupportedFile }
             let rules = try await TxtTocRuleRepository(database: database).list(enabledOnly: true)
+            let filenameScript = filenameScript()
             try FileManager.default.createDirectory(at: staging, withIntermediateDirectories: true)
             let stagedFile = staging.appendingPathComponent(name)
             let destination = directory.appendingPathComponent(name)
@@ -91,7 +95,7 @@ final class LocalImportViewModel {
             let task = Task.detached(priority: .userInitiated) {
                 if let archive, let entry { try archive.read(entry.name).write(to: stagedFile, options: .atomic) }
                 else { try FileManager.default.copyItem(at: url, to: stagedFile) }
-                return try LocalBook.parse(url: stagedFile, rules: rules)
+                return try LocalBook.parse(url: stagedFile, rules: rules, filenameScript: filenameScript, logger: { AppLogStore.shared.append($0) })
             }
             var parsed = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
             parsed.book.bookUrl = destination.absoluteString

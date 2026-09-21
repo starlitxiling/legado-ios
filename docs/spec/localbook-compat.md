@@ -63,3 +63,10 @@ Specification: Kotlin `2bdd3c58b`, TextFile.kt:91-114,214-219,497-590. Scoring s
 Title replacement exposes book/result/index/prevTitle/prevLength/lastVolumeTitle and java.putVolume; front matter also runs through replacement. Rules and charset persist in book.tocUrl/charset. Modification time invalidates selection/encoding and reader directories; stored chapter revisions prevent stale body cache reuse. The parser streams decoding and offsets rather than loading whole TXT files. Existing byte-offset tests select a rule explicitly so they remain independent of auto-selection scoring.
 
 Validation: `.build/round5/p7-toc-core.log` (682/0), `p7-toc-app.log` (277/0), `p7-modified-red.log` (3/0, the existing chapter reload already retained stored cache revisions). iPhone testing is deferred at the user's request.
+
+
+## Filename scripts
+
+`bookImportFileName` runs before filename fallback with extension-free `src`, then captures the script's `name` and `author`. Blank names return to the existing patterns; an author as long as the entire filename is discarded using UTF-16 length. Exceptions are logged and fall back without interrupting other imports. Local files, archive members, online downloads and WebDAV imports all consume the preference. General settings exposes the script and backup preferences preserve it.
+
+Synthetic contract: `Writer - Book.txt` plus split script produces Book/Writer; a throwing script on `Book by Writer.txt` logs the exception and produces Book/Writer. Core filename tests: 6/0; iOS build: `.build/round5/p7-filename-ios.log`.

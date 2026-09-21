@@ -57,4 +57,26 @@ final class LocalImportEntryTests: XCTestCase {
         let requests = await client.requests
         XCTAssertEqual(requests.map(\.method), ["GET", "GET"])
     }
+    func testFilenameScriptFlowsThroughImportAndFallsBackOnError() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let input = root.appendingPathComponent("Writer - Title.txt")
+        try Data("Body".utf8).write(to: input)
+        let db = try AppDatabase.inMemory()
+        var script = "var p = src.split(' - '); var name = p[1]; var author = p[0];"
+        let model = LocalImportViewModel(database: db, booksDirectory: root.appendingPathComponent("Books"), filenameScript: { script })
+        await model.importFiles([input])
+        XCTAssertTrue(model.errors.isEmpty, model.errors.joined())
+        var books = try await BookshelfRepository(database: db).list()
+        XCTAssertEqual(books.first?.name, "Title")
+        XCTAssertEqual(books.first?.author, "Writer")
+        script = "throw new Error('filename failure')"
+        await model.importFiles([input])
+        XCTAssertTrue(model.errors.isEmpty, model.errors.joined())
+        books = try await BookshelfRepository(database: db).list()
+        XCTAssertEqual(books.first?.name, "Writer - Title")
+        XCTAssertTrue(AppLogStore.shared.snapshot().contains { $0.message.contains("filename failure") })
+    }
+
 }

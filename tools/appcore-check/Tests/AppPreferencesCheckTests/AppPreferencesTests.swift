@@ -59,7 +59,7 @@ final class AppPreferencesTests: XCTestCase {
             "coverTitleLargeSize": 100, "coverTitleSmallSize": 100, "coverAuthorLargeSize": 100, "coverAuthorSmallSize": 100,
             "welcomeShowTime": 500, "bitmapCacheSize": 50, "imageRetainNum": 0, "sourceEditMaxLine": .max]
         for (key, value) in integers { XCTAssertEqual(preferences.snapshot[key], .int(value), key) }
-        for key in "searchScope searchGroup searchResultFilter backgroundImage backgroundImageNight welcomeImagePath welcomeImagePathDark coverFont userAgent customHosts jsSourceApiToken backupUri localPassword".split(separator: " ") {
+        for key in "searchScope searchGroup searchResultFilter bookImportFileName backgroundImage backgroundImageNight welcomeImagePath welcomeImagePathDark coverFont userAgent customHosts jsSourceApiToken backupUri localPassword".split(separator: " ") {
             XCTAssertEqual(preferences.snapshot[String(key)], .string(""), String(key))
         }
         XCTAssertEqual(preferences.string("defaultHomePage"), "bookshelf")
@@ -98,7 +98,7 @@ final class AppPreferencesTests: XCTestCase {
         var expected: [String: AndroidPreferenceValue] = [:]
         for key in "showSearchReadRecord showUnread coverShowName coverShowAuthor coverShowNameN coverShowAuthorN coverTitleAdaptive welcomeShowText welcomeShowIcon welcomeShowTextDark welcomeShowIconDark showDiscovery showRss replaceEnableDefault autoClearExpired showAddToShelfAlert showMangaUi jsSourceApiTokenRequired autoCheckNewBackup autoBackup autoBackupWebDav syncBookProgress onlyLatestBackup".split(separator: " ") { expected[String(key)] = .boolean(true) }
         for key in "precisionSearch showLastUpdateTime showWaitUpCount showBookshelfFastScroller showBookshelfRecentReading showBookshelfStats importReplaceSource transparentNavBar transparentNavBarNight coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome useDefaultCover auto_refresh onlyUpdateRead defaultToRead showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore syncBookProgressPlus loadCoverOnlyWifi".split(separator: " ") { expected[String(key)] = .boolean(false) }
-        for key in "searchScope searchGroup searchResultFilter backgroundImage backgroundImageNight welcomeImagePath welcomeImagePathDark coverFont userAgent customHosts jsSourceApiToken backupUri localPassword defaultCover defaultCoverDark readRecordCover readRecordCoverDark durThemeName durThemeNameNight".split(separator: " ") { expected[String(key)] = .string("") }
+        for key in "searchScope searchGroup searchResultFilter bookImportFileName backgroundImage backgroundImageNight welcomeImagePath welcomeImagePathDark coverFont userAgent customHosts jsSourceApiToken backupUri localPassword defaultCover defaultCoverDark readRecordCover readRecordCoverDark durThemeName durThemeNameNight".split(separator: " ") { expected[String(key)] = .string("") }
         for (key, value) in ["themeMode": "0", "language": "auto", "webDavDir": "legado", "defaultHomePage": "bookshelf", "launcherIcon": "ic_launcher"] { expected[key] = .string(value) }
         for (key, value): (String, Int32) in ["bookGroupStyle": 0, "bookshelfLayout": 0, "bookshelfMargin": 12, "showBooknameLayout": 0, "chineseConverterType": 0, "fontScale": 0, "backgroundImageBlurring": 0, "backgroundImageNightBlurring": 0,
             "coverTitleLargeSize": 100, "coverTitleSmallSize": 100, "coverAuthorLargeSize": 100, "coverAuthorSmallSize": 100,

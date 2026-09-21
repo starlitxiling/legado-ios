@@ -2,9 +2,11 @@ import Foundation
 
 public enum LocalBookError: Error, LocalizedError {
     case identityConflict(String, String)
+    case invalidFilenameScript
     case unsupportedFile, invalidEncoding, emptyFile, invalidOffsets, invalidEPUB(String)
     public var errorDescription: String? {
         switch self {
+        case .invalidFilenameScript: return "Filename script must define name and author strings."
         case .identityConflict(let name, let author): return "书架已存在同名同作者书籍：\(name) / \(author)"
         case .unsupportedFile: return "只支持本地 TXT、EPUB、UMD、MOBI、AZW3、AZW 和 PDF 文件。"
         case .invalidEncoding: return "无法识别文本编码。"

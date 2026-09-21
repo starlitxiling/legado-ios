@@ -87,4 +87,21 @@ final class LocalBookReviewTests: XCTestCase {
         XCTAssertEqual(LocalBook.nameAuthor("张三 著.txt").name, "张三 著")
         XCTAssertEqual(LocalBook.nameAuthor("张三 著.txt").author, "")
     }
+    func testFilenameScriptUsesStemAndFallsBackWithDiagnostic() {
+        var diagnostics: [String] = []
+        let scripted = LocalBook.nameAuthor("Writer - Book.txt", script: "var parts = src.split(' - '); var author = parts[0]; var name = parts[1];", logger: { diagnostics.append($0) })
+        XCTAssertEqual(scripted.name, "Book")
+        XCTAssertEqual(scripted.author, "Writer")
+        XCTAssertTrue(diagnostics.isEmpty)
+        let fallback = LocalBook.nameAuthor("Book by Writer.txt", script: "throw new Error('bad filename rule')", logger: { diagnostics.append($0) })
+        XCTAssertEqual(fallback.name, "Book")
+        XCTAssertEqual(fallback.author, "Writer")
+        XCTAssertTrue(diagnostics.first?.contains("bad filename rule") == true)
+        let blank = LocalBook.nameAuthor("Book by Writer.txt", script: "var name = ''; var author = 'Ignored';")
+        XCTAssertEqual(blank.name, "Book")
+        XCTAssertEqual(blank.author, "Writer")
+        let full = LocalBook.nameAuthor("Book.txt", script: "var name = src; var author = src;")
+        XCTAssertEqual(full.author, "")
+    }
+
 }

@@ -16,8 +16,23 @@ public enum LocalBook {
         return url
     }
 
-    public static func nameAuthor(_ filename: String) -> (name: String, author: String) {
+    public static func nameAuthor(_ filename: String, script: String = "",
+                                  logger: (String) -> Void = { print($0) }) -> (name: String, author: String) {
         let stem = (filename as NSString).deletingPathExtension
+        if !script.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            do {
+                let result = try JsEngine().evaluateScript(script + "\nJSON.stringify({author:author,name:name})", bindings: ["src": stem])
+                guard let json = result as? String,
+                      let values = try JSONSerialization.jsonObject(with: Data(json.utf8)) as? [String: Any] else {
+                    throw LocalBookError.invalidFilenameScript
+                }
+                let name = values["name"] as? String ?? ""
+                let author = values["author"] as? String ?? ""
+                if !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    return (name, author.utf16.count == stem.utf16.count ? "" : author)
+                }
+            } catch { logger("Import filename script failed for \(filename): \(error.localizedDescription)") }
+        }
         let patterns = ["(.*?)《([^《》]+)》.*?作者：(.*)", "(.*?)《([^《》]+)》(.*)", "(^)(.+) 作者：(.+)$", "(^)(.+) by (.+)$"]
         for pattern in patterns {
             guard let regex = try? NSRegularExpression(pattern: pattern),
@@ -32,10 +47,11 @@ public enum LocalBook {
         return (name, author.count == stem.count ? "" : author)
     }
 
-    public static func parse(url: URL, rules: [TxtTocRule] = TxtTocRule.builtIn) throws -> (book: Book, chapters: [BookChapter], cover: Data?) {
+    public static func parse(url: URL, rules: [TxtTocRule] = TxtTocRule.builtIn, filenameScript: String = "",
+                             logger: (String) -> Void = { print($0) }) throws -> (book: Book, chapters: [BookChapter], cover: Data?) {
         guard url.isFileURL, fileExtensions.contains(url.pathExtension.lowercased()) else { throw LocalBookError.unsupportedFile }
         var book = Book()
-        let identity = nameAuthor(url.lastPathComponent)
+        let identity = nameAuthor(url.lastPathComponent, script: filenameScript, logger: logger)
         book.name = identity.name; book.author = identity.author
         book.bookUrl = url.absoluteString; book.origin = "loc_book"; book.originName = url.lastPathComponent
         book.type = 256 | 8; book.canUpdate = false

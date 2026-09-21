@@ -20,10 +20,13 @@ final class RemoteBooksModel {
     private let database: AppDatabase
     private let endpoint: RemoteBooksEndpoint
     private let destination: URL
+    private let filenameScript: () -> String
     private var generation = 0
 
     init(database: AppDatabase, endpoint: RemoteBooksEndpoint,
-         destination: URL = URL.documentsDirectory.appendingPathComponent("Books", isDirectory: true)) {
+         destination: URL = URL.documentsDirectory.appendingPathComponent("Books", isDirectory: true),
+         filenameScript: @escaping () -> String = { UserDefaults.standard.string(forKey: "bookImportFileName") ?? "" }) {
+        self.filenameScript = filenameScript
         self.database = database; self.endpoint = endpoint; self.destination = destination
     }
 
@@ -93,7 +96,8 @@ final class RemoteBooksModel {
             let local = folder.appendingPathComponent(name)
             try data.write(to: local, options: .atomic)
             let rules = try await TxtTocRuleRepository(database: database).list(enabledOnly: true)
-            let parsing = Task.detached(priority: .userInitiated) { try LocalBook.parse(url: local, rules: rules) }
+        let filenameScript = filenameScript()
+            let parsing = Task.detached(priority: .userInitiated) { try LocalBook.parse(url: local, rules: rules, filenameScript: filenameScript, logger: { AppLogStore.shared.append($0) }) }
             var parsed = try await withTaskCancellationHandler { try await parsing.value } onCancel: { parsing.cancel() }
             parsed.book.origin = origin
             if groupID > 0 { parsed.book.group = groupID }
@@ -123,6 +127,7 @@ final class RemoteBooksModel {
         let repository = BookshelfRepository(database: database)
         var existing = Dictionary((try await repository.all()).filter { $0.origin.hasPrefix("webDav::") }.map { ($0.origin, $0) }, uniquingKeysWith: { first, _ in first })
         let rules = try await TxtTocRuleRepository(database: database).list(enabledOnly: true)
+        let filenameScript = filenameScript()
         var persisted = false, failures: [String] = []
         for entry in entries {
             var pendingDirectory: URL?
@@ -144,7 +149,7 @@ final class RemoteBooksModel {
                 let local = directory.appendingPathComponent((entry.name as NSString).lastPathComponent)
                 let parsing = Task.detached(priority: .userInitiated) {
                     try archive.read(entry.name).write(to: local, options: .atomic)
-                    return try LocalBook.parse(url: local, rules: rules)
+                    return try LocalBook.parse(url: local, rules: rules, filenameScript: filenameScript, logger: { AppLogStore.shared.append($0) })
                 }
                 var parsed = try await withTaskCancellationHandler { try await parsing.value } onCancel: { parsing.cancel() }
                 parsed.book.origin = origin
