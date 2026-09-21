@@ -6,6 +6,7 @@ struct ReaderLayoutInput {
     let chapter: BookChapter
     var rawContent: String
     var rules: [ReplaceRuleRow]
+    var highlightRules: [HighlightRule] = []
     var manualReplace = false
     var replaceEnableDefault = true
     var chineseConverterType = 0
@@ -32,7 +33,7 @@ enum ReaderLayout {
             content: input.rawContent, includeTitle: false)
         let pagination = try Paginator().paginate(title: title, paragraphs: content.paragraphs,
             size: size, settings: settings, imageBaseURL: LocalBook.isLocal(input.book) ? "legado-local://book/" : URL(string: input.chapter.url ?? "",
-                relativeTo: URL(string: input.chapter.baseUrl ?? input.book.bookUrl ?? ""))?.absoluteURL.absoluteString, isVolume: input.chapter.isVolume)
+                relativeTo: URL(string: input.chapter.baseUrl ?? input.book.bookUrl ?? ""))?.absoluteURL.absoluteString, isVolume: input.chapter.isVolume, highlightRules: input.highlightRules, book: input.book)
         return ReaderLayoutResult(title: title, pagination: pagination)
     }
 }

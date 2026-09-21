@@ -99,6 +99,43 @@ final class ReaderInterfaceUITests: XCTestCase {
         XCTAssertTrue(app.otherElements["reader.body"].exists)
     }
 
+    @MainActor
+    func testHighlightRuleEditorAndRenderedReader() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-detail-gallery", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO", "-doubleHorizontalPage", "0", "-manualReplaceRule", "NO", "-readerMenuConfig", #"{"primary":["highlightRule"],"more":["effectiveReplaces","simulatedReading","bookmark","editContent","pageAnim","getProgress","coverProgress","reverseContent","replace","sameTitleRemoved","reSegment","delRubyTag","delHTag","imageStyle","reimportSource","updateToc","log","help"]}"#]
+        app.launch()
+        XCTAssertTrue(app.buttons["detail.read"].waitForExistence(timeout: 15)); app.buttons["detail.read"].tap()
+        XCTAssertTrue(app.otherElements["reader.body"].waitForExistence(timeout: 15))
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        app.buttons["更多"].tap(); app.buttons["高亮规则"].tap()
+        XCTAssertTrue(app.buttons["新建"].waitForExistence(timeout: 5)); app.buttons["新建"].tap()
+        let name = app.textFields["名称"]
+        XCTAssertTrue(name.waitForExistence(timeout: 5)); name.tap(); name.typeText("Reader Highlight")
+        let pattern = app.textViews["匹配文本"]; pattern.tap(); pattern.typeText("启航")
+        app.switches["应用于标题"].tap()
+        let bold = app.switches["粗体"]
+        for _ in 0..<6 where !bold.isHittable { app.swipeUp() }
+        XCTAssertTrue(bold.isHittable); bold.tap()
+        snapshot(app, "u6-reader-highlight-editor")
+        let advanced = app.buttons["高级样式 JSON"]
+        for _ in 0..<6 where !advanced.isHittable { app.swipeUp() }
+        XCTAssertTrue(advanced.isHittable); advanced.tap()
+        let json = app.textViews["highlight.styleJSON"]
+        XCTAssertTrue(json.waitForExistence(timeout: 5)); json.tap()
+        let existing = json.value as? String ?? ""
+        json.typeText(String(repeating: XCUIKeyboardKey.delete.rawValue, count: existing.count))
+        json.typeText(#"{"fill":-256,"textColor":-65536,"bold":true,"underline":{"kind":"WAVY"}}"#)
+        app.buttons["BackButton"].tap()
+        XCTAssertTrue(app.buttons["保存"].waitForExistence(timeout: 5)); app.buttons["保存"].tap()
+        XCTAssertTrue(app.navigationBars["高亮规则"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["Reader Highlight, 启航"].exists || app.staticTexts["Reader Highlight"].exists)
+        app.buttons["完成"].tap()
+        XCTAssertTrue(app.buttons["收起"].waitForExistence(timeout: 5)); app.buttons["收起"].tap()
+        XCTAssertTrue(app.otherElements["reader.body"].exists)
+        snapshot(app, "u6-reader-highlight-rendered")
+    }
+
     @MainActor private func snapshot(_ app: XCUIApplication, _ name: String) {
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = name; attachment.lifetime = .keepAlways; add(attachment)

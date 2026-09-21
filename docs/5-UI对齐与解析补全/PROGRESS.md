@@ -48,7 +48,7 @@
 | P3f 缓存宿主 | 完成 | 主会话 | CacheMemoryValue / JavaHostCacheTests | Core 701/0、AppCore 284/0、iOS 构建通过 |
 | U4 发现页 | 完成 | 主会话 | ExploreView / ExploreKinds / explore-ui-compat.md | Core 703/0、AppCore 286/0、专项 16/0；模拟器交互与渲染 1/0；截图已复核 |
 | U5 书籍详情 | 完成 | 主会话 | book-detail-compat.md / assets/u5-* | Core 706/0、AppCore 289/0；模拟器 2/0；iOS 构建通过 |
-| U6 阅读器 | 在途 | 主会话 | reader-ui-compat.md / 样式、菜单、输入、设置与独立目录 | Core 712/0、AppCore 310/0；手动替换/模拟追读模拟器通过；高亮规则等继续 |
+| U6 阅读器 | 在途 | 主会话 | reader-ui-compat.md / 样式、菜单、输入、设置与独立目录 | Core 716/0、AppCore 311/0；高亮规则模拟器通过；选择菜单/图片样式继续 |
 | 批次 3-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -57,6 +57,6 @@
 
 ## 下一步
 
-U6 配置层 614f74885、排版/界面 0e3d2dcbe、菜单/输入 0dc014290、独立目录 d84ccd1ea；反转/云进度/模拟追读/EPUB 清理/手动替换已验证，当前高亮规则及选择菜单；P4 真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md。全程不推送；WebDAV 凭据只用于读取。
+U6 配置层 614f74885、排版/界面 0e3d2dcbe、菜单/输入 0dc014290、独立目录 d84ccd1ea；反转/云进度/模拟追读/EPUB 清理/手动替换 f56320b6b 已验证，当前高亮规则及选择菜单；P4 真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md。全程不推送；WebDAV 凭据只用于读取。
 
 P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。

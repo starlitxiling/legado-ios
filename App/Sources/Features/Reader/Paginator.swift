@@ -53,7 +53,7 @@ struct Paginator {
     var fontName = "PingFangSC-Regular"
 
     func paginate(title: String, paragraphs: [String], size: CGSize,
-                  settings: ReaderSettings, imageBaseURL: String? = nil, isVolume: Bool = false) throws -> ReaderPagination {
+                  settings: ReaderSettings, imageBaseURL: String? = nil, isVolume: Bool = false, highlightRules: [HighlightRule] = [], book: Book = Book()) throws -> ReaderPagination {
         let settings = settings.normalized
         let visibleTitle = settings.titleMode == 2 && !isVolume && !paragraphs.isEmpty ? "" : title
         let split = ReaderTypography.splitTitle(visibleTitle, enabled: settings.configuration.splitChapterTitle && !isVolume)
@@ -98,6 +98,7 @@ struct Paginator {
                                      range: NSRange(location: 0, length: (split.0 as NSString).length + 1))
         }
         let titleLength = title.isEmpty ? 0 : (title as NSString).length + (body.isEmpty ? 0 : 1)
+        try ReaderRuleHighlight.apply(to: attributed, titleLength: titleLength, rules: highlightRules, book: book)
         ReaderPunctuation.apply(to: attributed, indices: ReaderPunctuation.targets(attributed.string, mode: settings.punctuationCompress).filter { $0 >= titleLength })
         let text = NSAttributedString(attributedString: attributed)
         let framesetter = CTFramesetterCreateWithAttributedString(text)

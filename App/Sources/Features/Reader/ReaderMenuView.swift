@@ -20,7 +20,7 @@ struct ReaderMenuView: View {
         let config = model.settings.configuration
         return (ARGBColor(hex: model.settings.theme == .night ? config.bgStrNight : config.bgStr) ?? ARGBColor(0xFFEEEEEE)).color
     }
-    private let implemented = Set(["effectiveReplaces", "bookmark", "editContent", "pageAnim", "getProgress", "coverProgress", "reverseContent", "simulatedReading", "replace", "sameTitleRemoved", "reSegment", "delRubyTag", "delHTag", "updateToc", "log", "help"])
+    private let implemented = Set(["reimportSource", "highlightRule", "effectiveReplaces", "bookmark", "editContent", "pageAnim", "getProgress", "coverProgress", "reverseContent", "simulatedReading", "replace", "sameTitleRemoved", "reSegment", "delRubyTag", "delHTag", "updateToc", "log", "help"])
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
@@ -124,6 +124,7 @@ struct ReaderMenuView: View {
     @ViewBuilder private func item(_ key: String) -> some View {
         let title = ReaderMenuPartition.readerActions.first { $0.0 == key }?.1 ?? key
         switch key {
+        case "reimportSource": if model.readerSource != nil { Button(title) { show(key) } }
         case "bookmark": Button(title) { action(.bookmark) }
         case "sameTitleRemoved": Button(title) { Task { await model.toggleRemoveSameTitle() } }
         case "reverseContent": Button(title) { Task { await model.reverseContent() } }

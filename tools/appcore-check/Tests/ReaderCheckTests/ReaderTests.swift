@@ -4,6 +4,24 @@ import LegadoCore
 @testable import ReaderCheck
 
 final class ReaderTests: XCTestCase {
+    func testHighlightRulesChangeFontsBeforePaginationAndMergeDecorations() throws {
+        var first = HighlightRule(); first.id = 1; first.pattern = "Token"; first.applyToTitle = true
+        first.style = #"{"fill":-256,"fontSize":40,"bold":true}"#
+        var second = first; second.id = 2; second.style = #"{"italic":true,"underline":{"kind":"WAVY"}}"#
+        let input = ReaderLayoutInput(book: Book(), chapter: BookChapter(), rawContent: "Token remainder", rules: [], highlightRules: [second, first])
+        let result = try ReaderLayout.build(input: input, size: CGSize(width: 240, height: 250), settings: ReaderSettings(), didStart: {})
+        let text = result.pagination.text
+        let range = (text.string as NSString).range(of: "Token")
+        XCTAssertNotEqual(range.location, NSNotFound)
+        let font = try XCTUnwrap(text.attribute(.init(kCTFontAttributeName as String), at: range.location, effectiveRange: nil)) as! CTFont
+        XCTAssertEqual(CTFontGetSize(font), 40)
+        let style = try XCTUnwrap(text.attribute(ReaderRuleHighlight.styleKey, at: range.location, effectiveRange: nil) as? HighlightStyle)
+        XCTAssertEqual(style.fill, -256); XCTAssertTrue(style.bold); XCTAssertTrue(style.italic)
+        XCTAssertEqual(style.underline?.kind, "WAVY")
+        XCTAssertNil(text.attribute(ReaderRuleHighlight.styleKey, at: NSMaxRange(range), effectiveRange: nil))
+        XCTAssertFalse(result.pagination.pages.isEmpty)
+    }
+
     @MainActor
     func testSimulatedReadingStopsAtUnlockedChapterAndCanBeDisabled() async throws {
         let database = try AppDatabase.inMemory()

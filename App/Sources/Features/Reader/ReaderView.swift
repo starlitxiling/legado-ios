@@ -373,6 +373,11 @@ struct ReaderView: View {
         case "image": if let url = previewImageURL { ReaderImagePreview(url: url, model: model) }
         case "preview": ReaderReplacePreviewView(model: model)
         case "memo": if let book = model.book { ReaderMemoView(bookURL: book.bookUrl, database: container.database) }
+        case "reimportSource":
+            if let sourceURL = model.book?.origin {
+                ReaderSourceReimportView(sourceURL: sourceURL, repository: container.bookSources, client: container.httpClient) { await model.reloadSource() }
+            }
+        case "highlightRule": ReaderHighlightRulesView(repository: HighlightRuleRepository(database: container.database)) { await model.reflow() }
         case "effectiveReplaces": ReaderManualReplaceView(model: model, repository: container.replaceRules)
         case "simulatedReading": ReaderSimulatedView(model: model)
         case "updateToc", "charset": ReaderTextParsingView(model: model, database: container.database)
@@ -396,10 +401,10 @@ struct ReaderView: View {
     private func customButton() {
         guard !customRunning, let source = model.readerSource, let book = model.readerBook else { return }
         customRunning = true
-        let client = container.httpClient
+        let client = container.httpClient, chapter = model.readerChapter
         Task {
             defer { customRunning = false }
-            do { _ = try await Task.detached { try SourceCallback.run(source: source, book: book, event: "clickCustomButton", client: client) }.value }
+            do { _ = try await Task.detached { try SourceCallback.run(source: source, book: book, chapter: chapter, event: "clickCustomButton", client: client) }.value }
             catch { styleError = error.localizedDescription }
         }
     }
@@ -533,6 +538,15 @@ private final class ReaderTextCanvas: UIView {
         context.textMatrix = .identity
         context.translateBy(x: 0, y: bounds.height)
         context.scaleBy(x: 1, y: -1)
+        for (index, line) in page.lines.enumerated() {
+            for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+                let attributes = CTRunGetAttributes(run) as NSDictionary
+                guard let style = attributes[ReaderRuleHighlight.styleKey.rawValue] as? HighlightStyle else { continue }
+                let foreground = attributes[kCTForegroundColorAttributeName] as! CGColor
+                ReaderRuleHighlight.draw(style, in: highlightRect(run: run, line: line, origin: page.lineOrigins[index]),
+                    baseline: page.lineOrigins[index].y, foreground: foreground, context: context, background: true)
+            }
+        }
         for highlight in annotations + (highlight.map { [$0] } ?? []) {
             let lines = page.lines
             let origins = page.lineOrigins
@@ -554,9 +568,41 @@ private final class ReaderTextCanvas: UIView {
                 let attributes = CTRunGetAttributes(run) as NSDictionary
                 let offset = (attributes[ReaderPunctuation.offsetKey.rawValue] as? NSNumber)?.doubleValue ?? 0
                 context.textPosition = CGPoint(x: page.lineOrigins[index].x + offset, y: page.lineOrigins[index].y)
+                context.saveGState()
+                let style = attributes[ReaderRuleHighlight.styleKey.rawValue] as? HighlightStyle
+                if let shadow = style?.shadow {
+                    context.setShadow(offset: CGSize(width: shadow.dx, height: -shadow.dy), blur: shadow.radius, color: ReaderRuleHighlight.color(shadow.color))
+                }
                 CTRunDraw(run, context, CFRange(location: 0, length: 0))
+                context.restoreGState()
+                if let style {
+                    let foreground = attributes[kCTForegroundColorAttributeName] as! CGColor
+                    ReaderRuleHighlight.draw(style, in: highlightRect(run: run, line: line, origin: page.lineOrigins[index]),
+                        baseline: page.lineOrigins[index].y, foreground: foreground, context: context, background: false)
+                    if let emphasis = style.emphasis {
+                        context.setFillColor(emphasis.color == 0 ? foreground : ReaderRuleHighlight.color(emphasis.color))
+                        let count = CTRunGetGlyphCount(run)
+                        var positions = [CGPoint](repeating: .zero, count: count)
+                        var advances = [CGSize](repeating: .zero, count: count)
+                        CTRunGetPositions(run, CFRange(location: 0, length: 0), &positions)
+                        CTRunGetAdvances(run, CFRange(location: 0, length: 0), &advances)
+                        let top = highlightRect(run: run, line: line, origin: page.lineOrigins[index]).maxY
+                        for glyph in 0..<count {
+                            context.fillEllipse(in: CGRect(x: page.lineOrigins[index].x + positions[glyph].x + advances[glyph].width / 2 - 1.5,
+                                y: top + 1, width: 3, height: 3))
+                        }
+                    }
+                }
             }
         }
+    }
+    private func highlightRect(run: CTRun, line: CTLine, origin: CGPoint) -> CGRect {
+        let range = CTRunGetStringRange(run)
+        var ascent: CGFloat = 0, descent: CGFloat = 0
+        _ = CTRunGetTypographicBounds(run, CFRange(location: 0, length: 0), &ascent, &descent, nil)
+        let start = CTLineGetOffsetForStringIndex(line, range.location, nil)
+        let end = CTLineGetOffsetForStringIndex(line, range.location + range.length, nil)
+        return CGRect(x: origin.x + min(start, end), y: origin.y - descent, width: abs(end - start), height: ascent + descent)
     }
 }
 
