@@ -182,14 +182,19 @@ public final class JavaHost {
                 };
             });
             const objects = {cookie:['getCookie','getKey','setCookie','replaceCookie','removeCookie'],
-                cache:['put','get','getInt','getLong','getDouble','getFloat','delete']};
+                cache:['put','get','getInt','getLong','getDouble','getFloat','delete','getByteArray','putFile','getFile','putMemory','getFromMemory','deleteMemory']};
             Object.keys(objects).forEach(function(name) {
                 globalThis[name] = {};
                 objects[name].forEach(function(method) {
                     globalThis[name][method] = function() {
                         const args = Array.prototype.slice.call(arguments);
-                        if (name === 'cache' && method === 'put' && args.length >= 2) args[1] = String(args[1]);
-                        return invoke(name+'.'+method,args);
+                        if (name === 'cache' && args.length >= 2 && (method === 'put' || method === 'putMemory')) {
+                            const value = args[1];
+                            if (ArrayBuffer.isView(value) || value instanceof ArrayBuffer) {
+                                args[1] = {__legadoCacheBytes: nativeArguments([value])[0]};
+                            } else if (method === 'put') args[1] = String(value);
+                        }
+                        return response(invoke(name+'.'+method,args));
                     };
                 });
             });

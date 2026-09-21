@@ -29,12 +29,22 @@ final class JavaHostNetwork {
             } as String?
         }
         if method.hasPrefix("cache.") {
-            try require(method == "cache.put" ? 2...3 : (method == "cache.get" ? 1...2 : 1...1))
+            try require(["cache.put", "cache.putFile"].contains(method) ? 2...3 : (method == "cache.get" ? 1...2 : method == "cache.putMemory" ? 2...2 : 1...1))
             let cache = engine.cacheManager, key = string(0), text = string(1)
             let time = Int32(truncatingIfNeeded: integer(2) ?? 0), onlyDisk = value(1) as? Bool ?? false
+            let bytes = try (value(1) as? [String: Any])?["__legadoCacheBytes"].map { try JavaHostEncoding.bytes($0) }
+            let memory = method == "cache.putMemory" ? try CacheMemoryValue(bytes as Any? ?? value(1) ?? NSNull()) : nil
             return try HostAsyncBridge.wait { () async throws -> Any? in
                 switch method {
-                case "cache.put": try await cache.put(key, value: text, saveTime: time)
+                case "cache.put":
+                    if let bytes { try await cache.put(key, value: bytes, saveTime: time) }
+                    else { try await cache.put(key, value: text, saveTime: time) }
+                case "cache.getByteArray": return try await cache.getByteArray(key)
+                case "cache.putFile": try await cache.putFile(key, value: text, saveTime: time)
+                case "cache.getFile": return try await cache.getFile(key)
+                case "cache.putMemory": if let memory { await cache.putMemory(key, value: memory) }
+                case "cache.getFromMemory": return await cache.getFromMemory(key)?.value
+                case "cache.deleteMemory": await cache.deleteMemory(key)
                 case "cache.get": return try await cache.get(key, onlyDisk: onlyDisk)
                 case "cache.getInt": return try await cache.getInt(key)
                 case "cache.getLong": return try await cache.getLong(key)

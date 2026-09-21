@@ -128,3 +128,14 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 `getFile` 提供路径、名称、存在/目录/文件判定、长度与删除方法，不暴露 JVM 反射或 FileInputStream。路径是脚本存储的相对句柄，前导斜杠仍在脚本存储内；拒绝上级路径和目录中的符号链接。默认使用磁盘存储，测试可注入内存或独立目录。iOS 沙盒无法复制 Android externalCache 父目录访问；书源需使用下载方法返回的句柄。
 
 文件/压缩包上限 256 MiB、压缩条目上限 10000；复用 P7 校验后端。文件夹合并采用稳定名称顺序，空目录返回空文本。解压失败移除本次临时目录。测试 `JavaHostFileTests` 覆盖全部入口、三种压缩格式、缓存复用、磁盘重开和符号链接越界。
+
+## 缓存（轮次 5 / P3f）
+
+对照 Kotlin `2bdd3c58b` 的 `help/CacheManager.kt`：
+
+- `cache.put` 的 Uint8Array/ArrayBuffer 写入二进制通道，`getByteArray` 返回 Uint8Array；普通值保留 JS String 转换。`putFile/getFile` 在同一二进制通道存 UTF-8 文本，与普通字符串缓存独立。
+- `putMemory/getFromMemory/deleteMemory` 支持字符串、数值、布尔、空值、数组、对象及字节，保持访问顺序的 50 MiB LRU。跨脚本上下文返回数据快照，不保存 JS 函数、原型或对象引用身份。
+- 缓存秒数 0 为永久；截止时刻失效。文件/字节支持磁盘重开；`delete` 同时清除磁盘字符串、二进制和内存。
+- `getDouble` 可读取 JS 数值内存；JS 数字在 Rhino/JSC 均按 Double 输入。磁盘 Int/Long 的溢出仍返回 null。
+
+`JavaHostCacheTests` 的输入输出：字节 0,255,65 原样回读；对象 values=['a','b'] 回读 a,b；同 key 的 Memory / Disk / Text 分别由 get / get(onlyDisk) / getFile 返回；1000ms 写入一秒缓存，1999ms 有效、2000ms 失效；访问 a 后写 c 淘汰较旧的 b。
