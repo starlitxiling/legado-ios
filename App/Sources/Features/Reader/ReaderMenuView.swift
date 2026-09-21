@@ -20,7 +20,6 @@ struct ReaderMenuView: View {
         let config = model.settings.configuration
         return (ARGBColor(hex: model.settings.theme == .night ? config.bgStrNight : config.bgStr) ?? ARGBColor(0xFFEEEEEE)).color
     }
-    private let implemented = Set(["imageStyle", "reimportSource", "highlightRule", "effectiveReplaces", "bookmark", "editContent", "pageAnim", "getProgress", "coverProgress", "reverseContent", "simulatedReading", "replace", "sameTitleRemoved", "reSegment", "delRubyTag", "delHTag", "updateToc", "log", "help"])
     var body: some View {
         VStack(spacing: 0) {
             HStack(spacing: 10) {
@@ -43,9 +42,9 @@ struct ReaderMenuView: View {
                     Button("刷新") { Task { await model.refreshContent() } }
                     Button("离线缓存") { show("cache") }
                     Divider()
-                    ForEach(partition.primary.filter { implemented.contains($0) }, id: \.self) { key in item(key) }
+                    ForEach(partition.primary, id: \.self) { key in item(key) }
                     if !partition.more.isEmpty {
-                        Menu("更多操作") { ForEach(partition.more.filter { implemented.contains($0) }, id: \.self) { key in item(key) } }
+                        Menu("更多操作") { ForEach(partition.more, id: \.self) { key in item(key) } }
                     }
                     Button("书签列表") { show("bookmarks") }
                     Button("批注") { show("highlights") }

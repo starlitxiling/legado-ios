@@ -70,6 +70,10 @@ final class ReaderViewModel {
     private var rulesTask: Task<Void, Never>?
     private var pendingRulesRefresh = false
     private let preDownloadCount: @Sendable () -> Int
+    var autoChangeSource: () -> Bool = { false }
+    private var recoveringSource = false
+    private var recoveryTask: Task<ReaderRecoveredSource, Error>?
+    private let sourceConcurrency: Int
     var manualReplace: () -> Bool = { false }
     var replaceEnableDefault: () -> Bool = { true }
     var chineseConverterType: () -> Int = { 0 }
@@ -97,6 +101,7 @@ final class ReaderViewModel {
         self.database = database; self.client = client
         self.cacheDirectory = cacheDirectory; self.adaptSpecialStyle = adaptSpecialStyle
         self.preDownloadCount = preDownloadCount
+        sourceConcurrency = threadCount
         cache = ReaderChapterCache(directory: cacheDirectory, threadCount: threadCount, adaptSpecialStyle: adaptSpecialStyle)
         self.settings = settings.normalized; self.now = now
         self.layoutDidStart = layoutDidStart
@@ -113,7 +118,7 @@ final class ReaderViewModel {
     private func beginRequest() -> UUID {
         previewGeneration = UUID(); nextChapterPagination = nil
         generation = UUID(); layoutGeneration = UUID()
-        downloadTask?.cancel(); prefetchTask?.cancel(); layoutTask?.cancel()
+        downloadTask?.cancel(); prefetchTask?.cancel(); layoutTask?.cancel(); recoveryTask?.cancel()
         chapterUpdateTask?.cancel(); chapterUpdateTask = nil
         return generation
     }
@@ -180,8 +185,42 @@ final class ReaderViewModel {
             await openChapter(ChapterRequest(index: index, offset: requestedIndex == nil ? book.durChapterPos : 0), token: token)
             if generation == token { observeReplaceRules() }
         } catch {
-            guard generation == token else { return }
+            guard generation == token, !Task.isCancelled else { return }
             errorMessage = error.localizedDescription; isLoading = false
+            if !(error is CancellationError) { await recoverSource(bookURL: bookURL, index: requestedIndex, token: token) }
+        }
+    }
+
+    private func recoverSource(bookURL: String, index: Int?, token: UUID) async {
+        guard autoChangeSource(), !recoveringSource, token == generation else { return }
+        recoveringSource = true
+        defer { recoveringSource = false }
+        do {
+            guard let row = try await BookshelfRepository(database: database).get(bookUrl: bookURL) else { return }
+            let previous = try ReaderEntityBridge.decode(Book.self, row: row)
+            guard !LocalBook.isLocal(previous), previous.isOnLineTxt else { return }
+            let rows = try await BookSourceRepository(database: database).list(enabled: true)
+            let sources = try rows.filter { $0.bookSourceType == 0 && $0.bookSourceUrl != row.origin }
+                .map { try ReaderEntityBridge.decode(BookSource.self, row: $0) }
+            guard token == generation, !Task.isCancelled else { return }
+            isLoading = true
+            let configuration = WebBookConfiguration(cacheDirectory: cacheDirectory, threadCount: sourceConcurrency, adaptSpecialStyle: adaptSpecialStyle)
+            let client = client
+            let requested = index ?? row.durChapterIndex
+            let title = chapters.first { $0.index == requested }?.title ?? row.durChapterTitle ?? ""
+            let task = Task { try await ReaderSourceRecovery.find(book: previous, chapterIndex: requested, chapterTitle: title,
+                sources: sources, client: client, configuration: configuration) }
+            recoveryTask = task
+            let candidate = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+            guard token == generation, !Task.isCancelled else { return }
+            let chapterRows = try candidate.chapters.map { try DiscoveryStorage.row($0, defaults: BookChapterRow()) }
+            let saved = try await SourceChangeTransaction.save(book: candidate.book, previous: previous, chapters: chapterRows, database: database)
+            guard token == generation, !Task.isCancelled, let url = saved.bookUrl else { return }
+            await load(bookURL: url, chapterIndex: candidate.index)
+        } catch {
+            guard token == generation, !Task.isCancelled else { return }
+            errorMessage = (errorMessage.map { $0 + "\n" } ?? "") + error.localizedDescription
+            isLoading = false
         }
     }
 
@@ -235,8 +274,11 @@ final class ReaderViewModel {
                 }
             }
         } catch {
-            guard token == generation else { return }
+            guard token == generation, !Task.isCancelled else { return }
             errorMessage = error.localizedDescription; isLoading = false
+            if !(error is CancellationError), (error as? ReaderError) != .chapterLocked {
+                await recoverSource(bookURL: entity.bookUrl ?? "", index: request.index, token: token)
+            }
         }
     }
 
