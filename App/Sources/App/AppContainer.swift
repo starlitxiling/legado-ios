@@ -26,7 +26,7 @@ final class AppContainer {
     let audioPlayback = AVPlayerAudioPlayer()
     let webService: WebServiceController
 
-    init(database: AppDatabase, httpClient: BoundedURLSessionHttpClient = .init()) {
+    init(database: AppDatabase, httpClient: BoundedURLSessionHttpClient = .init(), sourceSecrets: any SourceSecretStore = SourceLoginKeychainStore()) {
         self.database = database
         ScriptHostBridge.install(database: database)
         let httpClient = PreferenceHttpClient(underlying: httpClient,
@@ -49,7 +49,6 @@ final class AppContainer {
             })
         databaseLifecycle = DatabaseLifecycleCoordinator(suspend: { database.suspend() },
                                                          resume: { database.resume() })
-        let sourceSecrets = SourceLoginKeychainStore()
         self.httpClient = SourceLoginHttpClient(database: database, underlying: httpClient, secrets: sourceSecrets)
         sourceLogin = SourceLogin(database: database, client: httpClient, secrets: sourceSecrets)
         sourceChecker = SourceChecker(client: httpClient, database: database, secrets: sourceSecrets)
@@ -78,6 +77,6 @@ final class AppContainer {
     }
 
     static func inMemory() throws -> AppContainer {
-        AppContainer(database: try .inMemory())
+        AppContainer(database: try .inMemory(), sourceSecrets: MemorySourceSecretStore())
     }
 }

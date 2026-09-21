@@ -6,6 +6,88 @@ import LegadoCore
 @MainActor
 final class ExploreSourcesViewModel {
     private(set) var sources: [BookSource] = []
+    private(set) var expandedURL: String?
+    private(set) var kindsLoading = false
+    var selectedGroup = ""
+    var controlValues: [String: String] = [:]
+    private(set) var controlNames: [String: String] = [:]
+    private var kindGeneration = UUID()
+    private var actionGeneration = UUID()
+    private var valuesBySource: [String: [String: String]] = [:]
+    var groups: [String] {
+        Array(Set(sources.flatMap { ($0.bookSourceGroup ?? "").components(separatedBy: CharacterSet(charactersIn: ",，\n")) }
+            .map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty })).sorted()
+    }
+    var filteredSources: [BookSource] {
+        guard !selectedGroup.isEmpty else { return sources }
+        return sources.filter { ($0.bookSourceGroup ?? "").components(separatedBy: CharacterSet(charactersIn: ",，\n"))
+            .map { $0.trimmingCharacters(in: .whitespaces) }.contains(selectedGroup) }
+    }
+    func collapse() {
+        if let expandedURL { valuesBySource[expandedURL] = controlValues }
+        kindGeneration = UUID(); expandedURL = nil; kinds = []; kindsLoading = false
+    }
+
+    func toggle(_ source: BookSource, client: any HttpClient, stateRepository: SourceStateRepository) async {
+        if expandedURL == source.bookSourceUrl { collapse(); return }
+        if let expandedURL { valuesBySource[expandedURL] = controlValues }
+        expandedURL = source.bookSourceUrl
+        controlValues = valuesBySource[source.bookSourceUrl ?? ""] ?? [:]; controlNames = [:]
+        await loadKinds(source: source, client: client, stateRepository: stateRepository)
+    }
+
+    func refresh(_ source: BookSource, client: any HttpClient, stateRepository: SourceStateRepository) async {
+        if expandedURL != source.bookSourceUrl {
+            if let expandedURL { valuesBySource[expandedURL] = controlValues }
+            expandedURL = source.bookSourceUrl
+            controlValues = valuesBySource[source.bookSourceUrl ?? ""] ?? [:]; controlNames = [:]
+        }
+        await loadKinds(source: source, client: client, stateRepository: stateRepository, refresh: true)
+    }
+
+    func act(_ kind: ExploreKind, source: BookSource, client: any HttpClient, stateRepository: SourceStateRepository) async {
+        let generation = kindGeneration, values = controlValues, action = UUID()
+        actionGeneration = action
+        let task = Task.detached {
+            try await ExploreKinds.runControl(source: source, script: kind.action ?? "", values: values,
+                                              client: client, stateRepository: stateRepository)
+        }
+        do {
+            let result = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+            guard kindGeneration == generation, actionGeneration == action, !Task.isCancelled else { return }
+            controlValues = result.values
+            if result.refresh { await loadKinds(source: source, client: client, stateRepository: stateRepository, refresh: true) }
+        } catch {
+            if kindGeneration == generation, actionGeneration == action, !(error is CancellationError) {
+                errorMessage = error.localizedDescription
+            }
+        }
+    }
+
+    func moveToTop(_ source: BookSource, repository: BookSourceRepository) async {
+        do {
+            let url = source.bookSourceUrl
+            try await repository.editSources { rows in
+                var rows = rows
+                if let index = rows.firstIndex(where: { $0.bookSourceUrl == url }) {
+                    var selected = rows.remove(at: index)
+                    selected.customOrder = 0
+                    for i in rows.indices { rows[i].customOrder = i + 1 }
+                    rows.insert(selected, at: 0)
+                }
+                return rows
+            }
+            await load(repository: repository)
+        } catch { errorMessage = error.localizedDescription }
+    }
+
+    func delete(_ source: BookSource, repository: BookSourceRepository) async {
+        do {
+            if let url = source.bookSourceUrl, let row = try await repository.get(bookSourceUrl: url) { _ = try await repository.delete(row) }
+            if expandedURL == source.bookSourceUrl { collapse() }
+            await load(repository: repository)
+        } catch { errorMessage = error.localizedDescription }
+    }
     private(set) var kinds: [ExploreKind] = []
     private(set) var isLoading = false
     private(set) var errorMessage: String?
@@ -22,16 +104,36 @@ final class ExploreSourcesViewModel {
 
     func loadKinds(source: BookSource, client: any HttpClient, stateRepository: SourceStateRepository,
                    refresh: Bool = false) async {
-        isLoading = true; errorMessage = nil
-        defer { isLoading = false }
+        let generation = UUID(); kindGeneration = generation
+        kindsLoading = true; errorMessage = nil; kinds = []
+        defer { if kindGeneration == generation { kindsLoading = false } }
+        let values = controlValues
         let task = Task.detached {
             if refresh { try await ExploreKinds.clearCache(source: source, stateRepository: stateRepository) }
-            return try await ExploreKinds.load(source: source, client: client, stateRepository: stateRepository)
+            return try await ExploreKinds.load(source: source, client: client, stateRepository: stateRepository, controlValues: values)
         }
         do {
-            kinds = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+            let loaded = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+            guard kindGeneration == generation else { return }
+            kinds = loaded
+            let state = try await stateRepository.load(source: source.bookSourceUrl ?? "")
+            guard kindGeneration == generation else { return }
+            let stored = state["explore.infoMap"].flatMap { try? JSONDecoder().decode([String: String].self, from: Data($0.utf8)) } ?? [:]
+            controlValues.merge(stored) { current, _ in current }
+            for kind in loaded {
+                if controlValues[kind.title] == nil { controlValues[kind.title] = kind.defaultValue ?? kind.chars.first ?? "" }
+                if let script = kind.viewName {
+                    let values = controlValues
+                    let result = try await Task.detached {
+                        try await ExploreKinds.runControl(source: source, script: script, values: values,
+                            client: client, stateRepository: stateRepository)
+                    }.value
+                    guard kindGeneration == generation else { return }
+                    controlNames[kind.title] = result.text
+                }
+            }
         } catch {
-            if !(error is CancellationError) { errorMessage = error.localizedDescription }
+            if kindGeneration == generation, !(error is CancellationError) { errorMessage = error.localizedDescription }
         }
     }
 }

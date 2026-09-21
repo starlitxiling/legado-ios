@@ -6,13 +6,17 @@ public struct ExploreKind: Decodable, Equatable, Sendable {
     public let url: String?
     public let type: String
     public let action: String?
+    public let chars: [String]
+    public let defaultValue: String?
+    public let viewName: String?
     public var isHeading: Bool { type == "text" || (url ?? "").isEmpty }
 
-    public init(title: String, url: String? = nil, type: String = "url", action: String? = nil) {
+    public init(title: String, url: String? = nil, type: String = "url", action: String? = nil, chars: [String] = [], defaultValue: String? = nil, viewName: String? = nil) {
         self.title = title; self.url = url; self.type = type; self.action = action
+        self.chars = chars; self.defaultValue = defaultValue; self.viewName = viewName
     }
 
-    private enum CodingKeys: String, CodingKey { case title, url, type, action }
+    private enum CodingKeys: String, CodingKey { case title, url, type, action, chars, viewName; case defaultValue = "default" }
 
     public init(from decoder: Decoder) throws {
         let values = try decoder.container(keyedBy: CodingKeys.self)
@@ -20,6 +24,9 @@ public struct ExploreKind: Decodable, Equatable, Sendable {
         url = try values.decodeIfPresent(String.self, forKey: .url)
         type = try values.decodeIfPresent(String.self, forKey: .type) ?? "url"
         action = try values.decodeIfPresent(String.self, forKey: .action)
+        chars = try values.decodeIfPresent([String?].self, forKey: .chars)?.compactMap { $0 } ?? []
+        defaultValue = try values.decodeIfPresent(String.self, forKey: .defaultValue)
+        viewName = try values.decodeIfPresent(String.self, forKey: .viewName)
     }
 }
 
@@ -44,17 +51,41 @@ public enum ExploreKinds {
     }
 
     public static func load(source: BookSource, client: any HttpClient, stateRepository: SourceStateRepository,
-                            cookies: CookieStore = CookieStore(), now: TimeInterval = Date().timeIntervalSince1970) async throws -> [ExploreKind] {
+                            cookies: CookieStore = CookieStore(), now: TimeInterval = Date().timeIntervalSince1970, controlValues: [String: String] = [:]) async throws -> [ExploreKind] {
         let key = source.bookSourceUrl ?? ""
         let original = try await stateRepository.load(source: key)
         if let cached = original[cacheKey(source)] { return try parse(cached) }
         var state = original
         do {
-            let text = try evaluate(source: source, client: client, cookies: cookies, state: &state, now: now)
+            let text = try evaluate(source: source, client: client, cookies: cookies, state: &state, now: now, controlValues: controlValues)
             let kinds = try parse(text)
             state[cacheKey(source)] = text
             try await stateRepository.merge(source: key, original: original, updated: state)
             return kinds
+        } catch {
+            try await stateRepository.merge(source: key, original: original, updated: state)
+            throw error
+        }
+    }
+
+    public struct ControlResult: Decodable, Sendable {
+        public let text: String
+        public let values: [String: String]
+        public let refresh: Bool
+    }
+
+    public static func runControl(source: BookSource, script: String, values: [String: String], client: any HttpClient,
+                                  stateRepository: SourceStateRepository) async throws -> ControlResult {
+        let key = source.bookSourceUrl ?? ""
+        let original = try await stateRepository.load(source: key)
+        var state = original
+        let code = String(decoding: try JSONEncoder().encode(script), as: UTF8.self)
+        let wrapped = "var __controlResult = eval(" + code + "); JSON.stringify({text:__controlResult == null ? '' : String(__controlResult),values:__infoValues,refresh:__exploreRefresh})"
+        do {
+            let output = try evaluate(source: source, client: client, cookies: CookieStore(), state: &state,
+                                      now: Date().timeIntervalSince1970, scriptOverride: wrapped, controlValues: values)
+            try await stateRepository.merge(source: key, original: original, updated: state)
+            return try JSONDecoder().decode(ControlResult.self, from: Data(output.utf8))
         } catch {
             try await stateRepository.merge(source: key, original: original, updated: state)
             throw error
@@ -73,11 +104,12 @@ public enum ExploreKinds {
     }
 
     private static func evaluate(source: BookSource, client: any HttpClient, cookies: CookieStore,
-                                 state: inout [String: String], now: TimeInterval) throws -> String {
+                                 state: inout [String: String], now: TimeInterval, scriptOverride: String? = nil, controlValues: [String: String] = [:]) throws -> String {
         var text = (source.exploreUrl ?? "").trimmingCharacters(in: .whitespacesAndNewlines)
         let lower = text.lowercased()
         let script: String?
-        if lower.hasPrefix("@js:") { script = String(text.dropFirst(4)) }
+        if let scriptOverride { script = scriptOverride }
+        else if lower.hasPrefix("@js:") { script = String(text.dropFirst(4)) }
         else if lower.hasPrefix("<js>"), lower.hasSuffix("</js>") { script = String(text.dropFirst(4).dropLast(5)) }
         else { script = nil }
         if let script {
@@ -85,6 +117,7 @@ public enum ExploreKinds {
             let engine = try context.engine(baseURL: source.bookSourceUrl ?? "")
             let library = engine.libraryInitializer
             let stateJSON = String(decoding: try JSONEncoder().encode(state), as: UTF8.self)
+            let controlsJSON = String(decoding: try JSONEncoder().encode(controlValues), as: UTF8.self)
             var finalState = state
             defer { state = finalState }
             let save: @convention(block) (String) -> Void = { json in
@@ -92,7 +125,7 @@ public enum ExploreKinds {
             }
             engine.libraryInitializer = { context in
                 context.setObject(save, forKeyedSubscript: "__saveExploreState" as NSString)
-                context.evaluateScript("var __exploreState = \(stateJSON); var __exploreNow = \(now);" + bridge)
+                context.evaluateScript("var __exploreState = \(stateJSON); var __exploreNow = \(now);" + bridge + "Object.assign(__infoValues, " + controlsJSON + ");")
                 try library?(context)
             }
             let result = try engine.evaluateScript("try { eval(__exploreCode); } finally { if(infoMap.needSave) infoMap.saveNow(); __saveExploreState(JSON.stringify(__exploreState)); }",
@@ -106,6 +139,9 @@ public enum ExploreKinds {
     }
 
     private static let bridge = """
+    var __exploreRefresh = false;
+    java.reUiView = function(){__exploreRefresh=true;};
+    java.upUiData = function(values){if(values) Object.assign(__infoValues,values);};
     source.getVariable = function(){return __exploreState.variable || '';};
     source.setVariable = function(v){if(v == null) delete __exploreState.variable; else __exploreState.variable = String(v);};
     source.putVariable = source.setVariable;
