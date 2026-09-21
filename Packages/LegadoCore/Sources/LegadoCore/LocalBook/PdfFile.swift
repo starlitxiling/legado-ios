@@ -108,7 +108,9 @@ public final class PdfFile {
             bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { throw PdfFileError.invalidDocument }
         let target = CGRect(x: 0, y: 0, width: width, height: height)
         context.setFillColor(CGColor(gray: 1, alpha: 1)); context.fill(target)
-        context.concatenate(page.getDrawingTransform(.cropBox, rect: target, rotate: 0, preserveAspectRatio: true))
+        context.scaleBy(x: Double(width) / pageWidth, y: Double(height) / pageHeight)
+        let pageRect = CGRect(x: 0, y: 0, width: pageWidth, height: pageHeight)
+        context.concatenate(page.getDrawingTransform(.cropBox, rect: pageRect, rotate: 0, preserveAspectRatio: true))
         context.drawPDFPage(page)
         try Task.checkCancellation()
         guard let image = context.makeImage() else { throw PdfFileError.invalidDocument }

@@ -40,7 +40,7 @@ Local import hashes the original archive URL plus member path, preserving identi
 
 The app registers local book/archive document types and enables document opening in place and file sharing. File URLs received by the application open the import page. Folder scans persist security-scoped bookmarks, skip hidden items and symbolic links, and reject scans exceeding 10,000 entries. Import retains directory access for the duration of the operation. Online import accepts HTTP(S), bounds responses to 256 MiB, and uses UTF-8 Content-Disposition filename* / filename or the final URL name. Download originals remain in the managed hidden `.downloads` folder for conflict retries.
 
-Directory and online import behavior is covered by `LocalImportEntryTests`; system document registration/open URL routing is build-verified and still awaits the combined simulator interaction pass.
+Directory and online import behavior is covered by `LocalImportEntryTests`; system document registration/open URL routing passed the combined simulator interaction pass, including an externally opened TXT file and the automatic import result.
 
 ## Text encoding detection
 
@@ -99,3 +99,12 @@ The existing PDB/PalmDoc/HUFF decoder, NCX byte offsets, EXTH metadata, KF8 skel
 KF6 img[recindex] becomes src=recindex:<value>; KF8 kindle:embed references remain intact. Formatting retains img and the local provider resolves their resource records without HTTP. Synthetic MOBI, AZW and genuine KF8 AZW3 fixtures contain real PNGs and a final paragraph; all read through the last chapter. Native encrypted MOBI remains an explicit unsupported error, unchanged from the existing reader.
 
 Validation: binary cases 10/0; Core 688/0 (`p7-mobi-core.log`), AppCore 283/0 (`p7-mobi-app.log`), generic iOS build passed (`p7-mobi-ios.log`).
+
+
+## P7 simulator acceptance
+
+All ten extensions (TXT, EPUB, UMD, PDF, MOBI, AZW3, AZW, ZIP, RAR and 7z) imported through LocalImportViewModel on iOS Simulator and every imported book read its last chapter. LocalBookUITests then opened the actual reader for EPUB, PDF and AZW3 and waited for loaded image accessibility elements. Log: `.build/round5/p7-simulator-ui-final.log`; result bundle: `Test-Legado-2026.09.21_19-02-08-+0800.xcresult`. Screenshots are in `docs/5-UI对齐与解析补全/assets/p7-*.png`. An external file URL opened the import sheet and completed one TXT import (`p7-system-open.png`).
+
+Visual QA caught that CoreGraphics' drawing transform did not enlarge small PDF pages. Rendering now explicitly scales to the target dimensions; a page-edge pixel regression fails before the fix and passes afterward. The final PDF screenshot shows the scan filling its page.
+
+To reproduce, work from the iOS worktree root with Xcode installed. Build/install the Debug app on an iOS simulator, then run `rtk proxy python3 tools/localbook-fixtures/seed_simulator.py` (no input required). It selects the booted simulator; optional `LEGADO_SIMULATOR_ID` selects another simulator. Run the Xcode `LegadoUITests/LocalBookUITests` test on the same simulator. The gallery is Debug-only, uses an in-memory database, and never packages the fixtures in the release app. No iPhone testing was performed.

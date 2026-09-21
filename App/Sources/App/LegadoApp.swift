@@ -40,7 +40,8 @@ struct AppStartupView: View {
 
     @ViewBuilder private var displayedContent: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-search-gallery") { SearchGalleryView() }
+        if ProcessInfo.processInfo.arguments.contains("-localbook-gallery") { LocalBookGalleryView() }
+        else if ProcessInfo.processInfo.arguments.contains("-search-gallery") { SearchGalleryView() }
         else if ProcessInfo.processInfo.arguments.contains("-bookshelf-gallery") { BookshelfGalleryView() }
         else if ProcessInfo.processInfo.arguments.contains("-component-gallery") { ComponentGalleryView() }
         else { startupContent }

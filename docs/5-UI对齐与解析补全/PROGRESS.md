@@ -2,7 +2,7 @@
 
 ## 当前阶段
 
-- 2026-09-21：P0、批次 1、P5/P6/U1/U2/U3 已完成；当前 P7 本地书，P4 真实门禁与去重取舍待收口。
+- 2026-09-21：P0、批次 1、P5/P6/U1/U2/U3 已完成；P7 已完成，当前 P8 书架与缓存，P4 真实门禁与去重取舍待收口。
 - 起始提交：`30d180ecf`；P0 已拆为 ff6f50452、f82ddf72c、284834405 三笔本地提交。
 - 用户 2026-09-21 最新要求：持续完成全部计划，暂不进行 iPhone 真机测试；两次真机验收均暂缓，其余回归继续。
 - 用户最新指示：全部由主会话亲自执行，不再启动子代理。已停止全部在途子代理，保留已完成产出。
@@ -35,13 +35,14 @@
 | 批次 2：U3 | 完成 | 主会话 | SearchView / SearchScope / assets/u3-* | Core 667/0、AppCore 272/0、CLI 7/0；模拟器 UI 2 项通过 |
 | P7-1 UMD | 完成 | 主会话 | UmdFile / localbook-compat.md | Core 670/0 + 缓存测试；AppCore 272/0；iOS 构建通过 |
 | P7-2 压缩包 | 完成 | 主会话 | BookArchive / LocalImport / RemoteBooks | Core 675/0、AppCore 275/0；iOS 构建通过 |
-| P7-16 导入入口 | 完成 | 主会话 | LocalDirectoryScanner / onOpenURL / project.yml | AppCore 277/0；iOS 构建通过；系统分享交互待整组验收 |
+| P7-16 导入入口 | 完成 | 主会话 | LocalDirectoryScanner / onOpenURL / project.yml | AppCore 277/0；iOS 构建通过；系统文件打开与自动导入已通过模拟器验证 |
 | P7-7 编码 | 完成 | 主会话 | TextEncodingDetector / 8 种 fixture | Core 677/0、AppCore 277/0；iOS 构建通过 |
 | P7-3/4/5/6/8 TXT | 完成 | 主会话 | TextTocParityTests / localbook-compat.md | Core 682/0、AppCore 277/0；修改重建 3/0 |
 | P7-9 文件名脚本 | 完成 | 主会话 | LocalBook.nameAuthor / 通用设置 | Core 专项 6/0、AppCore 279/0；iOS 构建通过 |
 | P7-10/11/12/13 EPUB | 完成 | 主会话 | EpubParser / LocalBookTocNode / 本地图片与封面 | Core 685/0；App 专项与 iOS 构建通过，目录 UI 在 U6 接入 |
 | P7-14 PDF | 完成 | 主会话 | PdfFile / scanned.pdf / 页图与大纲 | Core 686/0；扫描页、旧链接及阅读器验证；iOS 构建通过 |
 | P7-15 MOBI | 完成 | 主会话 | MobiBook / KF6/KF8 图片与目录 | Core 688/0、AppCore 283/0；iOS 构建通过 |
+| P7 模拟器验收 | 完成 | 主会话 | LocalBookUITests / assets/p7-* | 十格式导入末章通过；EPUB/PDF/AZW3 显图与系统打开通过 |
 | 批次 3-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -50,6 +51,6 @@
 
 ## 下一步
 
-最近提交 804dc72d6（PDF）；P7 压缩包后端及导入完成，导入入口完成，TXT 目录对齐完成，继续文件名脚本与 EPUB/PDF/MOBI；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6 已完成，继续 P7 本地书。全程不推送；WebDAV 凭据只用于读取。
+最近提交 be75e6e71（MOBI）；P7 压缩包后端及导入完成，导入入口完成，TXT 目录对齐完成，P7 全部完成，继续 P8、P3e/f、U4/U5/U6；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6 已完成，继续 P7 本地书。全程不推送；WebDAV 凭据只用于读取。
 
 P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。

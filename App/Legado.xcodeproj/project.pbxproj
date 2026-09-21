@@ -47,6 +47,7 @@
 		3F62B7BAC9946A910DC95FBC /* HttpSpeaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9082CA34928E50CAA026D92D /* HttpSpeaker.swift */; };
 		3FA084AE8575539962B76D1A /* AudioSessionOwnership.swift in Sources */ = {isa = PBXBuildFile; fileRef = 39E3149B33C1862620179098 /* AudioSessionOwnership.swift */; };
 		3FB326BBE0E581C0BEC7CA63 /* CurrentBackupConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A2CE373D65E074429DD6A6 /* CurrentBackupConfiguration.swift */; };
+		40F0F15C732ADF98844116A4 /* LocalBookGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD377D1F36F541825E55AA61 /* LocalBookGalleryView.swift */; };
 		41D1D9DB3193BCC1578F3570 /* CheckSourceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2DE06354EFB2F83A31F9115 /* CheckSourceView.swift */; };
 		41F95BCCE95E37A67D8A618E /* RulesManagementModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = C598F546EB7E0657FD37B3CB /* RulesManagementModel.swift */; };
 		4366FE88FAD809104BD0A5F8 /* SourceLoginKeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC15FF41B52F6EC70F5609BF /* SourceLoginKeychainStore.swift */; };
@@ -164,6 +165,7 @@
 		D3AAACECB7E126A977779B3A /* FormLoginView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6DF47EDCFE860F0EC7D7BC0 /* FormLoginView.swift */; };
 		D3B1D7DF2B9BBA8082960ACE /* SlidePageTransition.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEF361CF2798D9C08D69ED2C /* SlidePageTransition.swift */; };
 		D3F0A0441F5DDCDAC7820F83 /* BookmarkListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CDB26B1B1AD8834D2553CE2 /* BookmarkListView.swift */; };
+		D8D7AD9A1CD6BF3EB5C45F30 /* LocalBookUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF51C75D19298212C995B9A /* LocalBookUITests.swift */; };
 		DB762E1124E6E75A94E61A2D /* AppLogStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0047305029F99D64500FB1D2 /* AppLogStore.swift */; };
 		DB91C6B90EA741C38A36CA79 /* SourceChangeTransaction.swift in Sources */ = {isa = PBXBuildFile; fileRef = BE06A0EDE83DE9C85048CDCE /* SourceChangeTransaction.swift */; };
 		DD708B296E7DF4A43890D1CF /* BookshelfView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D606638D55F0402D1B18B54A /* BookshelfView.swift */; };
@@ -321,6 +323,7 @@
 		99C9C6DB2CA43CBDFD967725 /* BookshelfLayoutUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookshelfLayoutUITests.swift; sourceTree = "<group>"; };
 		99E1FF2F6E823698773096CE /* RssViewModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RssViewModels.swift; sourceTree = "<group>"; };
 		9B140071A0EBA29768EAC293 /* BookSourceEditModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookSourceEditModel.swift; sourceTree = "<group>"; };
+		9DF51C75D19298212C995B9A /* LocalBookUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalBookUITests.swift; sourceTree = "<group>"; };
 		9E0BA6DDF0F4B43869399CB1 /* RemoteImageViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteImageViewModel.swift; sourceTree = "<group>"; };
 		9E342230D3C6654F65BB5548 /* SearchViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchViewModel.swift; sourceTree = "<group>"; };
 		A0AC347420887AAD97A5E491 /* SettingsViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsViewModel.swift; sourceTree = "<group>"; };
@@ -378,6 +381,7 @@
 		D8FB357DA4795F106D376075 /* SearchScopeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchScopeView.swift; sourceTree = "<group>"; };
 		D9A2CE373D65E074429DD6A6 /* CurrentBackupConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CurrentBackupConfiguration.swift; sourceTree = "<group>"; };
 		D9FEFBF08FC95E4685444BFB /* MainTabObserverTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainTabObserverTests.swift; sourceTree = "<group>"; };
+		DD377D1F36F541825E55AA61 /* LocalBookGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalBookGalleryView.swift; sourceTree = "<group>"; };
 		DDD1861C5310FD79DA9FAA71 /* BackupLifecycleModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackupLifecycleModifier.swift; sourceTree = "<group>"; };
 		DE1C8FFC939387C90DDC1B16 /* VerificationCodeView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerificationCodeView.swift; sourceTree = "<group>"; };
 		DE90190A4590FA1D29514069 /* AppPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppPreferences.swift; sourceTree = "<group>"; };
@@ -507,6 +511,7 @@
 			children = (
 				99C9C6DB2CA43CBDFD967725 /* BookshelfLayoutUITests.swift */,
 				0768E76A0B0FF3DC2A932180 /* ComponentUITests.swift */,
+				9DF51C75D19298212C995B9A /* LocalBookUITests.swift */,
 				C9AB68D91EA77D1D2F3F1CD5 /* SearchInterfaceUITests.swift */,
 				A986CA0381ACC162E444CE22 /* StartupUITests.swift */,
 			);
@@ -603,6 +608,7 @@
 		629E5844CA90C644A38302F9 /* LocalImport */ = {
 			isa = PBXGroup;
 			children = (
+				DD377D1F36F541825E55AA61 /* LocalBookGalleryView.swift */,
 				EEE669BDA30DE46D974E62EB /* LocalDirectoryScanner.swift */,
 				E9815FAB80DBA20B0D697A9A /* LocalImportView.swift */,
 				5ECAD38F3612CEFBE60465CA /* LocalImportViewModel.swift */,
@@ -1082,6 +1088,7 @@
 			files = (
 				DFBF4571C94120EADD073DD6 /* BookshelfLayoutUITests.swift in Sources */,
 				791966B3D616814D60445E23 /* ComponentUITests.swift in Sources */,
+				D8D7AD9A1CD6BF3EB5C45F30 /* LocalBookUITests.swift in Sources */,
 				33DA834DEEBB2B177D6150D5 /* SearchInterfaceUITests.swift in Sources */,
 				7CC8C5BD22F6C8E675BD91C2 /* StartupUITests.swift in Sources */,
 			);
@@ -1178,6 +1185,7 @@
 				6D44546E659BEC0387D9FBCA /* LauncherIconSettingsView.swift in Sources */,
 				067905B29B24A703228C2A07 /* LegadoApp.swift in Sources */,
 				9CA3B9B71ED456FA37D169EA /* LegadoIcon.swift in Sources */,
+				40F0F15C732ADF98844116A4 /* LocalBookGalleryView.swift in Sources */,
 				B50B754B428516E86B033CE1 /* LocalDirectoryScanner.swift in Sources */,
 				886F3E1529EAE75A52D5A47C /* LocalImportView.swift in Sources */,
 				480B1B431A91660B8226569A /* LocalImportViewModel.swift in Sources */,

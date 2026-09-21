@@ -31,6 +31,7 @@ import LegadoCore
                 ConfiguredCoverView(title: book.name ?? "", author: book.author ?? "", preferences: preferences)
             } else if case let .loaded(data) = model.state, let image = CoverBitmapCache.image(data, maximumMegabytes: preferences.integer("bitmapCacheSize")) {
                 Image(uiImage: image).resizable().interpolation(preferences.boolean("antiAlias") ? .high : .none).scaledToFit()
+                    .accessibilityLabel(isCover ? "书籍封面" : "正文图片")
             } else if isReadRecord, model.state != .loading {
                 SettingsImage(path: preferences.string(colorScheme == .dark ? "readRecordCoverDark" : "readRecordCover"))
             } else if isCover, let book, model.state != .loading {

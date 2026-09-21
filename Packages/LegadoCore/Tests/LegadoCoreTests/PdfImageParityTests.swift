@@ -24,6 +24,7 @@ final class PdfImageParityTests: XCTestCase {
         XCTAssertEqual(bitmap.width, 400); XCTAssertEqual(bitmap.height, 600)
         let pixels = try XCTUnwrap(bitmap.dataProvider?.data) as Data
         XCTAssertGreaterThan(Set(pixels).count, 1)
+        XCTAssertLessThan(pixels[10 * bitmap.bytesPerRow + 10 * 4 + 1], 100, "The scan must fill the page, including its edges")
         XCTAssertThrowsError(try parser.getImage("-1"))
         XCTAssertThrowsError(try parser.getImage("2"))
         XCTAssertThrowsError(try parser.getImage("0", width: 0))
