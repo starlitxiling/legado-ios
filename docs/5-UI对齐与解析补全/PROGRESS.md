@@ -33,6 +33,6 @@
 
 ## 下一步与未决问题
 
-最新安装任务受 Mac 登录钥匙串锁定阻塞：SecKeychainGetStatus 返回 unlocked=false，codesign 报 errSecInternalComponent，已请求用户在系统中解锁。待签名应用已准备于 .build/round5/iphone-install/Payload/Legado.app，沿用已有安装标识 com.starlitxiling.legado.ios；尚未安装或启动。解锁后签名并用 devicectl 覆盖安装，通知用户自行体验。Android 和真实样本缺口保留。
+用户已在本机终端完成签名；主会话通过 devicectl 成功覆盖安装至有线连接的 iPhone，标识 com.starlitxiling.legado.ios，版本 1.0。未启动自动化测试，由用户打开“阅读”体验。安装证据：.build/round5/iphone-install-result.json。Android、真实样本及正式真机验收缺口保留。
 
 P4-8 按固定 Kotlin 可执行规格收口：SearchBook.kt:65、BookChapter.kt:118 按 URL 判断相等；计划的全字段去重描述与源码及章节主键冲突，以源码为准。
