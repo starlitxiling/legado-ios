@@ -37,10 +37,9 @@ public enum ResponseDecoder {
         return String(value[range])
     }
 
-    private static func htmlCharset(_ data: Data) -> String? {
-        let text = String(decoding: data, as: UTF8.self)
-        guard let range = text.range(of: #"(?is)<head>[\s\S]*?</head>"#, options: .regularExpression),
-              let document = try? SwiftSoup.parseBodyFragment(String(text[range])),
+    static func htmlCharset(_ data: Data) -> String? {
+        let text = String(decoding: data.prefix(64 * 1024), as: UTF8.self)
+        guard let document = try? SwiftSoup.parse(text),
               let metas = try? document.getElementsByTag("meta") else { return nil }
         for meta in metas {
             if let charset = try? meta.attr("charset"), !charset.isEmpty { return charset }

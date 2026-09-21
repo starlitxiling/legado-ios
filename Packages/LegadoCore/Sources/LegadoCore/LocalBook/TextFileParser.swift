@@ -26,9 +26,9 @@ public struct TextFileParser {
         self.url = url; self.blockSize = max(4, blockSize)
         let handle = try FileHandle(forReadingFrom: url)
         defer { try? handle.close() }
-        let data = try handle.read(upToCount: 64 * 1024) ?? Data()
+        let data = try handle.read(upToCount: 512_000) ?? Data()
         guard !data.isEmpty else { throw LocalBookError.emptyFile }
-        let detected = TextEncodingDetector.detect(data, truncated: data.count == 64 * 1024)
+        let detected = TextEncodingDetector.detect(data, truncated: data.count == 512_000)
         charset = detected.name; encoding = detected.encoding; bomSize = detected.bomSize
     }
 

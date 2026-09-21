@@ -209,3 +209,10 @@
 - 在线文件限定 HTTP(S)、读取中限制 256 MiB，支持 URL 文件名与 Content-Disposition（UTF-8 filename* 优先），同一下载身份复导保持稳定。失败带 HTTP 状态码；下载源留在受管理的隐藏缓存目录供冲突确认及原始文件书签使用。
 - 新增两项离线测试覆盖目录 bookmark 重载、链接过滤、扫描上限、导入、移除，以及下载导入/403/非法协议。首次测试发现对文件符号链接调用 skipDescendants 会误跳过下一个目录，改为直接跳过该文件后通过。
 - AppCore 277/0、generic iOS 构建通过，日志 p7-entry-appcore-full / p7-entry-final-ios。系统分享菜单的实际选择流程尚待本地书整组模拟器验收；未把编译通过表述为设备交互已验证。P7 TXT/EPUB/PDF/MOBI 对齐继续。
+
+
+## P7-7 编码检测
+
+- 采样由 64 KiB 对齐为 512000 字节；保留 BOM/Unicode/GB/Big5 检测，补日文假名统计与系统 Foundation 多语言统计检测，并消费 HTML meta charset。ResponseDecoder 同步支持无 head 和带属性 head 的 meta。
+- 合成 8 种编码及 UTF-8 期望文件，逐本读取至末章无损；另测 70000 ASCII 字节后才出现日文与 HTML 声明。未引入新依赖，也不宣称系统检测器与 Android ICU 26 个识别器完全等价。
+- Core 677/0、AppCore 277/0、generic iOS 构建通过，日志 p7-encoding-core-full / p7-encoding-appcore-full / p7-encoding-ios。TXT 目录评分、JS、拆分、持久化和 URL 对齐继续。

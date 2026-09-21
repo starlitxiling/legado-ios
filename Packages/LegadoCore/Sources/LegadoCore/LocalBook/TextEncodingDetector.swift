@@ -1,7 +1,6 @@
 import Foundation
 import CoreFoundation
 
-/// 移植项目 ICU 的中文多字节频率统计；不包含其他语言的识别器。
 enum TextEncodingDetector {
     struct Result {
         let name: String
@@ -18,6 +17,9 @@ enum TextEncodingDetector {
         if data.starts(with: [0xff, 0xfe]) { return result("UTF-16LE", .utf16LittleEndian, 2) }
         if data.starts(with: [0xfe, 0xff]) { return result("UTF-16BE", .utf16BigEndian, 2) }
         if data.starts(with: [0xef, 0xbb, 0xbf]) { return result("UTF-8", .utf8, 3) }
+        if let name = ResponseDecoder.htmlCharset(data), let encoding = try? ResponseDecoder.encoding(for: name) {
+            return result(name, encoding)
+        }
         let bytes = [UInt8](data)
         func unicodeConfidence(littleEndian: Bool) -> Int {
             guard bytes.count >= 4 else { return 0 }
@@ -37,6 +39,8 @@ enum TextEncodingDetector {
         if (0...(truncated ? min(3, data.count) : 0)).contains(where: { String(data: data.dropLast($0), encoding: .utf8) != nil }) {
             return result("UTF-8", .utf8)
         }
+        if let japanese = japaneseEncoding(data, truncated: truncated) { return japanese }
+        if let detected = statisticalEncoding(data, truncated: truncated), !["GB18030", "Big5"].contains(detected.name) { return detected }
         let gb = score(bytes, big5: false, truncated: truncated)
         let big5 = score(bytes, big5: true, truncated: truncated)
         if big5.confidence > gb.confidence || (big5.confidence == gb.confidence && big5.common > gb.common) {
@@ -45,6 +49,39 @@ enum TextEncodingDetector {
         }
         let cf = CFStringConvertIANACharSetNameToEncoding("GB18030" as CFString)
         return result(gb.fourByte ? "GB18030" : "GBK", String.Encoding(rawValue: CFStringConvertEncodingToNSStringEncoding(cf)))
+    }
+
+    private static func japaneseEncoding(_ data: Data, truncated: Bool) -> Result? {
+        var best: (name: String, encoding: String.Encoding, kana: Int)?
+        for name in ["Shift_JIS", "EUC-JP"] {
+            guard let encoding = try? ResponseDecoder.encoding(for: name) else { continue }
+            for suffix in 0...(truncated ? min(3, data.count) : 0) {
+                guard let text = String(data: data.dropLast(suffix), encoding: encoding) else { continue }
+                let nonASCII = text.unicodeScalars.filter { $0.value > 127 }
+                let kana = nonASCII.filter { (0x3041...0x3096).contains($0.value) || (0x30a1...0x30fa).contains($0.value) }.count
+                if kana >= 3, kana * 5 >= nonASCII.count, kana > (best?.kana ?? 0) { best = (name, encoding, kana) }
+                break
+            }
+        }
+        return best.map { .init(name: $0.name, encoding: $0.encoding, bomSize: 0) }
+    }
+
+    private static func statisticalEncoding(_ data: Data, truncated: Bool) -> Result? {
+        let names = ["Shift_JIS", "EUC-JP", "EUC-KR", "windows-1251", "windows-1252", "ISO-8859-1", "GB18030", "Big5"]
+        let encodings = names.compactMap { name -> (String, String.Encoding)? in
+            guard let encoding = try? ResponseDecoder.encoding(for: name) else { return nil }
+            return (name, encoding)
+        }
+        for suffix in 0...(truncated ? min(3, data.count) : 0) {
+            let raw = NSString.stringEncoding(for: Data(data.dropLast(suffix)), encodingOptions: [
+                .suggestedEncodingsKey: encodings.map { $0.1.rawValue },
+                .useOnlySuggestedEncodingsKey: true, .allowLossyKey: false
+            ], convertedString: nil, usedLossyConversion: nil)
+            if let selected = encodings.first(where: { $0.1.rawValue == raw }) {
+                return .init(name: selected.0, encoding: selected.1, bomSize: 0)
+            }
+        }
+        return nil
     }
 
     private static func score(_ bytes: [UInt8], big5: Bool, truncated: Bool) -> (confidence: Int, common: Int, fourByte: Bool) {

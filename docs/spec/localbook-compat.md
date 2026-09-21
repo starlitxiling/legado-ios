@@ -41,3 +41,9 @@ Local import hashes the original archive URL plus member path, preserving identi
 The app registers local book/archive document types and enables document opening in place and file sharing. File URLs received by the application open the import page. Folder scans persist security-scoped bookmarks, skip hidden items and symbolic links, and reject scans exceeding 10,000 entries. Import retains directory access for the duration of the operation. Online import accepts HTTP(S), bounds responses to 256 MiB, and uses UTF-8 Content-Disposition filename* / filename or the final URL name. Download originals remain in the managed hidden `.downloads` folder for conflict retries.
 
 Directory and online import behavior is covered by `LocalImportEntryTests`; system document registration/open URL routing is build-verified and still awaits the combined simulator interaction pass.
+
+## Text encoding detection
+
+Sampling is 512,000 bytes. BOM and explicit HTML meta charset take precedence, followed by Unicode detection, Japanese kana statistics, Foundation's statistical detector constrained to the supported Japanese/Korean/Cyrillic/Western/Chinese encodings, and the existing GB/Big5 frequency fallback. This uses system Foundation/CoreFoundation and adds no dependency. It does not claim byte-for-byte equivalence with all 26 Android ICU recognizers; short ambiguous byte sequences remain inherently ambiguous.
+
+Eight generated language fixtures decode through the final chapter without data loss, including Shift_JIS, EUC-JP, EUC-KR, Windows-1251/1252, ISO-8859-1, GBK and UTF-16. A Shift_JIS sample preceded by 70,000 ASCII spaces verifies the increased sampling window. HTML charset detection now accepts omitted/attributed head tags. The generator intentionally includes language text because encoding behavior is under test.

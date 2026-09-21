@@ -35,9 +35,27 @@ def umd() -> bytes:
     return output + section(12, struct.pack("<I", len(output) + 9))
 
 
+def text_encodings() -> None:
+    japanese = "これは日本語の物語です。東京の学校で友達と一緒に本を読みます。新しい世界へ旅に出かけましょう。"
+    samples = {
+        "shift-jis": ("shift_jis", japanese),
+        "euc-jp": ("euc_jp", japanese),
+        "euc-kr": ("euc_kr", "이것은 한국어로 작성된 이야기입니다. 오늘 우리는 도서관에서 책을 읽고 새로운 세상을 여행합니다."),
+        "windows-1251": ("cp1251", "Это история о путешествии. Сегодня мы читаем новую книгу и говорим о мире, дружбе и жизни."),
+        "windows-1252": ("cp1252", "“Bonjour”, dit l’auteur. Cette histoire française présente un garçon qui découvre le monde avec ses amis."),
+        "latin1": ("latin1", "Cette histoire française présente un garçon qui découvre le monde avec ses amis. Voilà une journée très agréable."),
+        "gbk": ("gbk", "这是一个有关读书和旅行的故事。我们今天在学校里面学习新的知识，了解世界和生活。"),
+        "utf16": ("utf-16", "这是一个有关读书和旅行的故事。我们今天在学校里面学习新的知识，了解世界和生活。"),
+    }
+    for name, (encoding, text) in samples.items():
+        (OUTPUT / (name + ".txt")).write_bytes((text * 5).encode(encoding))
+        (OUTPUT / (name + ".expected")).write_text(text * 5, encoding="utf-8")
+
+
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     (OUTPUT / "synthetic.umd").write_bytes(umd())
+    text_encodings()
     with zipfile.ZipFile(OUTPUT / "two-books.zip", "w") as archive:
         for name in ["First.txt", "nested/Second.txt"]:
             archive.writestr(zipfile.ZipInfo(name), "The final page of " + name)
