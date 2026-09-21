@@ -99,10 +99,13 @@ final class BookDetailViewModel {
                 row = DiscoveryStorage.preservingReading(matching, in: row)
             }
             let wasVisible = saved.map { $0.type & DiscoveryStorage.hiddenBook == 0 } ?? false
-            if wasVisible { row.type |= DiscoveryStorage.hiddenBook }
-            else { row.type &= ~DiscoveryStorage.hiddenBook }
-            if saved == nil { try await bookshelf.replaceByIdentity([row]) }
-            else { try await bookshelf.upsert(row) }
+            if wasVisible {
+                row.type |= DiscoveryStorage.hiddenBook
+                try await bookshelf.upsert(row)
+            } else {
+                row.type &= ~DiscoveryStorage.hiddenBook
+                row = try await bookshelf.saveAtTop(row)
+            }
             self.book = try DiscoveryStorage.book(row)
             isOnBookshelf = !wasVisible
         } catch { errorMessage = error.localizedDescription }

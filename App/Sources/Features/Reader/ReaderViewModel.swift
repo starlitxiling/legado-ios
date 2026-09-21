@@ -65,6 +65,7 @@ final class ReaderViewModel {
     private var downloadTask: Task<CachedReaderChapter, Error>?
     private var layoutTask: Task<ReaderLayoutResult, Error>?
     private var prefetchTask: Task<Void, Never>?
+    private var chapterUpdateTask: Task<Void, Never>?
     private var rulesTask: Task<Void, Never>?
     private var pendingRulesRefresh = false
     private let preDownloadCount: @Sendable () -> Int
@@ -105,6 +106,7 @@ final class ReaderViewModel {
         previewGeneration = UUID(); nextChapterPagination = nil
         generation = UUID(); layoutGeneration = UUID()
         downloadTask?.cancel(); prefetchTask?.cancel(); layoutTask?.cancel()
+        chapterUpdateTask?.cancel(); chapterUpdateTask = nil
         return generation
     }
 
@@ -349,6 +351,7 @@ final class ReaderViewModel {
         prefetchTask?.cancel(); prefetchErrorMessage = nil
         let previewToken = UUID(); previewGeneration = previewToken; nextChapterPagination = nil
         let count = min(100, max(0, preDownloadCount()))
+        if count > 0 { scheduleChapterUpdate() }
         guard count > 0, let entity, chapterPosition + 1 < chapters.count else { return }
         let position = chapterPosition + 1
         let row = chapters[position], nextURL = position + 1 < chapters.count ? chapters[position + 1].url : nil
@@ -385,6 +388,39 @@ final class ReaderViewModel {
             }
         }
     }
+
+    private func scheduleChapterUpdate() {
+        guard chapterUpdateTask == nil, let entity, let source, entity.canUpdate,
+              !LocalBook.isLocal(entity), chapters.count - chapterPosition - 1 < 3 else { return }
+        let token = generation, timestamp = now()
+        chapterUpdateTask = Task { [weak self] in
+            guard let self else { return }
+            defer { if generation == token { chapterUpdateTask = nil } }
+            do {
+                let repository = BookshelfRepository(database: database)
+                guard try await repository.claimChapterUpdate(bookURL: entity.bookUrl ?? "", now: timestamp) else { return }
+                var updated = entity
+                updated.lastCheckTime = timestamp
+                if generation == token { self.entity?.lastCheckTime = timestamp; book?.lastCheckTime = timestamp }
+                let oldCount = chapters.count
+                let parsed = try await WebBook(source: source, client: client, now: { timestamp })
+                    .chapterList(book: &updated, runPreUpdate: true)
+                try Task.checkCancellation()
+                guard generation == token, parsed.count > oldCount else { return }
+                let rows = try parsed.map { try ReaderEntityBridge.decode(BookChapterRow.self, row: $0) }
+                let saved = try await SourceChangeTransaction.save(book: updated, previous: entity, chapters: rows, database: database)
+                guard generation == token else { return }
+                self.entity = saved
+                book = try ReaderEntityBridge.decode(BookRow.self, row: saved)
+                chapters = try await ChapterRepository(database: database).list(bookUrl: saved.bookUrl ?? "")
+                prefetchNextChapter()
+            } catch {
+                if generation == token, !Task.isCancelled { prefetchErrorMessage = error.localizedDescription }
+            }
+        }
+    }
+
+    func waitForChapterUpdates() async { await chapterUpdateTask?.value }
 
     func waitForPrefetch() async { await prefetchTask?.value }
 

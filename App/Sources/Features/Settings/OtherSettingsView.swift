@@ -44,6 +44,12 @@ struct OtherSettingsView: View {
                 controls.toggle("自动清理过期缓存", "autoClearExpired")
                 controls.toggle("添加书架前提示", "showAddToShelfAlert")
                 controls.toggle("使用漫画界面", "showMangaUi")
+                Button("清理无效书籍缓存") {
+                    Task {
+                        do { message = "已清理 \(try await container.downloads.clearInvalidCache()) 项无效缓存" }
+                        catch { message = error.localizedDescription }
+                    }
+                }
                 Button("清理网络缓存") { URLCache.shared.removeAllCachedResponses(); message = "网络缓存已清理" }
                 Button("清理网页缓存") {
                     WKWebsiteDataStore.default().removeData(ofTypes: [WKWebsiteDataTypeDiskCache, WKWebsiteDataTypeMemoryCache], modifiedSince: .distantPast) { message = "网页缓存已清理" }

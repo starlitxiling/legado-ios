@@ -41,8 +41,28 @@ public enum BookHelp {
     }
 
     public static func hasContent(directory: URL, book: Book, chapter: BookChapter) -> Bool {
-        (chapter.isVolume && (chapter.url ?? "").hasPrefix(chapter.title ?? ""))
+        (LocalBook.isLocal(book) && LocalBook.fileURL(book)?.pathExtension.lowercased() == "txt")
+            || (chapter.isVolume && (chapter.url ?? "").hasPrefix(chapter.title ?? ""))
             || (try? content(directory: directory, book: book, chapter: chapter)) != nil
+    }
+
+    @discardableResult
+    public static func clearInvalidCache(directory: URL, books: [Book]) throws -> Int {
+        let retained = Set(books.map { md5($0.bookUrl ?? "") })
+        let epubNames = Set(books.filter { LocalBook.fileURL($0)?.pathExtension.lowercased() == "epub" }.compactMap(\.originName))
+        var removed = 0
+        for name in ["book_cache", "epub"] {
+            let folder = directory.appendingPathComponent(name, isDirectory: true)
+            guard FileManager.default.fileExists(atPath: folder.path) else { continue }
+            let values = try folder.resourceValues(forKeys: [.isSymbolicLinkKey])
+            guard values.isSymbolicLink != true else { throw CocoaError(.fileReadInvalidFileName, userInfo: [NSFilePathErrorKey: folder.path]) }
+            for entry in try FileManager.default.contentsOfDirectory(at: folder, includingPropertiesForKeys: nil) {
+                try Task.checkCancellation()
+                let keep = name == "book_cache" ? retained.contains(String(entry.lastPathComponent.suffix(16))) : epubNames.contains(entry.lastPathComponent)
+                if !keep { try FileManager.default.removeItem(at: entry); removed += 1 }
+            }
+        }
+        return removed
     }
 
     public static func save(_ content: String, directory: URL, book: Book, chapter: BookChapter) throws {

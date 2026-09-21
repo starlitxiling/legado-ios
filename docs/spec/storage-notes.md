@@ -21,3 +21,15 @@
 - MVP 不含 Kotlin 的书籍备忘表，因此没有备忘迁移逻辑。
 
 依据：Kotlin `2bdd3c58b` 的 `BookDao.kt:220`、`BookChapterDao.kt:37`、`ReplaceRuleDao.kt:19`、`ReplaceRuleDao.kt:38` 和 `SearchBookDao.kt:6`。
+
+## 书架与缓存（轮次 5 P8）
+
+- 加书架以事务写入 `min(order) - 1`；已存在的书更新原记录，保留章节。遇到最小整数时先稳定重排，避免溢出。
+- 本地 TXT 的缓存状态直接为真；显式缓存任务仍生成可导出的正文文件。
+- 改名后保留旧目录，读取按 URL 的 MD5 后缀寻找历史目录；清理也保留同一 URL 的旧名称目录。对应 Android `BookHelp.updateCacheFolder`，避免文件迁移中断导致丢缓存。
+- 清理仅扫描下载根目录的 `book_cache` 和 Android 兼容 `epub` 目录，移除不在书架中的书；拒绝符号链接根目录，不跟随子链接。iOS EPUB 直接读取压缩包，不创建解压目录。导入临时文件由导入事务清理，分享文件由各导出流程管理；漫画窗口裁剪仍由漫画阅读进度流程执行。
+- 阅读器开启预下载且距离末章少于三章时，在数据库原子领取十分钟更新窗口，然后更新目录；失败也保留本次检查时间，避免重复请求。
+- 模拟追读的最新章节标题沿用 WebBook 与 BookshelfAdvancedRepository 已实现的模拟索引，非恒取末章。
+- 更新结果区分缺少书源、超时、解析、网络和其他错误；缺少书源可进入预填书名的搜索。
+
+对拍基线：Kotlin `2bdd3c58b` 的 `BookHelp.kt:151-201,631-645`、`ReadBook.kt:1785`、`BookInfoViewModel.kt:489-505`。专项测试 `BookshelfCacheParityTests`、`ReaderChapterUpdateTests`；模拟器交互 `BookshelfLayoutUITests.testRefreshFailuresOfferReplacementSearch`。本轮未进行 iPhone 真机验证。

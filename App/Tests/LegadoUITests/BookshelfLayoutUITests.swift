@@ -2,6 +2,28 @@ import XCTest
 
 final class BookshelfLayoutUITests: XCTestCase {
     @MainActor
+    func testRefreshFailuresOfferReplacementSearch() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery"]
+        app.launch()
+        XCTAssertTrue(app.buttons["bookshelf.menu"].waitForExistence(timeout: 15))
+        app.buttons["bookshelf.menu"].tap()
+        app.buttons["更新目录"].tap()
+        let report = app.buttons["bookshelf.refreshReport"]
+        XCTAssertTrue(report.waitForExistence(timeout: 15))
+        report.tap()
+        XCTAssertTrue(app.navigationBars["更新结果"].waitForExistence(timeout: 5))
+        snapshot(app, name: "p8-refresh-failures")
+        let replacement = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "bookshelf.replaceSource.")).firstMatch
+        XCTAssertTrue(replacement.waitForExistence(timeout: 5))
+        replacement.tap()
+        let input = app.textFields["search.input"]
+        XCTAssertTrue(input.waitForExistence(timeout: 5))
+        XCTAssertTrue((input.value as? String)?.hasPrefix("Sample Book ") == true)
+    }
+
+    @MainActor
     func testBookListAndRemoteAndLogMenuEntries() {
         continueAfterFailure = false
         let app = XCUIApplication()

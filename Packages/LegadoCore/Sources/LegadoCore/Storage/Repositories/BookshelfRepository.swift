@@ -18,6 +18,37 @@ public enum BookshelfSort: Int, Sendable, Hashable {
 }
 
 extension Repository where Record == BookRow {
+    public func saveAtTop(_ book: BookRow) async throws -> BookRow {
+        try await database.writer.write { db in
+            var minimum = try Int.fetchOne(db, sql: "SELECT min(\"order\") FROM books") ?? 0
+            if minimum == Int.min {
+                let urls = try String.fetchAll(db, sql: "SELECT bookUrl FROM books ORDER BY \"order\", bookUrl")
+                for (index, url) in urls.enumerated() {
+                    try db.execute(sql: "UPDATE books SET \"order\" = ? WHERE bookUrl = ?", arguments: [index, url])
+                }
+                minimum = 0
+            }
+            var saved = book
+            saved.order = minimum - 1
+            if try BookRow.fetchOne(db, key: saved.bookUrl) != nil { try saved.update(db) }
+            else { try saved.insert(db, onConflict: .replace) }
+            return saved
+        }
+    }
+
+    public func claimChapterUpdate(bookURL: String, now: Int64) async throws -> Bool {
+        guard now >= 600_000 else { return false }
+        return try await database.writer.write { db in
+            try db.execute(sql: """
+                UPDATE books SET lastCheckTime = ?
+                WHERE bookUrl = ? AND canUpdate = 1 AND (type & 256) = 0
+                AND origin != 'loc_book' AND origin NOT LIKE 'webDav::%'
+                AND totalChapterNum - durChapterIndex - 1 < 3 AND lastCheckTime <= ?
+                """, arguments: [now, bookURL, now - 600_000])
+            return db.changesCount == 1
+        }
+    }
+
     /// 导入时对齐 Room REPLACE；同名同作者的旧 URL 及其章节会被删除。
     public func replaceByIdentity(_ books: [BookRow]) async throws {
         try await database.writer.write { db in

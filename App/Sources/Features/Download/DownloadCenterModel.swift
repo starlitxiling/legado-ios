@@ -37,6 +37,13 @@ final class DownloadCenterModel {
         self.database = database; self.client = client; self.directory = directory
     }
 
+    func clearInvalidCache() async throws -> Int {
+        let books = try await BookshelfRepository(database: database).all().map { try DiscoveryStorage.book($0) }
+        let directory = directory
+        let cleanup = Task.detached(priority: .utility) { try BookHelp.clearInvalidCache(directory: directory, books: books) }
+        return try await withTaskCancellationHandler { try await cleanup.value } onCancel: { cleanup.cancel() }
+    }
+
     func poll() async {
         while !Task.isCancelled {
             progress = await queue.snapshot()
@@ -67,7 +74,9 @@ final class DownloadCenterModel {
                 await queue.enqueue(bookURL: row.bookUrl, chapters: selected.map(\.index)) { index in
                     guard let position = chapters.firstIndex(where: { $0.index == index }) else { throw BookshelfDownloadsError.invalidRange }
                     let chapter = chapters[position]
-                    if BookHelp.hasImageContent(directory: directory, book: book, chapter: chapter) { return }
+                    if LocalBook.isLocal(book) {
+                        if try BookHelp.content(directory: directory, book: book, chapter: chapter) != nil { return }
+                    } else if BookHelp.hasImageContent(directory: directory, book: book, chapter: chapter) { return }
                     let nextURL = position + 1 < chapters.count ? chapters[position + 1].url : nil
                     let result = try await WebBook(source: source, client: client, cookies: cookies,
                         configuration: .init(cacheDirectory: directory, threadCount: threadCount, adaptSpecialStyle: adaptSpecialStyle)).content(
@@ -170,7 +179,7 @@ enum BookshelfRefreshService {
         return await BookshelfRefresh.run(bookURLs: eligible.map(\.bookUrl)) { url in
             do {
                 guard let current = try await repository.get(bookUrl: url) else { throw BookshelfEditError.missingBook }
-                guard let sourceRow = try await BookSourceRepository(database: database).get(bookSourceUrl: current.origin) else { throw BookshelfDownloadsError.missingSource }
+                guard let sourceRow = try await BookSourceRepository(database: database).get(bookSourceUrl: current.origin) else { throw BookshelfRefresh.UpdateError.missingSource }
                 let previousBook = try DiscoveryStorage.book(current)
                 var book = previousBook
                 let countWords = UserDefaults.standard.object(forKey: "tocCountWords") as? Bool ?? false

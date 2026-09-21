@@ -17,6 +17,7 @@ struct BookshelfView: View {
     @State private var confirmingDelete = false
     @State private var preferences = AppPreferences.shared
     @State private var showingLayout = false
+    @State private var showingRefreshReport = false
     @State private var showingGroups = false
     @State private var editingGroupID: Int64?
     @State private var showingCacheExport = false
@@ -52,7 +53,8 @@ struct BookshelfView: View {
                 shelfHeader
                 if let actionError { Text(actionError).foregroundStyle(themeColors.error).font(.system(size: 13)) }
                 if let report = container.downloads.refreshReport, !report.failures.isEmpty {
-                    Text("已更新 \(report.updated.count) 本，\(report.failures.count) 本失败")
+                    Button("已更新 \(report.updated.count) 本，\(report.failures.count) 本失败") { showingRefreshReport = true }
+                        .accessibilityIdentifier("bookshelf.refreshReport")
                         .font(.system(size: 13)).foregroundStyle(themeColors.textSecondary)
                 }
                 if model.isLoading && model.books.isEmpty && !folderRoot {
@@ -149,6 +151,14 @@ struct BookshelfView: View {
         }
         .onChange(of: preferences.integer("bookshelfSort")) { _, _ in Task { await refreshBooks() } }
         .onChange(of: folderStyle) { _, folders in model.selectedGroupID = folders ? -100 : -1 }
+        .sheet(isPresented: $showingRefreshReport) {
+            if let report = container.downloads.refreshReport {
+                NavigationStack {
+                    BookshelfRefreshReportView(report: report, container: container)
+                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("关闭") { showingRefreshReport = false } } }
+                }
+            }
+        }
         .sheet(isPresented: $showingLayout) { BookshelfLayoutSettingsView(preferences: preferences) }
         .sheet(isPresented: $showingImportList, onDismiss: { Task { await refreshBooks() } }) {
             BookshelfBookListView(database: container.database, client: container.httpClient, groupID: model.selectedGroupID)

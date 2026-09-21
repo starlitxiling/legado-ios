@@ -1,7 +1,18 @@
 import Foundation
 
 public struct BookshelfRefresh {
-    public struct Failure: Sendable { public let bookURL: String; public let message: String }
+    public enum FailureKind: String, CaseIterable, Sendable {
+        case missingSource, timeout, parsing, network, other
+    }
+    public enum UpdateError: LocalizedError {
+        case missingSource
+        public var errorDescription: String? { "找不到对应书源。" }
+    }
+    public struct Failure: Sendable {
+        public let bookURL: String
+        public let message: String
+        public let kind: FailureKind
+    }
     public struct Report: Sendable {
         public var updated: [String] = []
         public var failures: [Failure] = []
@@ -26,12 +37,19 @@ public struct BookshelfRefresh {
                 case .success: report.updated.append(url)
                 case .failure(let error):
                     if error is CancellationError || Task.isCancelled { report.cancelled = true }
-                    else { report.failures.append(Failure(bookURL: url, message: error.localizedDescription)) }
+                    else { report.failures.append(Failure(bookURL: url, message: error.localizedDescription, kind: classify(error))) }
                 }
                 enqueue()
             }
             report.cancelled = report.cancelled || Task.isCancelled
             return report
         }
+    }
+
+    private static func classify(_ error: Error) -> FailureKind {
+        if error is UpdateError { return .missingSource }
+        if let network = error as? URLError { return network.code == .timedOut ? .timeout : .network }
+        if error is WebBookError || error is RuleEvaluationError || error is JsEngineError { return .parsing }
+        return .other
     }
 }
