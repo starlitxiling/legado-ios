@@ -5,7 +5,7 @@
 - 2026-09-22：P0-P9、U0-U9 实现与本机回归已交付；计划仍有外部验收和真实样本覆盖缺口，不能标为全部验收完成。
 - 最近业务提交：`bbe2b6a5a`；最终测试修正和报告随本文件提交，完整记录见 SUMMARY.md / REVIEW.md。
 - 起始提交：`30d180ecf`；Kotlin 固定规格：`2bdd3c58b`。
-- 用户最新要求：全部由主会话执行，不启动子代理；暂不进行 iPhone 真机测试。没有安装或测试已连接 iPhone。
+- 用户最新要求：主会话执行，不启动子代理；现已授权安装至 iPhone，由用户亲自体验。正式真机验收仍未恢复。
 - 本机没有 `/review-loop`，按 code-review-excellence 自行审查；未推送，WebDAV 凭据仅用于读取。
 
 ## 任务表
@@ -33,6 +33,6 @@
 
 ## 下一步与未决问题
 
-恢复 Android 可执行环境后完成备份应用内恢复与并排截图，进一步对拍待核书源；取得纯 JS 真实样本后补覆盖。iPhone 验收仅在用户恢复此项工作后执行，不将模拟器结果冒充真机指标。当前无可继续推进的本机实现门禁。
+最新安装任务受 Mac 登录钥匙串锁定阻塞：SecKeychainGetStatus 返回 unlocked=false，codesign 报 errSecInternalComponent，已请求用户在系统中解锁。待签名应用已准备于 .build/round5/iphone-install/Payload/Legado.app，沿用已有安装标识 com.starlitxiling.legado.ios；尚未安装或启动。解锁后签名并用 devicectl 覆盖安装，通知用户自行体验。Android 和真实样本缺口保留。
 
 P4-8 按固定 Kotlin 可执行规格收口：SearchBook.kt:65、BookChapter.kt:118 按 URL 判断相等；计划的全字段去重描述与源码及章节主键冲突，以源码为准。

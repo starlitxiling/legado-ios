@@ -11,3 +11,9 @@ Android 侧 `adb devices -l` 无设备，本机无 Android SDK/emulator/AVD。�
 尝试从 Google 官方下载 Android 命令行工具，`dl.google.com` 与 `dl.google.cn` 均返回 `curl: (35) LibreSSL SSL_connect: SSL_ERROR_SYSCALL`，未取得安装文件。本机剩余磁盘约 13 GiB。未安装 SDK、未运行 Android 模拟器；互导验收保持未完成。下载入口来自 [Android Developers](https://developer.android.com/studio)。
 
 改用 Python urllib/SSL 请求官方主站仍返回 `SSL: UNEXPECTED_EOF_WHILE_READING`，未取得文件；问题不限于 curl 的 LibreSSL 客户端。
+
+## 用户体验安装准备
+
+用户随后授权安装至已连接 iPhone，由用户自行体验，未要求执行正式真机测试。已确认有线连接、开发者模式开启，现有“阅读”标识为 `com.starlitxiling.legado.ios`；沿用该标识准备覆盖安装，未卸载旧应用。
+
+签名构建因 `errSecInternalComponent` 失败；Security API 确认登录钥匙串 `unlocked=false`。已请求用户在 Mac 系统界面解锁，不收集密码。最终 Release IPA 已解包至 `.build/round5/iphone-install/Payload/Legado.app` 并准备签名配置；仍未执行设备安装或启动，等待解锁后继续。原始构建日志：`.build/round5/iphone-install-build.log`。
