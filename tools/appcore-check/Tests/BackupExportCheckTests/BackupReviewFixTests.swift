@@ -301,3 +301,20 @@ extension BackupReviewFixTests {
         XCTAssertEqual(preferences.string("webDavPassword"), "latest-webdav")
     }
 }
+
+extension BackupReviewFixTests {
+    func testSharedReaderLayoutExportKeepsPerStyleLayout() async throws {
+        let (defaults, preferences, _, _) = try fixture()
+        defaults.set(true, forKey: "shareLayout")
+        defaults.set(35, forKey: "textSize")
+        defaults.set(0.25, forKey: "letterSpacing")
+        let files = try preferences.currentConfigurationFiles(retainedFiles: [
+            "readConfig.json": Data("[{\"name\":\"Style\",\"textSize\":20}]".utf8),
+            "shareReadConfig.json": Data("{\"textSize\":30}".utf8)])
+        let styles = try JSONSerialization.jsonObject(with: XCTUnwrap(files["readConfig.json"])) as! [[String: Any]]
+        let shared = try JSONSerialization.jsonObject(with: XCTUnwrap(files["shareReadConfig.json"])) as! [String: Any]
+        XCTAssertEqual(styles[0]["textSize"] as? Int, 20)
+        XCTAssertEqual(shared["textSize"] as? Int, 35)
+        XCTAssertEqual(shared["letterSpacing"] as? Double, 0.25)
+    }
+}

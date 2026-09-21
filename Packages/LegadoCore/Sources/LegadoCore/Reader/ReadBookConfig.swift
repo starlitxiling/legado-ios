@@ -256,6 +256,13 @@ public struct ReadBookConfig: Codable, Equatable, Sendable {
         footerMode = try values.decodeIfPresent(Int.self, forKey: .footerMode) ?? footerMode
     }
 
+    public static func bundledStyles() throws -> [Self] {
+        guard let url = Bundle.module.url(forResource: "reader-presets", withExtension: "json") else {
+            throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: "reader-presets.json"])
+        }
+        return try importThemes(Data(contentsOf: url))
+    }
+
     public static func importThemes(_ data: Data) throws -> [Self] {
         let decoder = JSONDecoder()
         if let themes = try? decoder.decode([Self].self, from: data) { return themes }

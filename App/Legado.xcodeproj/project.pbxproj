@@ -24,6 +24,7 @@
 		16205E548CC0D6998A646E95 /* StateComponents.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD79490733032EF67FA66D7C /* StateComponents.swift */; };
 		1690BE310286AA66CE02B79E /* BookshelfRefreshReportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAA93D6A521A5418EA2A40DF /* BookshelfRefreshReportView.swift */; };
 		175427EEFADF84C93DE2F8C8 /* BrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D07E343502629D20DF4266CC /* BrowserView.swift */; };
+		176D6C55008457E767F243D0 /* ReaderStyleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4A32A155E134A6A3CB81964B /* ReaderStyleStore.swift */; };
 		19FE6AD07F6AC6874FE97554 /* SearchScopeView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D8FB357DA4795F106D376075 /* SearchScopeView.swift */; };
 		1A7733AC4E6E96A1ACE576DD /* ChapterLocator.swift in Sources */ = {isa = PBXBuildFile; fileRef = A277623B6C92CB5F945535DF /* ChapterLocator.swift */; };
 		1BE110C4559057994F8A33DB /* WebSocketSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = CDE31B24EA2982D65A7C21F5 /* WebSocketSession.swift */; };
@@ -280,6 +281,7 @@
 		46D115C93A7385181CD49809 /* ReaderSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderSettings.swift; sourceTree = "<group>"; };
 		472709F2C623A54E696A7710 /* MediaReaderDestination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaReaderDestination.swift; sourceTree = "<group>"; };
 		49E121903E5D70AF692007A7 /* BookshelfGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookshelfGalleryView.swift; sourceTree = "<group>"; };
+		4A32A155E134A6A3CB81964B /* ReaderStyleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderStyleStore.swift; sourceTree = "<group>"; };
 		4E0849AE95AEBE335017958E /* ServerSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ServerSettingsView.swift; sourceTree = "<group>"; };
 		4F199C5CAA312AF79379C910 /* ReaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderView.swift; sourceTree = "<group>"; };
 		519069D25D00DA0E8774F23C /* ImportSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportSupport.swift; sourceTree = "<group>"; };
@@ -760,6 +762,7 @@
 				E8770C103C53E2021AE74142 /* ReaderLayout.swift */,
 				B6167DB41924D8CD9E8C531D /* ReaderPresentationState.swift */,
 				46D115C93A7385181CD49809 /* ReaderSettings.swift */,
+				4A32A155E134A6A3CB81964B /* ReaderStyleStore.swift */,
 				4F199C5CAA312AF79379C910 /* ReaderView.swift */,
 				11EF2E517E8CAC0659A25BCA /* ReaderViewModel.swift */,
 				1BEE1A8DFBCC968A6D0B0CE8 /* FontPicker */,
@@ -1240,6 +1243,7 @@
 				72D1288CE6EC72160B4F8417 /* ReaderPresentationState.swift in Sources */,
 				F1B6A37D97CA1269FCA162C8 /* ReaderReviewView.swift in Sources */,
 				9C65F9EB66D38E25C461BF00 /* ReaderSettings.swift in Sources */,
+				176D6C55008457E767F243D0 /* ReaderStyleStore.swift in Sources */,
 				6A949AE029C62D413351B997 /* ReaderView.swift in Sources */,
 				0D28A91B7BCB1425294301AF /* ReaderViewModel.swift in Sources */,
 				66E7F07FF4730F1E568B964B /* RemoteBooksModel.swift in Sources */,

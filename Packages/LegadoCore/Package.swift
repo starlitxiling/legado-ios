@@ -19,7 +19,7 @@ let package = Package(
                                                   .product(name: "Unrar", package: "Unrar.swift"),
                                                   .product(name: "PLzmaSDK", package: "PLzmaSDK")],
                 exclude: ["Resources/public_suffix_list.dat", "Resources/PUBLIC_SUFFIX_LIST_LICENSE.md"],
-                resources: [.copy("Resources/crypto-js.js"), .copy("Resources/CRYPTO_JS_LICENSE.txt"), .copy("Resources/OpenCC"), .copy("Resources/ArchiveLicenses")],
+                resources: [.copy("Resources/reader-presets.json"), .copy("Resources/crypto-js.js"), .copy("Resources/CRYPTO_JS_LICENSE.txt"), .copy("Resources/OpenCC"), .copy("Resources/ArchiveLicenses")],
                 swiftSettings: [.swiftLanguageMode(.v5)]),
         .testTarget(name: "LegadoCoreTests", dependencies: ["LegadoCore"],
                     swiftSettings: [.swiftLanguageMode(.v5)])

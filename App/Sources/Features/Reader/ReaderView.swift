@@ -131,7 +131,7 @@ struct ReaderView: View {
                         case .previous: turnPage(false)
                         case .next: turnPage(true)
                         case .menu: showsControls.toggle()
-                        case nil: break
+                        default: break
                         }
                     }
                     .onLongPressGesture { autoRead.stop(); showsSelection = true }

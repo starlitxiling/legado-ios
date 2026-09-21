@@ -48,6 +48,7 @@
 | P3f 缓存宿主 | 完成 | 主会话 | CacheMemoryValue / JavaHostCacheTests | Core 701/0、AppCore 284/0、iOS 构建通过 |
 | U4 发现页 | 完成 | 主会话 | ExploreView / ExploreKinds / explore-ui-compat.md | Core 703/0、AppCore 286/0、专项 16/0；模拟器交互与渲染 1/0；截图已复核 |
 | U5 书籍详情 | 完成 | 主会话 | book-detail-compat.md / assets/u5-* | Core 706/0、AppCore 289/0；模拟器 2/0；iOS 构建通过 |
+| U6 阅读器 | 在途 | 主会话 | 点击区 / 完整配置 / 样式持久化 | AppCore 294/0；点击区、样式与共享备份通过，排版与面板接线继续 |
 | 批次 3-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -56,6 +57,6 @@
 
 ## 下一步
 
-U4 提交 76feeabbe；U5 已完成；继续 U6；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6/P7/P8 已完成。全程不推送；WebDAV 凭据只用于读取。
+U5 提交 7cf756cc5；U6 配置层在途；继续 U6；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6/P7/P8 已完成。全程不推送；WebDAV 凭据只用于读取。
 
 P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。

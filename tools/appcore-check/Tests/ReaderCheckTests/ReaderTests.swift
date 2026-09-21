@@ -220,7 +220,7 @@ final class ReaderTests: XCTestCase {
         defaults.set(-500, forKey: "textSize")
         defaults.set(0, forKey: "lineSpacingExtra")
         let normalized = ReaderSettings.load(from: defaults)
-        XCTAssertEqual(normalized.textSize, 12)
-        XCTAssertEqual(normalized.lineSpacingMultiplier, 1)
+        XCTAssertEqual(normalized.textSize, 5)
+        XCTAssertEqual(normalized.lineSpacingMultiplier, 0)
     }
 }

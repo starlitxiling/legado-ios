@@ -26,7 +26,7 @@ enum ScriptHostConfiguration {
         for key in Array(values.keys) {
             if let value = defaults.object(forKey: key) { values[key] = value }
         }
-        for (key, value) in CurrentBackupConfiguration.readerOverrides(defaults: defaults)
+        for (key, value) in try CurrentBackupConfiguration.readerOverrides(defaults: defaults)
             where defaults.object(forKey: key) != nil {
             values[key] = value
         }

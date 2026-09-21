@@ -1,52 +1,103 @@
 import Foundation
+import LegadoCore
 
 enum ReaderTheme: String, CaseIterable, Codable {
     case day, night, eyeCare
 }
 
 struct ReaderSettings: Equatable {
-    var textSize: Double = 20
-    var titleSize: Double = 0
-    var titleMode: Int = 0
-    var titleTopSpacing: Double = 0
-    var titleBottomSpacing: Double = 0
-    var textFont = ""
-    var pageAnim = 0
+    var configuration: ReadBookConfig
     var autoReadSpeed: Double = 10
     var hideStatusBar = false
-    var lineSpacingMultiplier: Double = 1.2
-    var paragraphSpacing: Double = 2
-    var paragraphIndent = "　　"
-    var paddingLeft: Double = 16
-    var paddingRight: Double = 16
-    var paddingTop: Double = 6
-    var paddingBottom: Double = 6
     var theme: ReaderTheme = .day
 
+    init(configuration: ReadBookConfig = ReadBookConfig()) { self.configuration = configuration }
+
+    var textSize: Double {
+        get { Double(configuration.textSize) }
+        set { configuration.textSize = Self.integer(newValue) }
+    }
+    var titleSize: Double {
+        get { Double(configuration.titleSize) }
+        set { configuration.titleSize = Self.integer(newValue) }
+    }
+    var titleTopSpacing: Double {
+        get { Double(configuration.titleTopSpacing) }
+        set { configuration.titleTopSpacing = Self.integer(newValue) }
+    }
+    var titleBottomSpacing: Double {
+        get { Double(configuration.titleBottomSpacing) }
+        set { configuration.titleBottomSpacing = Self.integer(newValue) }
+    }
+    var paragraphSpacing: Double {
+        get { Double(configuration.paragraphSpacing) }
+        set { configuration.paragraphSpacing = Self.integer(newValue) }
+    }
+    var paddingLeft: Double {
+        get { Double(configuration.paddingLeft) }
+        set { configuration.paddingLeft = Self.integer(newValue) }
+    }
+    var paddingRight: Double {
+        get { Double(configuration.paddingRight) }
+        set { configuration.paddingRight = Self.integer(newValue) }
+    }
+    var paddingTop: Double {
+        get { Double(configuration.paddingTop) }
+        set { configuration.paddingTop = Self.integer(newValue) }
+    }
+    var paddingBottom: Double {
+        get { Double(configuration.paddingBottom) }
+        set { configuration.paddingBottom = Self.integer(newValue) }
+    }
+    var lineSpacingExtra: Double {
+        get { Double(configuration.lineSpacingExtra) }
+        set { configuration.lineSpacingExtra = Self.integer(newValue) }
+    }
+    var titleMode: Int {
+        get { configuration.titleMode }
+        set { configuration.titleMode = newValue }
+    }
+    var textFont: String {
+        get { configuration.textFont }
+        set { configuration.textFont = newValue }
+    }
+    var pageAnim: Int {
+        get { configuration.pageAnim }
+        set { configuration.pageAnim = newValue }
+    }
+    var letterSpacing: Double {
+        get { configuration.letterSpacing }
+        set { configuration.letterSpacing = newValue }
+    }
+    var paragraphIndent: String {
+        get { configuration.paragraphIndent }
+        set { configuration.paragraphIndent = newValue }
+    }
+    var lineSpacingMultiplier: Double {
+        get { lineSpacingExtra / 10 }
+        set { lineSpacingExtra = newValue * 10 }
+    }
+
+    private static func integer(_ value: Double) -> Int {
+        guard value.isFinite else { return 0 }
+        return Int(min(Double(Int32.max), max(Double(Int32.min), value)))
+    }
+
     static func load(from defaults: UserDefaults = .standard) -> Self {
-        var value = Self()
-        func number(_ key: String, _ fallback: Double) -> Double {
-            defaults.object(forKey: key) == nil ? fallback : defaults.double(forKey: key)
-        }
-        value.textSize = number("textSize", 20)
-        value.titleSize = number("titleSize", 0)
-        value.titleMode = defaults.integer(forKey: "titleMode")
-        value.titleTopSpacing = number("titleTopSpacing", 0)
-        value.titleBottomSpacing = number("titleBottomSpacing", 0)
-        value.textFont = defaults.string(forKey: "textFont") ?? ""
-        value.pageAnim = defaults.integer(forKey: "pageAnim")
-        value.autoReadSpeed = number("autoReadSpeed", 10)
-        value.hideStatusBar = defaults.bool(forKey: "hideStatusBar")
-        value.lineSpacingMultiplier = number("lineSpacingExtra", 12) / 10
-        value.paragraphSpacing = number("paragraphSpacing", 2)
-        value.paragraphIndent = defaults.string(forKey: "paragraphIndent") ?? "　　"
-        value.paddingLeft = number("paddingLeft", 16)
-        value.paddingRight = number("paddingRight", 16)
-        value.paddingTop = number("paddingTop", 6)
-        value.paddingBottom = number("paddingBottom", 6)
-        value.theme = defaults.bool(forKey: "isNightTheme") ? .night :
-            (defaults.string(forKey: "bgStr") == "#CCE8CF" ? .eyeCare : .day)
-        return value.normalized
+        var settings = Self()
+        do {
+            if let data = defaults.data(forKey: "Legado.readerConfiguration") {
+                settings.configuration = try JSONDecoder().decode(ReadBookConfig.self, from: data)
+            }
+            var fields = try JSONSerialization.jsonObject(with: JSONEncoder().encode(settings.configuration)) as! [String: Any]
+            for key in fields.keys { if let value = defaults.object(forKey: key) { fields[key] = value } }
+            settings.configuration = try JSONDecoder().decode(ReadBookConfig.self, from: JSONSerialization.data(withJSONObject: fields))
+        } catch { NSLog("Unable to load reader configuration: %@", error.localizedDescription) }
+        settings.autoReadSpeed = defaults.object(forKey: "autoReadSpeed") == nil ? 10 : defaults.double(forKey: "autoReadSpeed")
+        settings.hideStatusBar = defaults.bool(forKey: "hideStatusBar")
+        settings.theme = defaults.bool(forKey: "isNightTheme") ? .night :
+            (defaults.bool(forKey: "Legado.readerEyeCare") || defaults.string(forKey: "bgStr") == "#CCE8CF" ? .eyeCare : .day)
+        return settings.normalized
     }
 
     var normalized: Self {
@@ -54,41 +105,45 @@ struct ReaderSettings: Equatable {
         func clamp(_ input: Double, _ range: ClosedRange<Double>, _ fallback: Double) -> Double {
             input.isFinite ? min(range.upperBound, max(range.lowerBound, input)) : fallback
         }
-        value.textSize = clamp(textSize, 12...48, 20)
+        value.textSize = clamp(textSize, 5...50, 20)
         value.titleSize = clamp(titleSize, -8...48, 0)
         value.titleMode = (0...3).contains(titleMode) ? titleMode : 0
-        value.titleTopSpacing = clamp(titleTopSpacing, 0...100, 0)
-        value.titleBottomSpacing = clamp(titleBottomSpacing, 0...100, 0)
+        value.titleTopSpacing = clamp(titleTopSpacing, 0...400, 0)
+        value.titleBottomSpacing = clamp(titleBottomSpacing, 0...400, 0)
         value.autoReadSpeed = clamp(autoReadSpeed, 1...600, 10)
         value.pageAnim = (0...4).contains(pageAnim) ? pageAnim : 0
-        value.lineSpacingMultiplier = clamp(lineSpacingMultiplier, 1...3, 1.2)
-        value.paragraphSpacing = clamp(paragraphSpacing, 0...40, 2)
+        value.lineSpacingExtra = clamp(lineSpacingExtra, 0...50, 12)
+        value.paragraphSpacing = clamp(paragraphSpacing, 0...20, 2)
+        value.letterSpacing = clamp(letterSpacing, -0.5...0.5, 0.1)
         value.paddingLeft = clamp(paddingLeft, 0...100, 16)
         value.paddingRight = clamp(paddingRight, 0...100, 16)
-        value.paddingTop = clamp(paddingTop, 0...100, 6)
-        value.paddingBottom = clamp(paddingBottom, 0...100, 6)
+        value.paddingTop = clamp(paddingTop, 0...400, 6)
+        value.paddingBottom = clamp(paddingBottom, 0...400, 6)
+        for path in [\ReadBookConfig.headerPaddingTop, \.headerPaddingBottom, \.footerPaddingTop, \.footerPaddingBottom] {
+            value.configuration[keyPath: path] = min(400, max(0, configuration[keyPath: path]))
+        }
+        for path in [\ReadBookConfig.headerPaddingLeft, \.headerPaddingRight, \.footerPaddingLeft, \.footerPaddingRight] {
+            value.configuration[keyPath: path] = min(100, max(0, configuration[keyPath: path]))
+        }
+        value.configuration.bgAlpha = min(100, max(0, configuration.bgAlpha))
+        value.configuration.underlineWidth = clamp(configuration.underlineWidth, 0...20, 1)
+        value.configuration.underlineDistance = clamp(configuration.underlineDistance, 0...100, 4)
         return value
     }
 
     func save(to defaults: UserDefaults = .standard) {
         let value = normalized
-        defaults.set(value.textSize, forKey: "textSize")
-        defaults.set(value.titleSize, forKey: "titleSize")
-        defaults.set(value.titleMode, forKey: "titleMode")
-        defaults.set(value.titleTopSpacing, forKey: "titleTopSpacing")
-        defaults.set(value.titleBottomSpacing, forKey: "titleBottomSpacing")
-        defaults.set(value.textFont, forKey: "textFont")
-        defaults.set(value.pageAnim, forKey: "pageAnim")
+        do {
+            let data = try JSONEncoder().encode(value.configuration)
+            defaults.set(data, forKey: "Legado.readerConfiguration")
+            let fields = try JSONSerialization.jsonObject(with: data) as! [String: Any]
+            for (key, field) in fields { defaults.set(field, forKey: key) }
+            for key in ["tipHeaderLeftTemplate", "tipHeaderMiddleTemplate", "tipHeaderRightTemplate", "tipFooterLeftTemplate", "tipFooterMiddleTemplate", "tipFooterRightTemplate"]
+                where fields[key] == nil { defaults.removeObject(forKey: key) }
+        } catch { NSLog("Unable to save reader configuration: %@", error.localizedDescription) }
         defaults.set(value.autoReadSpeed, forKey: "autoReadSpeed")
         defaults.set(value.hideStatusBar, forKey: "hideStatusBar")
-        defaults.set(value.lineSpacingMultiplier * 10, forKey: "lineSpacingExtra")
-        defaults.set(value.paragraphSpacing, forKey: "paragraphSpacing")
-        defaults.set(value.paragraphIndent, forKey: "paragraphIndent")
-        defaults.set(value.paddingLeft, forKey: "paddingLeft")
-        defaults.set(value.paddingRight, forKey: "paddingRight")
-        defaults.set(value.paddingTop, forKey: "paddingTop")
-        defaults.set(value.paddingBottom, forKey: "paddingBottom")
         defaults.set(value.theme == .night, forKey: "isNightTheme")
-        defaults.set(value.theme == .eyeCare ? "#CCE8CF" : "#EEEEEE", forKey: "bgStr")
+        defaults.set(value.theme == .eyeCare, forKey: "Legado.readerEyeCare")
     }
 }

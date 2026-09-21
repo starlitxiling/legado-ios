@@ -1,15 +1,59 @@
 import Foundation
 import Observation
 
-enum ReaderTapAction: Int, Equatable { case menu = 0, next = 1, previous = 2 }
+enum ReaderTapAction: Int, Equatable, CaseIterable {
+    case noAction = -1, menu, next, previous, nextChapter, previousChapter
+    case previousParagraph, nextParagraph, bookmark, editContent, toggleReplace, toc, search, sync, readAloud
+
+    var title: String {
+        switch self {
+        case .noAction: return "无"
+        case .menu: return "菜单"
+        case .next: return "下一页"
+        case .previous: return "上一页"
+        case .nextChapter: return "下一章"
+        case .previousChapter: return "上一章"
+        case .previousParagraph: return "朗读上一段"
+        case .nextParagraph: return "朗读下一段"
+        case .bookmark: return "添加书签"
+        case .editContent: return "编辑内容"
+        case .toggleReplace: return "替换开关"
+        case .toc: return "目录"
+        case .search: return "全文搜索"
+        case .sync: return "同步进度"
+        case .readAloud: return "朗读暂停继续"
+        }
+    }
+}
 
 enum ReaderTouchMap {
-    static func action(x: Double, y: Double, width: Double, height: Double) -> ReaderTapAction? {
+    static let keys = ["clickActionTL", "clickActionTC", "clickActionTR", "clickActionML", "clickActionMC", "clickActionMR", "clickActionBL", "clickActionBC", "clickActionBR"]
+    static let defaultActions: [ReaderTapAction] = [.previous, .previous, .next, .previous, .menu, .next, .previous, .next, .next]
+
+    static func normalized(_ actions: [ReaderTapAction]) -> [ReaderTapAction] {
+        guard actions.count == 9 else { return defaultActions }
+        var result = actions
+        if !result.contains(.menu) { result[4] = .menu }
+        return result
+    }
+
+    static func load(from defaults: UserDefaults = .standard) -> [ReaderTapAction] {
+        normalized(keys.enumerated().map { index, key in
+            defaults.object(forKey: key).flatMap { ($0 as? NSNumber).flatMap { ReaderTapAction(rawValue: $0.intValue) } } ?? defaultActions[index]
+        })
+    }
+
+    static func save(_ actions: [ReaderTapAction], to defaults: UserDefaults = .standard) {
+        for (key, action) in zip(keys, normalized(actions)) { defaults.set(action.rawValue, forKey: key) }
+    }
+
+    static func action(x: Double, y: Double, width: Double, height: Double,
+                       actions: [ReaderTapAction] = defaultActions) -> ReaderTapAction? {
         guard x.isFinite, y.isFinite, width.isFinite, height.isFinite,
               width > 0, height > 0, x >= 0, y >= 0, x < width, y < height else { return nil }
-        let column = x < width * 0.33 ? 0 : (x < width * 0.66 ? 1 : 2)
-        let row = y < height * 0.33 ? 0 : (y < height * 0.66 ? 1 : 2)
-        return [.previous, .previous, .next, .previous, .menu, .next, .previous, .next, .next][row * 3 + column]
+        let column = min(2, Int(x / width * 3))
+        let row = min(2, Int(y / height * 3))
+        return normalized(actions)[row * 3 + column]
     }
 }
 
