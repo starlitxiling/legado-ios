@@ -66,10 +66,34 @@ public final class JavaHost {
                 return nil
             }
         }
+        let concurrent: @convention(block) (String, String, JSValue, Double) -> Void = { [self, weak context] method, name, callback, timeout in
+            do {
+                let key = try concurrencyKey(name)
+                try SourceLock.shared.perform(key: key, singleFlight: method == "singleFlight", timeout: timeout) {
+                    guard let context else { throw JsEngineError.exception("script context expired") }
+                    _ = callback.invokeMethod("call", withArguments: [context.globalObject!])
+                    if let error = context.exception { throw JsEngineError.exception(error.toString() ?? "concurrent callback failed") }
+                }
+            } catch {
+                if let context { context.exception = JSValue(newErrorFromMessage: String(describing: error), in: context) }
+            }
+        }
+        context.setObject(concurrent, forKeyedSubscript: "__legadoConcurrent" as NSString)
         context.setObject(invoke, forKeyedSubscript: "__legadoHost" as NSString)
         context.evaluateScript("""
-        (function(invoke) {
+        (function(invoke, concurrent) {
             globalThis.java = {};
+            ['lock','singleFlight'].forEach(name => {
+                java[name] = function(key, action, timeout) {
+                    if (typeof action !== 'function') throw new Error('action must be a function');
+                    concurrent(name, String(key), action, timeout === undefined ? 15000 : Number(timeout));
+                };
+            });
+            java.getSource = () => typeof source === 'undefined' ? null : source;
+            java.getTag = () => {
+                const value = java.getSource();
+                return value == null ? null : value.bookSourceName ?? value.sourceName ?? value.name ?? null;
+            };
             globalThis.com = {jayway: {jsonpath: {JsonPath: {
                 read: function(content, path) { return invoke('jsonPathRead', [content, path]); }
             }}}};
@@ -156,7 +180,7 @@ public final class JavaHost {
                 }
                 return result;
             }
-            const methods = ['queryTTF','queryBase64TTF','replaceFont','get','put','getString','getStringList','getElement','getElements','getElementsRaw','cacheContent','reGetBook','refreshTocUrl','setContent',
+            const methods = ['tick','refreshBookInfo','refreshBookToc','refreshContent','openUrl','queryTTF','queryBase64TTF','replaceFont','get','put','getString','getStringList','getElement','getElements','getElementsRaw','cacheContent','reGetBook','refreshTocUrl','setContent',
                 't2s','s2t','timeFormat','timeFormatUTC','log','toast','longToast','logType','randomUUID','androidId',
                 'getReadBookConfig','getReadBookConfigMap','getThemeMode','getThemeConfig','getThemeConfigMap',
                 'base64DecodeToByteArray','hexDecodeToByteArray','hexEncodeToString','strToBytes','bytesToStr','decodeURI','htmlFormat','toURL','base64Decode','base64Encode','hexDecodeToString','toNumChapter',
@@ -207,7 +231,8 @@ public final class JavaHost {
                     };
                 });
             });
-        })(__legadoHost);
+        })(__legadoHost, __legadoConcurrent);
+        delete globalThis.__legadoConcurrent;
         delete globalThis.__legadoHost;
         """)
     }
@@ -225,6 +250,18 @@ public final class JavaHost {
         if let list = value as? [Any] { return list.map { nativeValue($0) ?? NSNull() } }
         if let object = value as? [String: Any] { return object.mapValues { nativeValue($0) ?? NSNull() } }
         return value
+    }
+
+    private func concurrencyKey(_ name: String) throws -> String {
+        guard !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty, name.utf16.count <= 256 else {
+            throw JsEngineError.exception("name must be nonblank and at most 256 characters")
+        }
+        let source = JSContext.current()?.objectForKeyedSubscript("source")
+        let object = source?.toDictionary() as? [String: Any]
+        guard let key = object?["bookSourceUrl"] as? String ?? object?["sourceUrl"] as? String ?? object?["id"] as? String ?? network.engine.networkSource.key else {
+            throw JsEngineError.exception("concurrency requires a source")
+        }
+        return key + "@" + name
     }
 
     private func call(_ method: String, _ arguments: [Any]) throws -> Any? {
@@ -256,6 +293,18 @@ public final class JavaHost {
             return parser
         }
         switch method {
+        case "tick": return try SourceLock.shared.tick(concurrencyKey(string(0)))
+        case "refreshBookInfo", "refreshBookToc", "refreshContent":
+            platformServices.sendRefresh(method); return nil
+        case "openUrl":
+            guard (1...2).contains(arguments.count), string(0).utf16.count < 65536 else { throw JsEngineError.exception("openUrl invalid arguments") }
+            let source = JSContext.current()?.objectForKeyedSubscript("source")?.toDictionary() as? [String: Any]
+            let key = source?["bookSourceUrl"] as? String ?? source?["sourceUrl"] as? String ?? network.engine.networkSource.key
+            let url = string(0)
+            guard key != nil || url.hasPrefix("legado://") || url.hasPrefix("yuedu://") else { throw JsEngineError.exception("openUrl source cannot be null") }
+            try platformServices.openURL(url, mimeType: value(1) as? String,
+                sourceName: source?["bookSourceName"] as? String ?? source?["sourceName"] as? String ?? key ?? "")
+            return nil
         case "jsonPathRead": return try AnalyzeByJSonPath(value(0) ?? NSNull()).getObject(string(1))
         case "get":
             if let value = extraParams[string(0)] { return value }

@@ -18,6 +18,7 @@ struct AppStartupView: View {
     @ObservedObject var appDelegate: LegadoAppDelegate
     @State private var theme = ThemeStore(preferences: .shared)
     @State private var openingFile: LocalFileOpenRequest?
+    @State private var sourceImport: SourceURLRequest?
 
     var body: some View {
         displayedContent
@@ -25,8 +26,21 @@ struct AppStartupView: View {
             .modifier(ThemeEnvironmentModifier(store: theme))
             .task { appDelegate.openDatabase() }
             .onOpenURL { url in
-                guard url.isFileURL else { return }
+                guard url.isFileURL else { handleImport(url); return }
                 openingFile = LocalFileOpenRequest(url: url)
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .init("Legado.script.import"))) { notification in
+                if let url = notification.object as? URL { handleImport(url) }
+            }
+            .sheet(item: $sourceImport) { request in
+                if let container = appDelegate.container {
+                    NavigationStack {
+                        SourcesView(repository: container.bookSources, replaceRules: container.replaceRules,
+                            httpClient: container.httpClient, sourceLogin: container.sourceLogin, sourceChecker: container.sourceChecker,
+                            initialImportURL: request.address)
+                            .toolbar { ToolbarItem(placement: .cancellationAction) { Button("完成") { sourceImport = nil } } }
+                    }
+                }
             }
             .sheet(item: $openingFile) { request in
                 if let container = appDelegate.container {
@@ -36,6 +50,14 @@ struct AppStartupView: View {
                     }
                 } else { ProgressView("正在打开书库") }
             }
+    }
+
+    private func handleImport(_ url: URL) {
+        guard ["legado", "yuedu"].contains(url.scheme ?? ""),
+              let address = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first(where: { $0.name == "src" || $0.name == "url" })?.value else {
+            ScriptToastCenter.shared.show("无法识别导入链接。", long: true); return
+        }
+        sourceImport = SourceURLRequest(address: address)
     }
 
     @ViewBuilder private var displayedContent: some View {
@@ -154,3 +176,5 @@ private struct LocalFileOpenRequest: Identifiable {
     let id = UUID()
     let url: URL
 }
+
+private struct SourceURLRequest: Identifiable { let id = UUID(); let address: String }

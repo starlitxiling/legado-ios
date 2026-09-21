@@ -11,6 +11,7 @@ struct SourcesView: View {
     @State private var groupText = ""
     @State private var showGroup = false
     @State private var removingGroup = false
+    private let initialImportURL: String?
     private let repository: BookSourceRepository
     private let replaceRules: ReplaceRuleRepository
     private let httpClient: any ResponseLimitedHttpClient
@@ -18,10 +19,11 @@ struct SourcesView: View {
     private let sourceChecker: SourceChecker
 
     init(repository: BookSourceRepository, replaceRules: ReplaceRuleRepository,
-         httpClient: any ResponseLimitedHttpClient, sourceLogin: SourceLogin, sourceChecker: SourceChecker) {
+         httpClient: any ResponseLimitedHttpClient, sourceLogin: SourceLogin, sourceChecker: SourceChecker, initialImportURL: String? = nil) {
         let model = SourcesViewModel(repository: repository, httpClient: httpClient)
         model.useSourceReplacement = UserDefaults.standard.bool(forKey: "importReplaceSource")
         _model = State(initialValue: model)
+        self.initialImportURL = initialImportURL
         self.replaceRules = replaceRules
         self.repository = repository
         self.httpClient = httpClient
@@ -133,7 +135,10 @@ struct SourcesView: View {
                                   return model.importPreview == nil && model.errorMessage == nil
                               }, cancel: { model.cancelImport() }, keepEnable: $model.keepEnable, sourceReplacement: $model.useSourceReplacement)
         }
-        .task { await model.load() }
+        .task {
+            await model.load()
+            if let initialImportURL { importEntry = .url; await model.prepareImport(url: initialImportURL) }
+        }
         .onChange(of: model.useSourceReplacement) { _, value in UserDefaults.standard.set(value, forKey: "importReplaceSource") }
         .sheet(isPresented: $showEditor) {
             NavigationStack {

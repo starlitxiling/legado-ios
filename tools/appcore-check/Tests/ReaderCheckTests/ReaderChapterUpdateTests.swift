@@ -37,6 +37,11 @@ final class ReaderChapterUpdateTests: XCTestCase {
         await model.waitForPrefetch()
         let requests = await client.requests
         XCTAssertEqual(requests.filter { $0.url == toc }.count, 1)
+        await client.enqueue(url: toc, response: .init(status: 200, body: Data("<a href='/0'>Renamed</a><a href='/1'>Second</a>".utf8), finalURL: toc))
+        await model.refreshFromScript("refreshBookToc")
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(model.chapters.first?.title, "Renamed")
+        XCTAssertEqual(model.chapterIndex, 0)
         await model.close()
     }
 }

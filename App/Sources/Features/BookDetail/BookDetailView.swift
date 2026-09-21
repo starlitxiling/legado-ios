@@ -81,6 +81,9 @@ struct BookDetailView: View {
         .safeAreaInset(edge: .bottom, spacing: 0) { bottomBar }
         .overlay(alignment: .top) { if model.isLoading || actionRunning { RefreshProgressBar() } }
         .legadoNavigationTitle("书籍详情")
+        .onReceive(NotificationCenter.default.publisher(for: .init("Legado.script.refresh"))) { notification in
+            if notification.object as? String == "refreshBookInfo", !model.isLoading { Task { await model.load() } }
+        }
         .toolbar { detailToolbar }
         .sheet(item: $sheet, onDismiss: { Task { await reload() } }) { destination in
             NavigationStack { sheetContent(destination).toolbar { ToolbarItem(placement: .cancellationAction) { Button("关闭") { sheet = nil } } } }

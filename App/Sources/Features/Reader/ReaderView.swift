@@ -245,6 +245,9 @@ struct ReaderView: View {
         } message: { _ in
             Text("是否跳转到远端的阅读位置？")
         }
+        .onReceive(NotificationCenter.default.publisher(for: .init("Legado.script.refresh"))) { notification in
+            if let event = notification.object as? String { Task { await model.refreshFromScript(event) } }
+        }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { autoRead.stop(); Task { await model.saveProgress() } }
         }

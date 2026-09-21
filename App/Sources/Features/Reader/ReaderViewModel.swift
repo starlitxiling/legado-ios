@@ -681,6 +681,30 @@ final class ReaderViewModel {
         } catch { if token == generation { errorMessage = error.localizedDescription } }
     }
 
+    private var scriptRefreshActive = false
+    func refreshFromScript(_ event: String) async {
+        guard !scriptRefreshActive, !isLoading, let current = entity, let source, !LocalBook.isLocal(current) else { return }
+        scriptRefreshActive = true
+        defer { scriptRefreshActive = false }
+        if event == "refreshContent" { await refreshContent(); return }
+        let token = generation
+        do {
+            let web = WebBook(source: source, client: client)
+            var updated = current
+            var rows = chapters
+            if event == "refreshBookInfo" { updated = try await web.bookInfo(current) }
+            else if event == "refreshBookToc" {
+                rows = try await web.chapterList(book: &updated).map { try ReaderEntityBridge.decode(BookChapterRow.self, row: $0) }
+                guard !rows.isEmpty else { throw ReaderError.emptyChapters }
+            } else { return }
+            guard generation == token else { return }
+            let saved = try await SourceChangeTransaction.save(book: updated, previous: current, chapters: rows, database: database)
+            guard generation == token else { return }
+            entity = saved; book = try ReaderEntityBridge.decode(BookRow.self, row: saved)
+            chapters = try await ChapterRepository(database: database).list(bookUrl: saved.bookUrl ?? "")
+        } catch { if generation == token { errorMessage = error.localizedDescription } }
+    }
+
     func refreshContent() async {
         if let entity, LocalBook.isLocal(entity) {
             let position = chapterIndex, offset = characterOffset, token = beginRequest()

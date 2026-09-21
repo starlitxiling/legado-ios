@@ -147,3 +147,13 @@ StrResponse 和 Connection.Response 的同名成员使用可调用包装对象�
 以 `2bdd3c58b` 的 `model/analyzeRule/QueryTTF.java` 为准，支持 cmap 0/4/6、长短 loca、简单和复合 glyf。原版不解析 cmap 12、CFF/WOFF，也没有注释中所称的本地文件自动识别；本地文件可使用 `java.queryTTF(java.readFile(path))`。重复轮廓的反查取 Unicode 升序中的最后一个，避免依赖 JVM HashMap 的遍历顺序。
 
 简单轮廓保留相对坐标；复合轮廓保留原版的无符号缩放读取及默认 0.0。直接编译运行原版 Java 类得到 `10,20` 和完整复合轮廓字符串，与 Swift fixture 逐字一致。损坏表、越界和重复标志溢出会报告字体解析错误。专项 4 项、Core 全量 736 项通过；应用构建通过。
+
+## 书籍与并发（轮次 5 / P3h）
+
+`getSource` 保持当前 source 对象身份，`getTag` 返回源名称。三种 refresh 发送宿主事件，阅读页刷新对应详情、目录或正文；详情页监听详情刷新。刷新中的递归事件被合并，保留阅读位置；批量缓存继续使用 P4 的 cacheContent。
+
+`lock` 为同线程可重入的书源命名锁；`singleFlight` 对同一轮成功请求去重，失败后等待者可重试，同线程递归直接返回。回调 this 为 globalThis，回调在原 JSContext 线程执行并在异常时释放锁。默认等待 15000 ms，上限 300000 ms；`tick` 返回自 0 起的旧值，Int32 最大值后回 0，4096 项 LRU。名称按 UTF-16 长度限制为 256。
+
+`openUrl` 限制长度、校验来源并交给 App 确认打开；尊重 blockSourceNavigation。HTTP(S)/应用 scheme 使用 iOS 的 URL 分发，legado/yuedu 导入链接进入书源预览。iOS 不能用 Android MIME 类型强制选择目标应用。未安装 UI 宿主时明确报错。
+
+验证：Core 739/0、AppCore 318/0、阅读目录刷新专项 1/0、generic iOS 构建通过；另有导出 API 枚举测试，确保入口不会落入未实现方法分支。日志为 `.build/round5/p3gh-*` 与 `p3h-*`。
