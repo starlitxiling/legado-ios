@@ -52,10 +52,40 @@ def text_encodings() -> None:
         (OUTPUT / (name + ".expected")).write_text(text * 5, encoding="utf-8")
 
 
+def png(red: int, green: int, blue: int) -> bytes:
+    def chunk(kind: bytes, payload: bytes) -> bytes:
+        return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", zlib.crc32(kind + payload))
+    rows = (b"\x00" + bytes([red, green, blue]) * 64) * 64
+    return b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", 64, 64, 8, 2, 0, 0, 0)) + chunk(b"IDAT", zlib.compress(rows)) + chunk(b"IEND", b"")
+
+
+def epub_navigation() -> None:
+    files = {
+        "mimetype": "application/epub+zip",
+        "META-INF/container.xml": '<container><rootfiles><rootfile full-path="OPS/book.opf"/></rootfiles></container>',
+        "OPS/book.opf": '<package><metadata><title>Illustrated Book</title><creator>Fixture Writer</creator><meta name="cover" content="cover"/></metadata><manifest><item id="nav" href="nav.xhtml" properties="nav"/><item id="cover" href="images/cover.png"/><item id="front" href="titlepage.xhtml"/><item id="a" href="a.xhtml"/><item id="b" href="b.xhtml"/></manifest><spine toc="ncx"><itemref idref="front"/><itemref idref="a"/><itemref idref="b"/></spine></package>',
+        "OPS/nav.xhtml": '<html xmlns:epub="http://www.idpf.org/2007/ops"><body><nav epub:type="toc"><ol><li><span>Part</span><ol><li><a href="a.xhtml#one">One</a><ol><li><a href="a.xhtml#one">Alias</a></li></ol></li><li><a href="a.xhtml#two">Two</a></li></ol></li><li><a href="b.xhtml">Last</a></li></ol></nav></body></html>',
+        "OPS/titlepage.xhtml": '<html><body>Cover placeholder</body></html>',
+        "OPS/a.xhtml": '<html><body><script>script-hidden</script><style>style-hidden</style><h1 id="one">One</h1><p>First body</p><svg xmlns:xlink="http://www.w3.org/1999/xlink"><image xlink:href="images/picture.png"/></svg><h1 id="two">Two</h1><p>Second body</p></body></html>',
+        "OPS/b.xhtml": '<html><body><h1>Last</h1><img src="images/picture.png"/><p>Final page</p></body></html>',
+        "OPS/images/cover.png": png(40, 120, 200),
+        "OPS/images/picture.png": png(200, 80, 40),
+    }
+    for kind in ["nav", "ncx"]:
+        output = dict(files)
+        if kind == "ncx":
+            output["OPS/book.opf"] = files["OPS/book.opf"].replace('<item id="nav" href="nav.xhtml" properties="nav"/>', '<item id="ncx" href="toc.ncx" media-type="application/x-dtbncx+xml"/>')
+            output["OPS/toc.ncx"] = '<ncx><navMap><navPoint><navLabel><text>Part</text></navLabel><navPoint><navLabel><text>One</text></navLabel><content src="a.xhtml#one"/><navPoint><navLabel><text>Alias</text></navLabel><content src="a.xhtml#one"/></navPoint></navPoint><navPoint><navLabel><text>Two</text></navLabel><content src="a.xhtml#two"/></navPoint></navPoint><navPoint><navLabel><text>Last</text></navLabel><content src="b.xhtml"/></navPoint></navMap></ncx>'
+        with zipfile.ZipFile(OUTPUT / ("nested-" + kind + ".epub"), "w") as archive:
+            for name, body in output.items():
+                archive.writestr(zipfile.ZipInfo(name), body)
+
+
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     (OUTPUT / "synthetic.umd").write_bytes(umd())
     text_encodings()
+    epub_navigation()
     with zipfile.ZipFile(OUTPUT / "two-books.zip", "w") as archive:
         for name in ["First.txt", "nested/Second.txt"]:
             archive.writestr(zipfile.ZipInfo(name), "The final page of " + name)

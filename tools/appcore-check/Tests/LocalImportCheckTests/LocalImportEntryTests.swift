@@ -79,4 +79,28 @@ final class LocalImportEntryTests: XCTestCase {
         XCTAssertTrue(AppLogStore.shared.snapshot().contains { $0.message.contains("filename failure") })
     }
 
+    func testEpubCoverUsesBookHashAndFailedImportDoesNotLeakCover() async throws {
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Tests/Fixtures/localbook/nested-nav.epub")
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let db = try AppDatabase.inMemory()
+        let model = LocalImportViewModel(database: db, booksDirectory: root)
+        await model.importFiles([fixture])
+        XCTAssertTrue(model.errors.isEmpty, model.errors.joined())
+        let books = try await BookshelfRepository(database: db).list()
+        let book = try XCTUnwrap(books.first)
+        let cover = LocalBook.coverURL(bookURL: book.bookUrl, root: root)
+        XCTAssertEqual(book.coverUrl, cover.absoluteString)
+        let original = try Data(contentsOf: cover)
+        XCTAssertFalse(original.isEmpty)
+        let copy = root.appendingPathComponent("copy.epub")
+        try FileManager.default.copyItem(at: fixture, to: copy)
+        await model.importFiles([copy])
+        XCTAssertFalse(model.errors.isEmpty)
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(at: cover.deletingLastPathComponent(), includingPropertiesForKeys: nil).map { $0.resolvingSymlinksInPath() }, [cover.resolvingSymlinksInPath()])
+        XCTAssertEqual(try Data(contentsOf: cover), original)
+    }
+
 }

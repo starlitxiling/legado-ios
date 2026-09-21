@@ -17,7 +17,7 @@ final class EpubParserTests: XCTestCase {
             XCTAssertEqual(chapters.map(\.title), ["一", "二", "三"])
             let first = try parser.content(chapter: chapters[0])
             XCTAssertTrue(first.contains("第一段。"))
-            XCTAssertTrue(first.contains("[图片：插图]"))
+            XCTAssertTrue(first.contains("<img src=\"OPS/cover.png\">"))
             XCTAssertFalse(first.contains("第二段。"))
             let second = try parser.content(chapter: chapters[1])
             XCTAssertTrue(second.contains("第二段。"))

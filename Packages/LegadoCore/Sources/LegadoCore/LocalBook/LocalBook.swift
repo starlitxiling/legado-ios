@@ -1,5 +1,6 @@
 import Foundation
 import GRDB
+import CryptoKit
 
 public enum LocalBook {
     public static let fileExtensions: Set<String> = ["txt", "epub", "umd", "pdf", "mobi", "azw3", "azw"]
@@ -148,6 +149,34 @@ public enum LocalBook {
         case "umd": return try UmdParserCache.shared.parser(for: url).content(chapter: chapter)
         case "pdf": return try PdfFile(url: url).content(chapter: chapter)
         default: throw LocalBookError.unsupportedFile
+        }
+    }
+
+    public static func coverURL(bookURL: String, root: URL) -> URL {
+        let digest = Insecure.MD5.hash(data: Data(bookURL.utf8)).map { String(format: "%02x", $0) }.joined()
+        return root.appendingPathComponent("covers", isDirectory: true)
+            .appendingPathComponent(String(digest.dropFirst(8).prefix(16)) + ".jpg")
+    }
+
+    public static func image(book: Book, href: String) throws -> Data? {
+        guard isLocal(book), let url = fileURL(book) else { throw LocalBookError.unsupportedFile }
+        let resource: String
+        if let address = URL(string: href), address.scheme == "legado-local" {
+            guard address.host == "book" else { throw LocalBookError.unsupportedFile }
+            resource = String(address.path.dropFirst())
+        } else { resource = href }
+        switch url.pathExtension.lowercased() {
+        case "epub": return try EpubParserCache.shared.parser(for: url).getImage(resource)
+        case "mobi", "azw3", "azw": return try MobiParserCache.shared.parser(for: url).getImage(resource)
+        default: throw LocalBookError.unsupportedFile
+        }
+    }
+
+    public static func tocNodes(book: Book) throws -> [LocalBookTocNode] {
+        guard isLocal(book), let url = fileURL(book) else { return [] }
+        switch url.pathExtension.lowercased() {
+        case "epub": return try EpubParserCache.shared.parser(for: url).tocNodes
+        default: return []
         }
     }
 

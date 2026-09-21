@@ -69,7 +69,13 @@ final class RemoteBooksModel {
         defer { isImporting = false }
         let folder = destination.appendingPathComponent(UUID().uuidString, isDirectory: true)
         var persisted = false
-        defer { if !persisted { try? FileManager.default.removeItem(at: folder) } }
+        var pendingCover: URL?
+        defer {
+            if !persisted {
+                try? FileManager.default.removeItem(at: folder)
+                if let pendingCover { try? FileManager.default.removeItem(at: pendingCover) }
+            }
+        }
         do {
             let name = file.displayName
             guard Self.supported(name), name == (name as NSString).lastPathComponent,
@@ -96,13 +102,15 @@ final class RemoteBooksModel {
             let local = folder.appendingPathComponent(name)
             try data.write(to: local, options: .atomic)
             let rules = try await TxtTocRuleRepository(database: database).list(enabledOnly: true)
-        let filenameScript = filenameScript()
+            let filenameScript = filenameScript()
             let parsing = Task.detached(priority: .userInitiated) { try LocalBook.parse(url: local, rules: rules, filenameScript: filenameScript, logger: { AppLogStore.shared.append($0) }) }
             var parsed = try await withTaskCancellationHandler { try await parsing.value } onCancel: { parsing.cancel() }
             parsed.book.origin = origin
             if groupID > 0 { parsed.book.group = groupID }
             if let cover = parsed.cover {
-                let coverURL = folder.appendingPathComponent("cover")
+                let coverURL = LocalBook.coverURL(bookURL: parsed.book.bookUrl ?? local.absoluteString, root: destination)
+                pendingCover = coverURL
+                try FileManager.default.createDirectory(at: coverURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                 try cover.write(to: coverURL, options: .atomic)
                 parsed.book.coverUrl = coverURL.absoluteString
             }
@@ -131,6 +139,7 @@ final class RemoteBooksModel {
         var persisted = false, failures: [String] = []
         for entry in entries {
             var pendingDirectory: URL?
+            var pendingCover: URL?
             do {
                 try Task.checkCancellation()
                 let remote = CustomUrl(file.url.absoluteString)
@@ -155,7 +164,9 @@ final class RemoteBooksModel {
                 parsed.book.origin = origin
                 if groupID > 0 { parsed.book.group = groupID }
                 if let cover = parsed.cover {
-                    let coverURL = directory.appendingPathComponent("cover")
+                    let coverURL = LocalBook.coverURL(bookURL: parsed.book.bookUrl ?? local.absoluteString, root: destination)
+                    pendingCover = coverURL
+                    try FileManager.default.createDirectory(at: coverURL.deletingLastPathComponent(), withIntermediateDirectories: true)
                     try cover.write(to: coverURL, options: .atomic)
                     parsed.book.coverUrl = coverURL.absoluteString
                 }
@@ -164,8 +175,10 @@ final class RemoteBooksModel {
                 existing[origin] = saved
                 persisted = true
                 pendingDirectory = nil
+                pendingCover = nil
             } catch {
                 if let pendingDirectory { try? FileManager.default.removeItem(at: pendingDirectory) }
+                if let pendingCover { try? FileManager.default.removeItem(at: pendingCover) }
                 if error is CancellationError || Task.isCancelled { break }
                 failures.append(entry.name + "：" + error.localizedDescription)
             }

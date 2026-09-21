@@ -70,3 +70,14 @@ Validation: `.build/round5/p7-toc-core.log` (682/0), `p7-toc-app.log` (277/0), `
 `bookImportFileName` runs before filename fallback with extension-free `src`, then captures the script's `name` and `author`. Blank names return to the existing patterns; an author as long as the entire filename is discarded using UTF-16 length. Exceptions are logged and fall back without interrupting other imports. Local files, archive members, online downloads and WebDAV imports all consume the preference. General settings exposes the script and backup preferences preserve it.
 
 Synthetic contract: `Writer - Book.txt` plus split script produces Book/Writer; a throwing script on `Book by Writer.txt` logs the exception and produces Book/Writer. Core filename tests: 6/0; iOS build: `.build/round5/p7-filename-ios.log`.
+
+
+## EPUB navigation, images and covers
+
+Navigation follows `EpubToc.kt` at Kotlin `2bdd3c58b`: preorder integer IDs, parent IDs and depth, retaining duplicate destinations and labels with no destination. Reading chapters remain deduplicated by href. Both EPUB3 NAV and EPUB2 NCX synthetic fixtures include a parent, a duplicate alias, two anchors in one resource and a final chapter. U6 consumes the separate navigation model for folding.
+
+Body processing removes scripts/styles, normalizes SVG image/xlink:href to img/src, resolves resources against their document, and retains images through formatting and reader pagination. Cover/titlepage resources use cover.jpeg. The local image provider reads archive resources without HTTP and rejects traversal paths. Reader-local resource URLs use the `legado-local` scheme to avoid resolving archive resources as device files.
+
+Covers from local and remote import use `covers/<md5Encode16(bookUrl)>.jpg` under the configurable Books directory; the bytes retain the source image encoding, as on Android. Failed/conflicting imports restore or remove their cover along with the book transaction.
+
+Validation: Core 685/0 (`p7-epub-core.log`), EPUB image/tree tests 2/0, App import/image tests 8/0 (`p7-epub-app-final.log`), generic iOS build passed (`p7-epub-ios.log`). Fixtures: `Tests/Fixtures/localbook/nested-{nav,ncx}.epub`, generated from repository-relative scripts. No iPhone testing.

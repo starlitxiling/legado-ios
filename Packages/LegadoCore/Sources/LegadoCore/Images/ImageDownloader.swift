@@ -23,6 +23,13 @@ public actor ImageDownloader {
                      isCover: Bool = true, cacheFile: URL? = nil,
                      validate: @Sendable (Data) -> Bool) async throws -> Data {
         try Task.checkCancellation()
+        if !isCover, let book, LocalBook.isLocal(book),
+           !["http", "https", "data"].contains(URL(string: url)?.scheme?.lowercased() ?? "") {
+            guard let data = try LocalBook.image(book: book, href: url), !data.isEmpty else { throw ImageDownloadError.emptyImage }
+            guard validate(data) else { throw ImageDownloadError.invalidDecodeResult }
+            try Task.checkCancellation()
+            return data
+        }
         let source = source ?? BookSource()
         let scope: String
         if isCover {

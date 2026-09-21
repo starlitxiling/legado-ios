@@ -77,6 +77,8 @@ final class LocalImportViewModel {
             MobiParserCache.shared.invalidate(staging.appendingPathComponent(name))
             UmdParserCache.shared.invalidate(staging.appendingPathComponent(name))
         }
+        let coverURL = LocalBook.coverURL(bookURL: directory.appendingPathComponent(name).absoluteString, root: booksDirectory)
+        var coverWritten = false, previousCover: Data?
         var published = false, hasBackup = false
         do {
             guard LocalBook.fileExtensions.contains((name as NSString).pathExtension.lowercased()) else { throw LocalBookError.unsupportedFile }
@@ -104,8 +106,11 @@ final class LocalImportViewModel {
                 parsed.chapters[index].baseUrl = destination.absoluteString
             }
             if let cover = parsed.cover {
-                try cover.write(to: staging.appendingPathComponent("cover"), options: .atomic)
-                parsed.book.coverUrl = directory.appendingPathComponent("cover").absoluteString
+                if FileManager.default.fileExists(atPath: coverURL.path) { previousCover = try Data(contentsOf: coverURL) }
+                try FileManager.default.createDirectory(at: coverURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+                try cover.write(to: coverURL, options: .atomic)
+                coverWritten = true
+                parsed.book.coverUrl = coverURL.absoluteString
             }
             try Task.checkCancellation()
             if FileManager.default.fileExists(atPath: directory.path) {
@@ -122,6 +127,10 @@ final class LocalImportViewModel {
             do {
                 if published { try FileManager.default.removeItem(at: directory) }
                 if hasBackup { try FileManager.default.moveItem(at: backup, to: directory) }
+                if coverWritten {
+                    if let previousCover { try previousCover.write(to: coverURL, options: .atomic) }
+                    else { try FileManager.default.removeItem(at: coverURL) }
+                }
             } catch { errors.append("恢复原文件失败：\(error.localizedDescription)") }
             if case LocalBookError.identityConflict = error {
                 if !conflictingURLs.contains(url) { conflictingURLs.append(url) }

@@ -4,6 +4,7 @@ import SwiftSoup
 public final class EpubParser {
     public let title: String
     public let author: String
+    public let tocNodes: [LocalBookTocNode]
     public var cover: Data? { coverPath.flatMap { try? archive.readEntry($0) } }
     private let coverPath: String?
     let archive: ZipReader
@@ -36,38 +37,60 @@ public final class EpubParser {
         let coverID = opf.descendants("meta").first { $0.attributes["name"] == "cover" }?.attributes["content"]
         let coverItem = items.first { ($0.attributes["properties"] ?? "").split(separator: " ").contains("cover-image") }
         coverPath = manifest[coverItem?.attributes["id"] ?? coverID ?? ""]
-        var navigation: [(title: String, href: String)] = []
+        var nodes: [LocalBookTocNode] = []
+        func appendNode(title: String, href: String?, path: String, parent: Int?, depth: Int) throws -> Int {
+            guard depth <= 64, nodes.count < 10_000 else { throw LocalBookError.invalidEPUB("Navigation exceeds supported depth or node count") }
+            let id = nodes.count
+            nodes.append(LocalBookTocNode(id: id, parentId: parent, depth: depth,
+                title: title.trimmingCharacters(in: .whitespacesAndNewlines),
+                href: try href.map { try Self.resolve($0, relativeTo: path) }))
+            return id
+        }
         if let nav = items.first(where: { ($0.attributes["properties"] ?? "").split(separator: " ").contains("nav") }),
            let path = manifest[nav.attributes["id"] ?? ""] {
             let doc = try Self.xml(archive.readEntry(path))
             let toc = doc.descendants("nav").first { ($0.attributes["epub:type"] ?? $0.attributes["type"] ?? "").split(separator: " ").contains("toc") }
                 ?? doc.descendants("nav").first
-            for anchor in toc?.descendants("a") ?? [] {
-                if let href = anchor.attributes["href"] {
-                    navigation.append((anchor.text, try Self.resolve(href, relativeTo: path)))
+            func visit(_ container: EpubXMLNode, parent: Int?, depth: Int) throws {
+                for child in container.children {
+                    if child.name == "li" {
+                        let label = child.children.first { $0.name == "a" || $0.name == "span" }
+                        let id = try appendNode(title: label?.text ?? "", href: label?.attributes["href"], path: path, parent: parent, depth: depth)
+                        for list in child.children where list.name == "ol" || list.name == "ul" {
+                            try visit(list, parent: id, depth: depth + 1)
+                        }
+                    } else if child.name == "ol" || child.name == "ul" {
+                        try visit(child, parent: parent, depth: depth)
+                    }
                 }
             }
+            if let toc { try visit(toc, parent: nil, depth: 0) }
         }
-        if navigation.isEmpty {
+        if nodes.isEmpty {
             let ncxID = opf.descendants("spine").first?.attributes["toc"]
                 ?? items.first { $0.attributes["media-type"] == "application/x-dtbncx+xml" }?.attributes["id"]
             if let path = manifest[ncxID ?? ""] {
                 let ncx = try Self.xml(archive.readEntry(path))
-                for point in ncx.descendants("navPoint") {
-                    if let href = point.children.first(where: { $0.name == "content" })?.attributes["src"] {
-                        let label = point.children.first(where: { $0.name == "navLabel" })?.text ?? ""
-                        navigation.append((label, try Self.resolve(href, relativeTo: path)))
+                func visit(_ container: EpubXMLNode, parent: Int?, depth: Int) throws {
+                    for point in container.children where point.name == "navPoint" {
+                        let href = point.children.first { $0.name == "content" }?.attributes["src"]
+                        let title = point.children.first { $0.name == "navLabel" }?.text ?? ""
+                        let id = try appendNode(title: title, href: href, path: path, parent: parent, depth: depth)
+                        try visit(point, parent: id, depth: depth + 1)
                     }
                 }
+                if let map = ncx.descendants("navMap").first { try visit(map, parent: nil, depth: 0) }
             }
         }
+        tocNodes = nodes
+        let navigation = nodes.compactMap { node in node.href.map { (title: node.title, href: $0) } }
         var seen = Set<String>()
         self.navigation = navigation.filter { archive.entryNames.contains(Self.parts($0.href).path) && seen.insert($0.href).inserted }
     }
 
     var cacheCost: Int {
         archive.byteCount + title.utf8.count + author.utf8.count + spine.reduce(0) { $0 + $1.utf8.count }
-            + navigation.reduce(0) { $0 + $1.title.utf8.count + $1.href.utf8.count }
+            + tocNodes.reduce(0) { $0 + $1.title.utf8.count + ($1.href?.utf8.count ?? 0) + 32 }
     }
 
     private func readingEntries() -> [(title: String, href: String)] {
@@ -117,7 +140,9 @@ public final class EpubParser {
         }
         return try paths.map { path in
             guard let data = try archive.readEntry(path) else { throw LocalBookError.invalidEPUB("缺少正文 \(path)") }
+            if path.contains("titlepage.xhtml") || path.contains("cover") { return "<img src=\"cover.jpeg\">" }
             let doc = try SwiftSoup.parse(data, "")
+            try doc.select("script, style").remove()
             guard let body = doc.body() else { return "" }
             var html = try body.html()
             if path == start.path, let fragment = start.fragment {
@@ -132,12 +157,25 @@ public final class EpubParser {
             }
             let fragment = try SwiftSoup.parseBodyFragment(html)
             for image in try fragment.select("img, image") {
-                let alt = try image.attr("alt")
-                try image.before(alt.isEmpty ? "[图片]" : "[图片：\(alt)]")
-                try image.remove()
+                let source = try image.tagName() == "image" ? image.attr("xlink:href") : image.attr("src")
+                try image.tagName("img")
+                let href = source.trimmingCharacters(in: .whitespacesAndNewlines)
+                if ["http", "https", "data"].contains(URL(string: href)?.scheme?.lowercased() ?? "") {
+                    try image.attr("src", href)
+                } else { try image.attr("src", Self.resolve(href, relativeTo: path)) }
             }
-            return HtmlFormatter.format(try fragment.body()?.html())
-        }.joined(separator: "\n")
+            return HtmlFormatter.formatKeepImg(try fragment.body()?.html())
+        }.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }.joined(separator: "\n")
+    }
+
+    public func getImage(_ href: String) throws -> Data? {
+        if href == "cover.jpeg" { return cover }
+        let path = href.removingPercentEncoding ?? href
+        guard !path.hasPrefix("/"), !path.contains("\\"), !path.contains(":"),
+              !path.split(separator: "/", omittingEmptySubsequences: false).contains(where: { $0 == ".." || $0 == "." || $0.isEmpty }) else {
+            throw LocalBookError.invalidEPUB("Invalid image resource path")
+        }
+        return try archive.readEntry(path)
     }
 
     private static func parts(_ href: String) -> (path: String, fragment: String?) {

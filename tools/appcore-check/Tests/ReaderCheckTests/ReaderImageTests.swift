@@ -1,4 +1,5 @@
 import XCTest
+import LegadoCore
 @testable import ReaderCheck
 
 final class ReaderImageTests: XCTestCase {
@@ -31,4 +32,14 @@ final class ReaderImageTests: XCTestCase {
             XCTAssertEqual(pagination.pageIndex(at: pagination.firstCharacterOffset(on: index)), index)
         }
     }
+    func testLocalBookImagesResolveAgainstArchiveRoot() throws {
+        var book = Book(); book.bookUrl = "file:///book.epub"; book.origin = "loc_book"
+        var chapter = BookChapter(); chapter.url = "OPS/chapter.xhtml"; chapter.baseUrl = book.bookUrl
+        let input = ReaderLayoutInput(book: book, chapter: chapter,
+            rawContent: "<img src=\"OPS/images/picture.png\">", rules: [])
+        let result = try ReaderLayout.build(input: input, size: CGSize(width: 390, height: 700),
+            settings: ReaderSettings(), didStart: {})
+        XCTAssertEqual(result.pagination.pages.compactMap(\.imageURL), ["legado-local://book/OPS/images/picture.png"])
+    }
+
 }
