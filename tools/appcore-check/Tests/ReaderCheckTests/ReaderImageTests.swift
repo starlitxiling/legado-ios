@@ -42,4 +42,27 @@ final class ReaderImageTests: XCTestCase {
         XCTAssertEqual(result.pagination.pages.compactMap(\.imageURL), ["legado-local://book/OPS/images/picture.png"])
     }
 
+    @MainActor
+    func testScannedPDFLoadsIntoReaderAsImagePagesWithoutHTTP() async throws {
+        let fixture = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent()
+            .deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent()
+            .appendingPathComponent("Tests/Fixtures/localbook/scanned.pdf")
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let parsed = try LocalBook.parse(url: fixture)
+        let db = try AppDatabase.inMemory()
+        try await LocalBook.save(book: parsed.book, chapters: parsed.chapters, database: db)
+        let client = ReplayHttpClient()
+        let model = ReaderViewModel(database: db, client: client, cacheDirectory: root, preDownloadCount: { 0 })
+        await model.load(bookURL: fixture.absoluteString)
+        XCTAssertNil(model.errorMessage)
+        let images = try XCTUnwrap(model.pagination).pages.compactMap(\.imageURL)
+        XCTAssertEqual(images, ["legado-local://book/0", "legado-local://book/1"])
+        let bytes = try await ImageDownloader(client: client, cacheDirectory: root).load(url: images[1], book: parsed.book, isCover: false)
+        XCTAssertFalse(bytes.isEmpty)
+        let requests = await client.requests
+        XCTAssertTrue(requests.isEmpty)
+        await model.close()
+    }
+
 }

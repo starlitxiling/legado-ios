@@ -81,11 +81,37 @@ def epub_navigation() -> None:
                 archive.writestr(zipfile.ZipInfo(name), body)
 
 
+def scanned_pdf() -> bytes:
+    image = zlib.compress(bytes([220, 50, 40]) * 24)
+    drawing = b"q 200 0 0 300 0 0 cm /Im0 Do Q"
+    page = b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 300] /Resources << /XObject << /Im0 6 0 R >> >> /Contents 5 0 R >>"
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R /Outlines 7 0 R >>",
+        b"<< /Type /Pages /Count 2 /Kids [3 0 R 4 0 R] >>", page, page,
+        b"<< /Length " + str(len(drawing)).encode() + b" >>\nstream\n" + drawing + b"\nendstream",
+        b"<< /Type /XObject /Subtype /Image /Width 4 /Height 6 /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length " + str(len(image)).encode() + b" >>\nstream\n" + image + b"\nendstream",
+        b"<< /Type /Outlines /First 8 0 R /Last 8 0 R /Count 2 >>",
+        b"<< /Title (Part) /Parent 7 0 R /First 9 0 R /Last 9 0 R /Count 1 >>",
+        b"<< /Title (Last scan) /Parent 8 0 R /Dest [4 0 R /Fit] >>",
+    ]
+    output = b"%PDF-1.4\n"
+    offsets = [0]
+    for index, value in enumerate(objects, 1):
+        offsets.append(len(output))
+        output += f"{index} 0 obj\n".encode() + value + b"\nendobj\n"
+    start = len(output)
+    output += f"xref\n0 {len(offsets)}\n0000000000 65535 f \n".encode()
+    for offset in offsets[1:]:
+        output += f"{offset:010d} 00000 n \n".encode()
+    return output + f"trailer\n<< /Size {len(offsets)} /Root 1 0 R >>\nstartxref\n{start}\n%%EOF\n".encode()
+
+
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
     (OUTPUT / "synthetic.umd").write_bytes(umd())
     text_encodings()
     epub_navigation()
+    (OUTPUT / "scanned.pdf").write_bytes(scanned_pdf())
     with zipfile.ZipFile(OUTPUT / "two-books.zip", "w") as archive:
         for name in ["First.txt", "nested/Second.txt"]:
             archive.writestr(zipfile.ZipInfo(name), "The final page of " + name)

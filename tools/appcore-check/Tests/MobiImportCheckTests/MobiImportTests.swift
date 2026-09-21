@@ -4,7 +4,7 @@ import LegadoCore
 
 @MainActor
 final class MobiImportTests: XCTestCase {
-    func testMobiAndPDFImportPersistsChaptersAndText() async throws {
+    func testMobiAndPDFImportPersistsChaptersAndContent() async throws {
         let root = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent(".build/tmp/b7-" + UUID().uuidString)
         try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -24,7 +24,7 @@ final class MobiImportTests: XCTestCase {
             XCTAssertEqual(chapters.count, ext == "pdf" ? 1 : 2)
             let book = try JSONDecoder().decode(Book.self, from: JSONEncoder().encode(row))
             let chapter = try JSONDecoder().decode(BookChapter.self, from: JSONEncoder().encode(XCTUnwrap(chapters.first)))
-            XCTAssertTrue(try LocalBook.content(book: book, chapter: chapter).contains(ext == "pdf" ? "First page text" : "Alpha Alpha"))
+            XCTAssertTrue(try LocalBook.content(book: book, chapter: chapter).contains(ext == "pdf" ? "<img src=\"0\" >" : "Alpha Alpha"))
         }
     }
     func testImportRejectsMalformedMobiAtParserInsteadOfExtensionGate() async throws {

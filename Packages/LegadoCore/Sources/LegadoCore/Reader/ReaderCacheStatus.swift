@@ -8,7 +8,7 @@ public enum ReaderCacheStatus {
 
     public static func fileURL(book: Book, chapter: BookChapter, directory: URL) throws -> URL {
         var identity = [book.bookUrl ?? "", book.origin ?? "", chapter.url ?? "", String(chapter.index)]
-        if LocalBook.isLocal(book) { identity.append(chapter.variable ?? "") }
+        if LocalBook.isLocal(book) { identity.append(chapter.variable ?? ""); identity.append("local-images-v1") }
         let key = SHA256.hash(data: try JSONEncoder().encode(identity)).map { String(format: "%02x", $0) }.joined()
         return directory.appendingPathComponent(key).appendingPathExtension("json")
     }

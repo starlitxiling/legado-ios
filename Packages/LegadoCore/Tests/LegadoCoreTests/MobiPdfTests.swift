@@ -76,12 +76,12 @@ final class MobiPdfTests: XCTestCase {
         XCTAssertEqual(parsed.chapters.count, 1)
         XCTAssertEqual(parsed.chapters.map(\.title), ["分段_0"])
         guard parsed.chapters.count == 1 else { return }
-        XCTAssertTrue(try LocalBook.content(book: parsed.book, chapter: parsed.chapters[0]).contains("First page text"))
-        XCTAssertTrue(try LocalBook.content(book: parsed.book, chapter: parsed.chapters[0]).contains("Second page text"))
+        XCTAssertTrue(try LocalBook.content(book: parsed.book, chapter: parsed.chapters[0]).contains("<img src=\"0\" >"))
+        XCTAssertTrue(try LocalBook.content(book: parsed.book, chapter: parsed.chapters[0]).contains("<img src=\"1\" >"))
         let grouped = try PdfFile(url: url, pagesPerChapter: 10)
         let chapters = grouped.chapters(bookURL: url.absoluteString)
         XCTAssertEqual(chapters.count, 1)
-        XCTAssertTrue(try grouped.content(chapter: chapters[0]).contains("Second page text"))
+        XCTAssertTrue(try grouped.content(chapter: chapters[0]).contains("<img src=\"1\" >"))
         XCTAssertThrowsError(try PdfFile(url: url, pagesPerChapter: 0))
         let bookmarked = try PdfFile(url: url, useBookmarks: true)
         XCTAssertEqual(bookmarked.chapters(bookURL: url.absoluteString).map(\.title), ["全书"])
@@ -100,8 +100,8 @@ final class MobiPdfTests: XCTestCase {
             XCTAssertEqual(try LocalBook.chapterList(book: parsed.book).count, count)
             let last = try XCTUnwrap(parsed.chapters.last)
             let text = try LocalBook.content(book: parsed.book, chapter: last)
-            XCTAssertTrue(text.contains(pages == 1 ? "First page text" : "Page \(pages) text"))
-            if pages == 11 { XCTAssertFalse(text.contains("Page 10 text")) }
+            XCTAssertTrue(text.contains("<img src=\"\(pages - 1)\" >"))
+            if pages == 11 { XCTAssertFalse(text.contains("<img src=\"9\" >")) }
         }
     }
 

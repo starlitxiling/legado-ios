@@ -40,6 +40,7 @@
 | P7-3/4/5/6/8 TXT | 完成 | 主会话 | TextTocParityTests / localbook-compat.md | Core 682/0、AppCore 277/0；修改重建 3/0 |
 | P7-9 文件名脚本 | 完成 | 主会话 | LocalBook.nameAuthor / 通用设置 | Core 专项 6/0、AppCore 279/0；iOS 构建通过 |
 | P7-10/11/12/13 EPUB | 完成 | 主会话 | EpubParser / LocalBookTocNode / 本地图片与封面 | Core 685/0；App 专项与 iOS 构建通过，目录 UI 在 U6 接入 |
+| P7-14 PDF | 完成 | 主会话 | PdfFile / scanned.pdf / 页图与大纲 | Core 686/0；扫描页、旧链接及阅读器验证；iOS 构建通过 |
 | 批次 3-5 | 待办 | 主会话 | 按 PLAN.md | 按批次门禁 |
 
 ## 执行方式
@@ -48,6 +49,6 @@
 
 ## 下一步
 
-最近提交 99caabbb8（文件名脚本）；P7 压缩包后端及导入完成，导入入口完成，TXT 目录对齐完成，继续文件名脚本与 EPUB/PDF/MOBI；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6 已完成，继续 P7 本地书。全程不推送；WebDAV 凭据只用于读取。
+最近提交 94a1fc365（EPUB）；P7 压缩包后端及导入完成，导入入口完成，TXT 目录对齐完成，继续文件名脚本与 EPUB/PDF/MOBI；P4 流程基础已验证，真实 CLI 4/40、模拟器 4/8，未达门禁，见 REAL-SOURCES-P4.md；P5/P6 已完成，继续 P7 本地书。全程不推送；WebDAV 凭据只用于读取。
 
 P4-8 待用户选择：Kotlin SearchBook/BookChapter 实际按 URL 去重，计划全字段去重与章节主键冲突。临时方案已隔离到 .build/round5/p4-fullfield-proposal.patch，主实现恢复既有 URL 行为以继续回归；不视为用户已决策。

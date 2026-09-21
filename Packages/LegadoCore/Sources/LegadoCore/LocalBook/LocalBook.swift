@@ -166,6 +166,7 @@ public enum LocalBook {
             resource = String(address.path.dropFirst())
         } else { resource = href }
         switch url.pathExtension.lowercased() {
+        case "pdf": return try PdfFile(url: url).getImage(resource)
         case "epub": return try EpubParserCache.shared.parser(for: url).getImage(resource)
         case "mobi", "azw3", "azw": return try MobiParserCache.shared.parser(for: url).getImage(resource)
         default: throw LocalBookError.unsupportedFile
@@ -175,6 +176,7 @@ public enum LocalBook {
     public static func tocNodes(book: Book) throws -> [LocalBookTocNode] {
         guard isLocal(book), let url = fileURL(book) else { return [] }
         switch url.pathExtension.lowercased() {
+        case "pdf": return try PdfFile(url: url).tocNodes
         case "epub": return try EpubParserCache.shared.parser(for: url).tocNodes
         default: return []
         }

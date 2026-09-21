@@ -81,3 +81,12 @@ Body processing removes scripts/styles, normalizes SVG image/xlink:href to img/s
 Covers from local and remote import use `covers/<md5Encode16(bookUrl)>.jpg` under the configurable Books directory; the bytes retain the source image encoding, as on Android. Failed/conflicting imports restore or remove their cover along with the book transaction.
 
 Validation: Core 685/0 (`p7-epub-core.log`), EPUB image/tree tests 2/0, App import/image tests 8/0 (`p7-epub-app-final.log`), generic iOS build passed (`p7-epub-ios.log`). Fixtures: `Tests/Fixtures/localbook/nested-{nav,ncx}.epub`, generated from repository-relative scripts. No iPhone testing.
+
+
+## PDF page images and outline
+
+PDF reading segments retain Android's ten-page grouping and `pdf_<index>` identity. Content is the page-index img stream from Kotlin PdfFile.kt:179-194, including a newline per image. Existing `pdf:start:end` links remain readable. PDFKit opens the document; CoreGraphics renders each page on white, honoring crop/rotation, and ImageIO encodes PNG. Rendering defaults to 1,536 pixels wide and bounds output at 4,096 x 8,192 / 16 megapixels. Invalid pages, locked files and impossible geometry report errors.
+
+Outline nodes preserve preorder identity, parent, depth and optional page index, independently of persisted reading segments. Traversal is cycle-aware and capped at 10,000 nodes / depth 64, matching Kotlin PdfOutline limits. The synthetic scanned PDF contains only raster page content plus a non-clickable parent and second-page child; it verifies actual nonblank pixel data, dimensions and final-page reading. App reader tests load two image pages with zero HTTP calls. Local raw-content cache identities carry a format revision so previous extracted-text/image-placeholder caches are not reused.
+
+Validation: Core 686/0 (`p7-pdf-core.log`), PDF cases 6/0 (`p7-pdf-second.log`), iOS build passed (`p7-pdf-ios.log`). The App full run found one old PDF-text expectation, updated to assert page images and rerun in `p7-pdf-app-final.log`.
