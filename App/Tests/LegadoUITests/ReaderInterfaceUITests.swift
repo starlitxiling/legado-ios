@@ -2,6 +2,24 @@ import XCTest
 
 final class ReaderInterfaceUITests: XCTestCase {
     @MainActor
+    func testDamagedStylesDoNotBlockReadingOrStylePanel() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-detail-gallery", "-damaged-reader-styles", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO", "-shareLayout", "YES", "-doubleHorizontalPage", "0"]
+        app.launch()
+        XCTAssertTrue(app.buttons["detail.read"].waitForExistence(timeout: 15))
+        app.buttons["detail.read"].tap()
+        XCTAssertTrue(app.otherElements["reader.body"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.alerts["阅读样式加载失败"].exists)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(app.buttons["界面"].waitForExistence(timeout: 5))
+        app.buttons["界面"].tap()
+        XCTAssertTrue(app.buttons.matching(identifier: "reader.style.5").firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.alerts["阅读样式加载失败"].exists)
+        snapshot(app, "a1-style-fallback")
+    }
+
+    @MainActor
     func testStylesMarginsAndTitleInformation() {
         continueAfterFailure = false
         let app = XCUIApplication()

@@ -203,23 +203,23 @@ public struct ReadBookConfig: Codable, Equatable, Sendable {
         paragraphSpacing = try values.decodeIfPresent(Int.self, forKey: .paragraphSpacing) ?? paragraphSpacing
         titleMode = try values.decodeIfPresent(Int.self, forKey: .titleMode) ?? titleMode
         titleSize = try values.decodeIfPresent(Int.self, forKey: .titleSize) ?? titleSize
-        titleColor = try values.decodeIfPresent(Int.self, forKey: .titleColor) ?? titleColor
+        titleColor = values.decodeAndroidColor(forKey: .titleColor, default: titleColor)
         splitChapterTitle = try values.decodeIfPresent(Bool.self, forKey: .splitChapterTitle) ?? splitChapterTitle
         titleNumberSize = try values.decodeIfPresent(Int.self, forKey: .titleNumberSize) ?? titleNumberSize
-        titleNumberColor = try values.decodeIfPresent(Int.self, forKey: .titleNumberColor) ?? titleNumberColor
+        titleNumberColor = values.decodeAndroidColor(forKey: .titleNumberColor, default: titleNumberColor)
         titleNumberSpacing = try values.decodeIfPresent(Int.self, forKey: .titleNumberSpacing) ?? titleNumberSpacing
         titleTopSpacing = try values.decodeIfPresent(Int.self, forKey: .titleTopSpacing) ?? titleTopSpacing
         titleBottomSpacing = try values.decodeIfPresent(Int.self, forKey: .titleBottomSpacing) ?? titleBottomSpacing
         paragraphIndent = try values.decodeIfPresent(String.self, forKey: .paragraphIndent) ?? paragraphIndent
         underlineMode = try values.decodeIfPresent(Int.self, forKey: .underlineMode) ?? underlineMode
-        underlineColor = try values.decodeIfPresent(Int.self, forKey: .underlineColor) ?? underlineColor
+        underlineColor = values.decodeAndroidColor(forKey: .underlineColor, default: underlineColor)
         underlineColorSet = try values.decodeIfPresent(Bool.self, forKey: .underlineColorSet) ?? underlineColorSet
         underlineWidth = try values.decodeIfPresent(Double.self, forKey: .underlineWidth) ?? underlineWidth
         underlineDistance = try values.decodeIfPresent(Double.self, forKey: .underlineDistance) ?? underlineDistance
         underlineBodyEnabled = try values.decodeIfPresent(Bool.self, forKey: .underlineBodyEnabled) ?? underlineBodyEnabled
         underlineTitleEnabled = try values.decodeIfPresent(Bool.self, forKey: .underlineTitleEnabled) ?? underlineTitleEnabled
         underlineConfigVersion = try values.decodeIfPresent(Int.self, forKey: .underlineConfigVersion) ?? underlineConfigVersion
-        reviewIconColor = try values.decodeIfPresent(Int.self, forKey: .reviewIconColor) ?? reviewIconColor
+        reviewIconColor = values.decodeAndroidColor(forKey: .reviewIconColor, default: reviewIconColor)
         reviewIconSvg = try values.decodeIfPresent(String.self, forKey: .reviewIconSvg) ?? reviewIconSvg
         reviewIconSvgTemplates = try values.decodeIfPresent([ReviewIconSvgTemplate].self, forKey: .reviewIconSvgTemplates) ?? reviewIconSvgTemplates
         reviewIconScale = try values.decodeIfPresent(Int.self, forKey: .reviewIconScale) ?? reviewIconScale
@@ -250,8 +250,8 @@ public struct ReadBookConfig: Codable, Equatable, Sendable {
         tipFooterMiddleTemplate = try values.decodeIfPresent(String.self, forKey: .tipFooterMiddleTemplate) ?? tipFooterMiddleTemplate
         tipFooterRightTemplate = try values.decodeIfPresent(String.self, forKey: .tipFooterRightTemplate) ?? tipFooterRightTemplate
         tipTextSize = try values.decodeIfPresent(Int.self, forKey: .tipTextSize) ?? tipTextSize
-        tipColor = try values.decodeIfPresent(Int.self, forKey: .tipColor) ?? tipColor
-        tipDividerColor = try values.decodeIfPresent(Int.self, forKey: .tipDividerColor) ?? tipDividerColor
+        tipColor = values.decodeAndroidColor(forKey: .tipColor, default: tipColor)
+        tipDividerColor = values.decodeAndroidColor(forKey: .tipDividerColor, default: tipDividerColor)
         headerMode = try values.decodeIfPresent(Int.self, forKey: .headerMode) ?? headerMode
         footerMode = try values.decodeIfPresent(Int.self, forKey: .footerMode) ?? footerMode
     }
@@ -260,13 +260,46 @@ public struct ReadBookConfig: Codable, Equatable, Sendable {
         guard let url = Bundle.module.url(forResource: "reader-presets", withExtension: "json") else {
             throw CocoaError(.fileNoSuchFile, userInfo: [NSFilePathErrorKey: "reader-presets.json"])
         }
-        return try importThemes(Data(contentsOf: url))
+        return try JSONDecoder().decode([Self].self, from: Data(contentsOf: url))
     }
 
-    public static func importThemes(_ data: Data) throws -> [Self] {
+    public static func importThemes(_ data: Data, onFallback: ((Int, Error) -> Void)? = nil) throws -> [Self] {
+        let document = try JSONSerialization.jsonObject(with: data, options: [.fragmentsAllowed])
+        let items: [Any]
+        if let array = document as? [Any] { items = array }
+        else if document is [String: Any] { items = [document] }
+        else { throw ReaderThemeImportError(issues: ["根节点应为样式对象或数组"]) }
+        if items.isEmpty { return [] }
         let decoder = JSONDecoder()
-        if let themes = try? decoder.decode([Self].self, from: data) { return themes }
-        return [try decoder.decode(Self.self, from: data)]
+        var themes: [Self] = []
+        var issues: [String] = []
+        var presets: [Self]?
+        for (index, item) in items.enumerated() {
+            do {
+                let encoded = try JSONSerialization.data(withJSONObject: item, options: [.fragmentsAllowed])
+                themes.append(try decoder.decode(Self.self, from: encoded))
+            } catch {
+                issues.append(Self.importIssue(error, index: index))
+                onFallback?(index, error)
+                if presets == nil { presets = try bundledStyles() }
+                guard let presets, !presets.isEmpty else { throw ReaderThemeImportError(issues: issues) }
+                themes.append(presets[index % presets.count])
+            }
+        }
+        guard issues.count < items.count else { throw ReaderThemeImportError(issues: issues) }
+        return themes
+    }
+
+    private static func importIssue(_ error: Error, index: Int) -> String {
+        let path: [CodingKey]
+        switch error {
+        case DecodingError.typeMismatch(_, let context), DecodingError.valueNotFound(_, let context),
+             DecodingError.dataCorrupted(let context): path = context.codingPath
+        case DecodingError.keyNotFound(let key, let context): path = context.codingPath + [key]
+        default: path = []
+        }
+        let field = path.map { $0.intValue.map { "[\($0)]" } ?? "." + $0.stringValue }.joined()
+        return "[\(index)]\(field)：数据格式不正确"
     }
 
     public static func exportThemes(_ themes: [Self]) throws -> Data {
@@ -280,4 +313,27 @@ public struct ReviewIconSvgTemplate: Codable, Equatable, Sendable {
     public var name: String = ""
     public var svg: String = ""
     public init() {}
+}
+
+public struct ReaderThemeImportError: LocalizedError {
+    public let issues: [String]
+    public var errorDescription: String? { "阅读样式导入失败：" + issues.joined(separator: "；") }
+    public var recoverySuggestion: String? { "请检查样式文件中的字段格式，或重新导出样式后导入。" }
+}
+
+extension KeyedDecodingContainer {
+    func decodeAndroidColor(forKey key: Key, default fallback: Int) -> Int {
+        if let value = try? decodeIfPresent(Int.self, forKey: key) { return value }
+        guard let raw = try? decodeIfPresent(String.self, forKey: key) else { return fallback }
+        let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if value.hasPrefix("#") {
+            let hex = value.dropFirst()
+            guard [6, 8].contains(hex.count), hex.utf8.allSatisfy({
+                (48...57).contains($0) || (65...70).contains($0) || (97...102).contains($0)
+            }), let bits = UInt32(hex, radix: 16) else { return fallback }
+            return Int(Int32(bitPattern: hex.count == 6 ? bits | 0xFF000000 : bits))
+        }
+        guard let number = Int64(value), number >= Int64(Int32.min), number <= Int64(UInt32.max) else { return fallback }
+        return Int(Int32(bitPattern: UInt32(truncatingIfNeeded: number)))
+    }
 }

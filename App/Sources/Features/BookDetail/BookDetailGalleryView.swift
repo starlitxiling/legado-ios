@@ -19,6 +19,13 @@ struct BookDetailGalleryView: View {
             guard container == nil else { return }
             do {
                 let container = try AppContainer.inMemory()
+                if ProcessInfo.processInfo.arguments.contains("-damaged-reader-styles") {
+                    try await container.database.write { db in
+                        for name in ["readConfig.json", "shareReadConfig.json"] {
+                            try db.execute(sql: "INSERT INTO backup_files(name, data) VALUES (?, ?)", arguments: [name, Data("{".utf8)])
+                        }
+                    }
+                }
                 for index in 1...2 {
                     var source = BookSourceRow()
                     source.bookSourceUrl = "https://detail\(index).test"; source.bookSourceName = "示例书源 \(index)"

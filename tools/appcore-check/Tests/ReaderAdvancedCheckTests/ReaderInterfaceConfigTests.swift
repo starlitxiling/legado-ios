@@ -4,6 +4,31 @@ import LegadoCore
 
 final class ReaderInterfaceConfigTests: XCTestCase {
     @MainActor
+    func testDamagedSavedStylesFallBackWithoutBlockingReading() async throws {
+        let suite = "ReaderStyleFallback." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        defaults.set(true, forKey: "shareLayout")
+        for damaged in ["{", "[]", #"[{"textSize":"bad"}]"#] {
+            let database = try AppDatabase.inMemory()
+            try await database.write { db in
+                for name in ["readConfig.json", "shareReadConfig.json"] {
+                    try db.execute(sql: "INSERT INTO backup_files(name, data) VALUES (?, ?)", arguments: [name, Data(damaged.utf8)])
+                }
+            }
+            let log = AppLogStore()
+            let store = ReaderStyleStore(database: database, defaults: defaults, log: log)
+            try await store.load()
+            XCTAssertEqual(store.styles.count, 6)
+            XCTAssertEqual(store.current.textSize, try ReadBookConfig.bundledStyles()[5].textSize)
+            XCTAssertTrue(log.snapshot().contains { $0.message.contains("readConfig.json") })
+            XCTAssertTrue(log.snapshot().contains { $0.message.contains("shareReadConfig.json") })
+            let original = try await database.backupConfiguration(named: "readConfig.json")
+            XCTAssertEqual(original, Data(damaged.utf8))
+        }
+    }
+
+    @MainActor
     func testStyleArchiveImportsWithoutOverwritingExistingBackground() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let suite = "StyleArchive." + UUID().uuidString

@@ -1,0 +1,56 @@
+[
+  {
+    "name": "Max style 1",
+    "bgStr": "#ffc0edc6",
+    "footerFontSize": 12,
+    "headerFontSize": 12,
+    "textColor": "#ff0b0b0b",
+    "underlineColor": "#FF63C37D",
+    "underlineOffset": 2.0
+  },
+  {
+    "name": "Max style 2",
+    "bgStr": "#FFFFFF",
+    "footerFontSize": 12,
+    "headerFontSize": 12,
+    "textColor": "#000000",
+    "underlineColor": "#FF63C37D",
+    "underlineOffset": 2.0
+  },
+  {
+    "name": "Max style 3",
+    "bgStr": "#DDC090",
+    "footerFontSize": 12,
+    "headerFontSize": 12,
+    "textColor": "#3E3422",
+    "underlineColor": "#FF63C37D",
+    "underlineOffset": 2.0
+  },
+  {
+    "name": "Max style 4",
+    "bgStr": "#C2D8AA",
+    "footerFontSize": 12,
+    "headerFontSize": 12,
+    "textColor": "#596C44",
+    "underlineColor": "#FF63C37D",
+    "underlineOffset": 2.0
+  },
+  {
+    "name": "Max style 5",
+    "bgStr": "#DBB8E2",
+    "footerFontSize": 12,
+    "headerFontSize": 12,
+    "textColor": "#68516C",
+    "underlineColor": "#FF63C37D",
+    "underlineOffset": 2.0
+  },
+  {
+    "name": "Max style 6",
+    "bgStr": "#ABCEE0",
+    "footerFontSize": 12,
+    "headerFontSize": 12,
+    "textColor": "#3D4C54",
+    "underlineColor": "#FF63C37D",
+    "underlineOffset": 2.0
+  }
+]

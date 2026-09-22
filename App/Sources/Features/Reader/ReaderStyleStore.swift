@@ -14,12 +14,14 @@ final class ReaderStyleStore {
     private let defaults: UserDefaults
     private let resourceDirectory: URL
     private let fontDirectory: URL
+    private let log: AppLogStore
 
     init(database: AppDatabase, defaults: UserDefaults = .standard,
          resourceDirectory: URL = URL.applicationSupportDirectory.appendingPathComponent("Legado/bg"),
-         fontDirectory: URL = URL.applicationSupportDirectory.appendingPathComponent("fonts")) {
+         fontDirectory: URL = URL.applicationSupportDirectory.appendingPathComponent("fonts"),
+         log: AppLogStore = .shared) {
         self.database = database; self.defaults = defaults
-        self.resourceDirectory = resourceDirectory; self.fontDirectory = fontDirectory
+        self.resourceDirectory = resourceDirectory; self.fontDirectory = fontDirectory; self.log = log
     }
 
     var current: ReadBookConfig {
@@ -29,8 +31,19 @@ final class ReaderStyleStore {
 
     func load() async throws {
         let saved = try await database.backupConfiguration(named: "readConfig.json")
-        var loaded = try saved.map(ReadBookConfig.importThemes) ?? ReadBookConfig.bundledStyles()
-        guard !loaded.isEmpty else { throw ReaderStyleError.empty }
+        let presets = try ReadBookConfig.bundledStyles()
+        var loaded = presets
+        if let saved {
+            do {
+                loaded = try ReadBookConfig.importThemes(saved) { index, error in
+                    self.log.append("readConfig.json[\(index)] fallback: \(String(reflecting: error))")
+                }
+                guard !loaded.isEmpty else { throw ReaderStyleError.empty }
+            } catch {
+                log.append("readConfig.json fallback: \(String(reflecting: error))")
+                loaded = presets
+            }
+        }
         selected = min(max(0, defaults.integer(forKey: "readStyleSelect")), loaded.count - 1)
         if saved == nil {
             var fields = try JSONSerialization.jsonObject(with: JSONEncoder().encode(loaded[selected])) as! [String: Any]
@@ -39,7 +52,14 @@ final class ReaderStyleStore {
         }
         styles = loaded.map { ReaderSettings(configuration: $0).normalized.configuration }
         let sharedData = try await database.backupConfiguration(named: "shareReadConfig.json")
-        shared = try sharedData.map { try JSONDecoder().decode(ReadBookConfig.self, from: $0) } ?? styles[min(5, styles.count - 1)]
+        shared = styles[min(5, styles.count - 1)]
+        if let sharedData {
+            do { shared = try JSONDecoder().decode(ReadBookConfig.self, from: sharedData) }
+            catch {
+                log.append("shareReadConfig.json fallback: \(String(reflecting: error))")
+                shared = presets[min(5, presets.count - 1)]
+            }
+        }
         sharedLayout = defaults.bool(forKey: "shareLayout")
         synchronizeSettings()
     }
@@ -95,7 +115,11 @@ final class ReaderStyleStore {
                 config[keyPath: path] = fontName
             }
             imported = [config]
-        } else { imported = try ReadBookConfig.importThemes(data) }
+        } else {
+            imported = try ReadBookConfig.importThemes(data) { index, error in
+                self.log.append("Imported style[\(index)] fallback: \(String(reflecting: error))")
+            }
+        }
         guard !imported.isEmpty else { throw ReaderStyleError.empty }
         selected = styles.count
         styles += imported.map { ReaderSettings(configuration: $0).normalized.configuration }

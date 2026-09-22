@@ -214,9 +214,9 @@ struct ReaderView: View {
             UIDevice.current.isBatteryMonitoringEnabled = true
             do {
                 try await styles.load()
-                var settings = ReaderSettings.load(); settings.isEInk = themeColors.isEInk
-                await model.reflow(settings: settings)
-            } catch { styleError = error.localizedDescription }
+            } catch { AppLogStore.shared.append("Reader style loading: \(String(reflecting: error))") }
+            var settings = ReaderSettings.load(); settings.isEInk = themeColors.isEInk
+            await model.reflow(settings: settings)
             await model.load(bookURL: destination.bookURL, chapterIndex: destination.chapterIndex)
             await readAloud.attach(model)
             await model.refreshHighlights()
