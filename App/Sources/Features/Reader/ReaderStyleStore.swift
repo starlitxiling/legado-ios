@@ -142,6 +142,20 @@ final class ReaderStyleStore {
         })
     }
 
+    func createStyle() async throws {
+        var style = ReadBookConfig()
+        style.name = "新样式"
+        styles.append(style)
+        selected = styles.count - 1
+        try await persist()
+    }
+
+    func restorePresetLayout() async throws {
+        let presets = try ReadBookConfig.bundledStyles()
+        let preset = presets.indices.contains(selected) ? presets[selected] : presets[0]
+        try await update(Self.copyColors(from: current, into: preset))
+    }
+
     func deleteSelected() async throws {
         guard styles.count > 5 else { throw ReaderStyleError.minimumStyles }
         guard styles.indices.contains(selected) else { throw ReaderStyleError.invalidSelection }
@@ -174,6 +188,7 @@ final class ReaderStyleStore {
                      \.textColorEInk, \.textAccentColor, \.textAccentColorNight, \.textAccentColorEInk] {
             result[keyPath: path] = visual[keyPath: path]
         }
+        result.bgAlpha = visual.bgAlpha
         result.bgType = visual.bgType; result.bgTypeNight = visual.bgTypeNight; result.bgTypeEInk = visual.bgTypeEInk
         result.darkStatusIcon = visual.darkStatusIcon; result.darkStatusIconNight = visual.darkStatusIconNight
         result.darkStatusIconEInk = visual.darkStatusIconEInk

@@ -1,5 +1,6 @@
 import SwiftUI
 import UniformTypeIdentifiers
+import PhotosUI
 import LegadoCore
 
 @MainActor
@@ -13,6 +14,7 @@ struct ReaderInterfacePanel: View {
     @State private var customizing = false
     @State private var importing = false
     @State private var importingImage = false
+    @State private var selectedPhoto: PhotosPickerItem?
     @State private var exporting = false
     @State private var document = ReaderStyleDocument(data: Data())
     @State private var linkedMargins = true
@@ -49,16 +51,22 @@ struct ReaderInterfacePanel: View {
                             NavigationLink("信息") { information }
                         }.font(.system(size: 14)).buttonStyle(.bordered)
                     }
+                    HStack {
+                        ColorPicker("文字颜色", selection: color(textColorPath))
+                        ColorPicker("背景颜色", selection: backgroundColor)
+                    }
+                    NavigationLink("背景图片") { backgroundImages }
+                        .buttonStyle(.bordered).frame(maxWidth: .infinity, alignment: .leading)
                     slider("字号", value: number(\.textSize), range: 5...50, step: 1)
                     slider("字间距", value: Binding(get: { (draft.letterSpacing + 0.5) * 100 },
                         set: { setting(\.letterSpacing).wrappedValue = $0 / 100 - 0.5 }), range: 0...100, step: 1)
-                    slider("行距", value: number(\.lineSpacingExtra), range: 0...50, step: 1)
+                    slider("行距", value: number(\.lineSpacingExtra), range: -10...40, step: 1, divisor: 10)
                     slider("段距", value: number(\.paragraphSpacing), range: 0...20, step: 1, divisor: 10)
                     Picker("翻页动画", selection: config(\.pageAnim)) {
                         Text("覆盖").tag(0); Text("滑动").tag(1); Text("仿真").tag(2); Text("滚动").tag(3); Text("无").tag(4)
                     }.pickerStyle(.segmented).disabled(draft.isEInk)
                     HStack {
-                        Text("文字颜色和背景（长按自定义）").font(.caption)
+                        Text("样式（长按自定义）").font(.caption)
                         Spacer(minLength: 4)
                         Toggle("共用布局", isOn: Binding(get: { store.sharedLayout }, set: { enabled in
                             enqueue { try await store.setSharedLayout(enabled); await adoptStyle() }
@@ -73,16 +81,25 @@ struct ReaderInterfacePanel: View {
                                     Text("文").font(.system(size: 20))
                                         .foregroundStyle((ARGBColor(hex: draft.theme == .night ? style.textColorNight : style.textColor) ?? ARGBColor(0xFF000000)).color)
                                         .frame(width: 48, height: 48)
-                                        .background((ARGBColor(hex: draft.theme == .night ? style.bgStrNight : style.bgStr) ?? ARGBColor(0xFFFFFFFF)).color, in: Circle())
+                                        .background { ReaderBackgroundView(settings: previewSettings(style)).clipShape(Circle()) }
                                         .overlay(Circle().strokeBorder(index == store.selected ? Color.accentColor : .clear, lineWidth: 2))
                                 }
                                 .accessibilityLabel(style.name.isEmpty ? "预设 \(index)" : style.name)
                                 .accessibilityIdentifier("reader.style.\(index)")
+                                .accessibilityValue(previewSettings(style).backgroundValue)
                                 .simultaneousGesture(LongPressGesture().onEnded { _ in
                                     enqueue { try await store.select(index); await adoptStyle(); customizing = true }
                                 })
                             }
+                            Button {
+                                enqueue(operation: "新建阅读样式") { try await store.createStyle(); await adoptStyle(); customizing = true }
+                            } label: {
+                                Image(systemName: "plus").frame(width: 48, height: 48).background(.thinMaterial, in: Circle())
+                            }.accessibilityLabel("新建样式").accessibilityIdentifier("reader.style.add")
                         }.padding(.horizontal, 6).padding(.vertical, 2)
+                    }
+                    Button("恢复预设布局") {
+                        enqueue(operation: "恢复预设布局") { try await store.restorePresetLayout(); await adoptStyle() }
                     }
                 }.padding(16)
             }
@@ -103,25 +120,85 @@ struct ReaderInterfacePanel: View {
                 defer { if access { url.stopAccessingSecurityScopedResource() } }
                 let data = try Data(contentsOf: url)
                 if importingImage {
-                    guard data.count <= 30 * 1024 * 1024, let image = UIImage(data: data), let jpeg = image.jpegData(compressionQuality: 0.9) else {
-                        throw CocoaError(.fileReadCorruptFile)
-                    }
-                    let folder = URL.applicationSupportDirectory.appendingPathComponent("Legado/bg", isDirectory: true)
-                    try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-                    let name = UUID().uuidString + ".jpg"
-                    try jpeg.write(to: folder.appendingPathComponent(name), options: .atomic)
-                    var updated = draft
-                    if draft.isEInk { updated.configuration.bgStrEInk = name; updated.configuration.bgTypeEInk = 2 }
-                    else if draft.theme == .night { updated.configuration.bgStrNight = name; updated.configuration.bgTypeNight = 2 }
-                    else { updated.configuration.bgStr = name; updated.configuration.bgType = 2 }
-                    draft = updated
-                    try await store.update(updated.configuration); render(updated)
+                    try await installBackground(data)
                 } else { try await store.importStyles(data); await adoptStyle() }
+            }
+        }
+        .onChange(of: selectedPhoto) { _, item in
+            guard let item else { return }
+            enqueue(operation: "导入相册背景") {
+                guard let data = try await item.loadTransferable(type: Data.self) else { throw CocoaError(.fileReadCorruptFile) }
+                try await installBackground(data)
             }
         }
         .fileExporter(isPresented: $exporting, document: document, contentType: .zip, defaultFilename: "readConfig") { result in
             if case .failure(let failure) = result { error = failure.presentation(operation: "导出阅读样式", sourceFile: "readConfig.zip") }
         }
+    }
+
+    private var backgroundColor: Binding<Color> {
+        Binding(get: { color(backgroundPath).wrappedValue }, set: { value in
+            mutate {
+                $0.configuration[keyPath: backgroundPath] = Self.hex(value)
+                $0.configuration[keyPath: backgroundTypePath] = 0
+            }
+        })
+    }
+
+    private func previewSettings(_ style: ReadBookConfig) -> ReaderSettings {
+        var settings = draft; settings.configuration = style; return settings
+    }
+
+    private var backgroundImages: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                HStack {
+                    PhotosPicker("从相册选择", selection: $selectedPhoto, matching: .images)
+                    Button("从文件选择") { importingImage = true; importing = true }
+                }.buttonStyle(.bordered)
+                Text("内置图库").font(.headline)
+                LazyVGrid(columns: [GridItem(.adaptive(minimum: 90))], spacing: 12) {
+                    ForEach(ReaderBackgroundResources.names, id: \.self) { name in
+                        Button {
+                            mutate {
+                                $0.configuration[keyPath: backgroundPath] = name
+                                $0.configuration[keyPath: backgroundTypePath] = 1
+                            }
+                        } label: {
+                            VStack {
+                                let preview = builtinSettings(name)
+                                ReaderBackgroundView(settings: preview).frame(height: 110).clipShape(RoundedRectangle(cornerRadius: 6))
+                                    .overlay(RoundedRectangle(cornerRadius: 6).stroke(draft.backgroundType == 1 && draft.backgroundValue == name ? Color.accentColor : .clear, lineWidth: 3))
+                                Text((name as NSString).deletingPathExtension).font(.caption).lineLimit(1)
+                            }
+                        }.accessibilityIdentifier("reader.background." + name)
+                    }
+                }
+            }.padding()
+        }.legadoNavigationTitle("背景图片")
+    }
+
+    private func builtinSettings(_ name: String) -> ReaderSettings {
+        var settings = draft
+        settings.configuration[keyPath: backgroundTypePath] = 1
+        settings.configuration[keyPath: backgroundPath] = name
+        settings.configuration.bgAlpha = 100
+        return settings
+    }
+
+    private func installBackground(_ data: Data) async throws {
+        guard data.count <= 30 * 1024 * 1024, let image = UIImage(data: data), let jpeg = image.jpegData(compressionQuality: 0.9) else {
+            throw CocoaError(.fileReadCorruptFile)
+        }
+        let folder = URL.applicationSupportDirectory.appendingPathComponent("Legado/bg", isDirectory: true)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let name = UUID().uuidString + ".jpg"
+        try jpeg.write(to: folder.appendingPathComponent(name), options: .atomic)
+        var updated = draft
+        updated.configuration[keyPath: backgroundPath] = name
+        updated.configuration[keyPath: backgroundTypePath] = 2
+        draft = updated
+        try await store.update(updated.configuration); render(updated)
     }
 
     private var margins: some View {
@@ -196,14 +273,9 @@ struct ReaderInterfacePanel: View {
         Form {
             TextField("样式名", text: config(\.name))
             ColorPicker("文字颜色", selection: color(textColorPath))
-            ColorPicker("背景颜色", selection: Binding(get: { color(backgroundPath).wrappedValue }, set: { value in
-                mutate { settings in
-                    settings.configuration[keyPath: backgroundPath] = Self.hex(value)
-                    settings.configuration[keyPath: backgroundTypePath] = 0
-                }
-            }))
+            ColorPicker("背景颜色", selection: backgroundColor)
             ColorPicker("强调颜色", selection: color(accentPath))
-            Button("选择背景图片") { importingImage = true; importing = true }
+            NavigationLink("背景图片") { backgroundImages }
             slider("背景透明度", value: number(\.bgAlpha), range: 0...100, step: 1)
             Button("导入样式") { importingImage = false; importing = true }
             Button("导出样式") { enqueue { document = ReaderStyleDocument(data: try store.exportSelected()); exporting = true } }

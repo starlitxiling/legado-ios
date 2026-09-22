@@ -71,12 +71,8 @@ struct ReaderBackgroundView: View {
     let settings: ReaderSettings
     @State private var image: UIImage?
     @State private var loadError: String?
-    private var value: String {
-        settings.isEInk ? settings.configuration.bgStrEInk : settings.theme == .night ? settings.configuration.bgStrNight : settings.configuration.bgStr
-    }
-    private var type: Int {
-        settings.isEInk ? settings.configuration.bgTypeEInk : settings.theme == .night ? settings.configuration.bgTypeNight : settings.configuration.bgType
-    }
+    private var value: String { settings.backgroundValue }
+    private var type: Int { settings.backgroundType }
     var body: some View {
         GeometryReader { geometry in
             ZStack {
@@ -85,6 +81,8 @@ struct ReaderBackgroundView: View {
                 else if let image {
                     Image(uiImage: image).resizable().scaledToFill().frame(width: geometry.size.width, height: geometry.size.height).clipped()
                         .opacity(Double(settings.configuration.bgAlpha) / 100)
+                        .accessibilityLabel("背景图片：" + value)
+                        .accessibilityIdentifier("reader.background.image")
                 }
                 if let loadError { Text(loadError).font(.caption).padding().frame(maxHeight: .infinity, alignment: .bottom) }
             }
@@ -92,16 +90,14 @@ struct ReaderBackgroundView: View {
             image = nil; loadError = nil
             guard type != 0 else { return }
             let name = (value as NSString).lastPathComponent
-            guard !name.isEmpty, name != ".", name != ".." else { loadError = "背景图片路径无效"; return }
             let root = URL.applicationSupportDirectory.appendingPathComponent("Legado/bg", isDirectory: true)
-            let url = root.appendingPathComponent(name)
-            guard url.resolvingSymlinksInPath().deletingLastPathComponent() == root.resolvingSymlinksInPath() else {
-                loadError = "背景图片路径无效"; return
-            }
             do {
+                guard let url = try settings.backgroundImageURL(directory: root) else { return }
                 let data = try await Task.detached { try Data(contentsOf: url) }.value
                 guard let loaded = UIImage(data: data) else { throw CocoaError(.fileReadCorruptFile) }
+                try Task.checkCancellation()
                 image = loaded
+            } catch is CancellationError {
             } catch { loadError = "背景图片无法读取：\(name)" }
         }
     }

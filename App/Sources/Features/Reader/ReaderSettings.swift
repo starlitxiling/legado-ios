@@ -86,6 +86,34 @@ struct ReaderSettings: Equatable {
         set { lineSpacingExtra = newValue * 10 }
     }
 
+    var backgroundValue: String {
+        isEInk ? configuration.bgStrEInk : theme == .night ? configuration.bgStrNight : configuration.bgStr
+    }
+
+    var backgroundType: Int {
+        isEInk ? configuration.bgTypeEInk : theme == .night ? configuration.bgTypeNight : configuration.bgType
+    }
+
+    func backgroundImageURL(directory: URL) throws -> URL? {
+        switch backgroundType {
+        case 0: return nil
+        case 1:
+            guard let url = ReaderBackgroundResources.url(named: backgroundValue) else {
+                throw CocoaError(.fileReadNoSuchFile, userInfo: [NSFilePathErrorKey: backgroundValue])
+            }
+            return url
+        case 2:
+            let name = (backgroundValue as NSString).lastPathComponent
+            guard !name.isEmpty, name != ".", name != ".." else { throw CocoaError(.fileReadInvalidFileName) }
+            let url = directory.appendingPathComponent(name)
+            guard url.resolvingSymlinksInPath().deletingLastPathComponent() == directory.resolvingSymlinksInPath() else {
+                throw CocoaError(.fileReadNoPermission)
+            }
+            return url
+        default: throw CocoaError(.fileReadUnsupportedScheme)
+        }
+    }
+
     private static func integer(_ value: Double) -> Int {
         guard value.isFinite else { return 0 }
         return Int(min(Double(Int32.max), max(Double(Int32.min), value)))
@@ -156,7 +184,7 @@ struct ReaderSettings: Equatable {
         value.titleBottomSpacing = clamp(titleBottomSpacing, 0...400, 0)
         value.autoReadSpeed = clamp(autoReadSpeed, 1...600, 10)
         value.pageAnim = (0...4).contains(pageAnim) ? pageAnim : 0
-        value.lineSpacingExtra = clamp(lineSpacingExtra, 0...50, 12)
+        value.lineSpacingExtra = clamp(lineSpacingExtra, -10...40, 12)
         value.paragraphSpacing = clamp(paragraphSpacing, 0...20, 2)
         value.letterSpacing = clamp(letterSpacing, -0.5...0.5, 0.1)
         value.paddingLeft = clamp(paddingLeft, 0...100, 16)
