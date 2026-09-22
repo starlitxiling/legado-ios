@@ -21,6 +21,10 @@ struct ReaderSettings: Equatable {
 
     init(configuration: ReadBookConfig = ReadBookConfig()) { self.configuration = configuration }
 
+    var darkStatusIcons: Bool {
+        isEInk ? configuration.darkStatusIconEInk : theme == .night ? configuration.darkStatusIconNight : configuration.darkStatusIcon
+    }
+
     var textSize: Double {
         get { Double(configuration.textSize) }
         set { configuration.textSize = Self.integer(newValue) }

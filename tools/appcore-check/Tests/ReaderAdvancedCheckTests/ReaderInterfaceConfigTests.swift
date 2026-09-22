@@ -3,6 +3,39 @@ import LegadoCore
 @testable import ReaderCheck
 
 final class ReaderInterfaceConfigTests: XCTestCase {
+    func testStatusIconChoiceUsesDayNightAndEInkSettings() {
+        var settings = ReaderSettings()
+        settings.configuration.darkStatusIcon = false
+        settings.configuration.darkStatusIconNight = true
+        settings.configuration.darkStatusIconEInk = false
+        XCTAssertFalse(settings.darkStatusIcons)
+        settings.theme = .night
+        XCTAssertTrue(settings.darkStatusIcons)
+        settings.isEInk = true
+        XCTAssertFalse(settings.darkStatusIcons)
+    }
+
+    @MainActor
+    func testAllSixTemplatesSurviveStylePersistence() async throws {
+        let database = try AppDatabase.inMemory()
+        let suite = "ReaderTemplates." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = ReaderStyleStore(database: database, defaults: defaults)
+        try await store.load()
+        var config = store.current
+        let paths: [WritableKeyPath<ReadBookConfig, String?>] = [\.tipHeaderLeftTemplate, \.tipHeaderMiddleTemplate,
+            \.tipHeaderRightTemplate, \.tipFooterLeftTemplate, \.tipFooterMiddleTemplate, \.tipFooterRightTemplate]
+        for (index, path) in paths.enumerated() { config[keyPath: path] = "Slot \(index): {页码}/{总页数}" }
+        try await store.update(config)
+        let restored = ReaderStyleStore(database: database, defaults: defaults)
+        try await restored.load()
+        for (index, path) in paths.enumerated() {
+            XCTAssertEqual(ReaderInfo.parts(code: 0, template: restored.current[keyPath: path],
+                values: ReaderInfoValues(page: "3", totalPages: "9")), [.text("Slot \(index): 3/9")])
+        }
+    }
+
     @MainActor
     func testDamagedSavedStylesFallBackWithoutBlockingReading() async throws {
         let suite = "ReaderStyleFallback." + UUID().uuidString

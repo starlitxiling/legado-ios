@@ -14,6 +14,7 @@ struct ReaderView: View {
     @State private var showsReadAloud = false
     @State private var showsControls = false
     @State private var showsSettings = false
+    @State private var statusStyleActive = false
     @State private var behavior = ReaderBehaviorConfiguration()
     @State private var device = ReaderDeviceController()
     @State private var showsBehavior = false
@@ -216,7 +217,10 @@ struct ReaderView: View {
         .sheet(item: $actionSheet) { destination in actionPanel(destination.key) }
         .onChange(of: behavior) { _, value in device.update(value); Task { await model.applyBehavior(value) } }
         .foregroundStyle(model.settings.theme == .night ? Color(white: 0.68) : Color.primary)
-        .preferredColorScheme(model.settings.theme == .night ? .dark : .light)
+        .environment(\.colorScheme, model.settings.theme == .night ? .dark : .light)
+        .preference(key: ReaderStatusIconPreference.self, value: statusStyleActive ? model.settings.darkStatusIcons : nil)
+        .onAppear { statusStyleActive = true }
+        .onDisappear { statusStyleActive = false }
         .toolbar(.hidden, for: .navigationBar, .tabBar)
         .statusBarHidden(model.settings.hideStatusBar && !showsControls)
         .sheet(isPresented: $showsSettings) {

@@ -54,6 +54,30 @@ final class ReaderContinuousUITests: XCTestCase {
     }
 
     @MainActor
+    func testTemplateEditorAndStatusIconSetting() {
+        let app = launch(mode: 0)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        app.buttons["界面"].tap(); app.buttons["信息"].tap()
+        XCTAssertTrue(app.switches["深色状态栏图标"].waitForExistence(timeout: 5))
+        let toggle = app.switches["深色状态栏图标"]
+        if toggle.value as? String == "1" { toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap() }
+        XCTAssertEqual(toggle.value as? String, "0")
+        app.buttons["reader.template.页脚左"].tap()
+        let editor = app.textViews["reader.template.editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        app.buttons["清空模板"].tap(); editor.tap()
+        editor.typeText("Custom {页码}/{总页数}")
+        app.buttons["保存模板"].tap()
+        app.buttons["reader.template.页脚左"].tap()
+        XCTAssertEqual(editor.value as? String, "Custom {页码}/{总页数}")
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["完成"].tap(); app.buttons["收起"].tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", "Custom 1/")).firstMatch.waitForExistence(timeout: 5))
+        let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.lifetime = .keepAlways; add(screenshot)
+    }
+
+    @MainActor
     private func launch(mode: Int) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()

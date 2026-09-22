@@ -10,6 +10,7 @@ struct EInkModifier: ViewModifier {
 }
 
 @MainActor struct ThemeEnvironmentModifier: ViewModifier {
+    @State private var readerDarkIcons: Bool?
     let store: ThemeStore
     @Environment(\.colorScheme) private var systemScheme
 
@@ -22,7 +23,8 @@ struct EInkModifier: ViewModifier {
             .tint(colors.accent)
             .foregroundStyle(colors.textPrimary)
             .background(colors.background.ignoresSafeArea())
-            .preferredColorScheme(store.mode == .system ? nil : palette.isNight ? .dark : .light)
+            .preferredColorScheme(readerDarkIcons.map { $0 ? ColorScheme.light : .dark } ?? (store.mode == .system ? nil : palette.isNight ? .dark : .light))
+            .onPreferenceChange(ReaderStatusIconPreference.self) { readerDarkIcons = $0 }
             .saturation(palette.isEInk ? 0 : 1)
             .modifier(EInkModifier(enabled: palette.isEInk))
             .onReceive(NotificationCenter.default.publisher(for: BackupViewModel.restoredNotification)) { _ in store.preferences.reload() }
@@ -51,5 +53,12 @@ extension View {
     }
     func legadoNavigationTitle(_ title: Text) -> some View {
         navigationTitle(title).modifier(ThemeNavigationModifier())
+    }
+}
+
+struct ReaderStatusIconPreference: PreferenceKey {
+    static var defaultValue: Bool? { nil }
+    static func reduce(value: inout Bool?, nextValue: () -> Bool?) {
+        if let next = nextValue() { value = next }
     }
 }

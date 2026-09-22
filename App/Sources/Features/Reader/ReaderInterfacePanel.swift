@@ -227,18 +227,21 @@ struct ReaderInterfacePanel: View {
 
     private var information: some View {
         Form {
+            Section("状态栏") {
+                Toggle("深色状态栏图标", isOn: config(draft.isEInk ? \.darkStatusIconEInk : draft.theme == .night ? \.darkStatusIconNight : \.darkStatusIcon))
+            }
             Section("页眉") {
-                tipPicker("左", \.tipHeaderLeft, template: \.tipHeaderLeftTemplate)
-                tipPicker("中", \.tipHeaderMiddle, template: \.tipHeaderMiddleTemplate)
-                tipPicker("右", \.tipHeaderRight, template: \.tipHeaderRightTemplate)
+                tipPicker("左", \.tipHeaderLeft, template: \.tipHeaderLeftTemplate, name: "页眉左")
+                tipPicker("中", \.tipHeaderMiddle, template: \.tipHeaderMiddleTemplate, name: "页眉中")
+                tipPicker("右", \.tipHeaderRight, template: \.tipHeaderRightTemplate, name: "页眉右")
                 Picker("显示", selection: config(\.headerMode)) {
                     Text("隐藏状态栏时显示").tag(0); Text("显示").tag(1); Text("隐藏").tag(2)
                 }
             }
             Section("页脚") {
-                tipPicker("左", \.tipFooterLeft, template: \.tipFooterLeftTemplate)
-                tipPicker("中", \.tipFooterMiddle, template: \.tipFooterMiddleTemplate)
-                tipPicker("右", \.tipFooterRight, template: \.tipFooterRightTemplate)
+                tipPicker("左", \.tipFooterLeft, template: \.tipFooterLeftTemplate, name: "页脚左")
+                tipPicker("中", \.tipFooterMiddle, template: \.tipFooterMiddleTemplate, name: "页脚中")
+                tipPicker("右", \.tipFooterRight, template: \.tipFooterRightTemplate, name: "页脚右")
                 Picker("显示", selection: config(\.footerMode)) { Text("显示").tag(0); Text("隐藏").tag(1) }
             }
             Section("信息文字") {
@@ -316,12 +319,16 @@ struct ReaderInterfacePanel: View {
     }
 
     private func tipPicker(_ title: String, _ path: WritableKeyPath<ReadBookConfig, Int>,
-                           template: WritableKeyPath<ReadBookConfig, String?>) -> some View {
-        Picker(title, selection: Binding(get: { draft.configuration[keyPath: path] }, set: { value in
-            mutate { $0.configuration[keyPath: path] = value; $0.configuration[keyPath: template] = nil }
-        })) {
-            ForEach(ReaderInfo.choices, id: \.0) { choice in Text(choice.1).tag(choice.0) }
-        }
+                           template: WritableKeyPath<ReadBookConfig, String?>, name: String) -> some View {
+        let text = Binding(get: { draft.configuration[keyPath: template] ?? ReaderInfo.templates[draft.configuration[keyPath: path]] ?? "" },
+            set: { value in mutate { $0.configuration[keyPath: template] = value } })
+        return NavigationLink {
+            ReaderTemplateEditor(name: name, initial: text.wrappedValue, preset: draft.configuration[keyPath: path]) { templateText, code in
+                mutate { $0.configuration[keyPath: template] = templateText; $0.configuration[keyPath: path] = code }
+            }
+        } label: {
+            HStack { Text(title); Spacer(); Text(text.wrappedValue.isEmpty ? "无" : text.wrappedValue).foregroundStyle(.secondary).lineLimit(1) }
+        }.accessibilityIdentifier("reader.template." + name)
     }
 
     private func slider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, step: Double, divisor: Double = 1) -> some View {
@@ -394,4 +401,39 @@ struct ReaderStyleDocument: FileDocument {
     init(data: Data) { self.data = data }
     init(configuration: ReadConfiguration) throws { data = configuration.file.regularFileContents ?? Data() }
     func fileWrapper(configuration: WriteConfiguration) throws -> FileWrapper { FileWrapper(regularFileWithContents: data) }
+}
+
+private struct ReaderTemplateEditor: View {
+    let name: String
+    let save: (String, Int) -> Void
+    @State private var text: String
+    @State private var preset: Int
+    @Environment(\.dismiss) private var dismiss
+
+    init(name: String, initial: String, preset: Int, save: @escaping (String, Int) -> Void) {
+        self.name = name; self.save = save; _text = State(initialValue: initial); _preset = State(initialValue: preset)
+    }
+
+    var body: some View {
+        Form {
+            Section("自定义模板") {
+                TextEditor(text: $text).frame(minHeight: 110).autocorrectionDisabled().textInputAutocapitalization(.never)
+                    .accessibilityIdentifier("reader.template.editor")
+                Button("清空模板") { text = "" }
+                Text("支持下方占位符；清空模板可隐藏此位置。").font(.caption).foregroundStyle(.secondary)
+            }
+            Section("追加占位符") {
+                ForEach(["{书名}", "{章节}", "{时间}", "{电量}", "{电量图标}", "{电量图标数值}", "{页码}", "{总页数}", "{阅读进度}", "{章节序号}", "{章节总数}"], id: \.self) { token in
+                    Button(token) { text += token }
+                }
+            }
+            Section("预设") {
+                Picker("选择预设", selection: $preset) {
+                    ForEach(ReaderInfo.choices, id: \.0) { Text($0.1).tag($0.0) }
+                }.onChange(of: preset) { _, value in text = ReaderInfo.templates[value] ?? "" }
+                Button("恢复所选预设") { text = ReaderInfo.templates[preset] ?? "" }
+            }
+        }.legadoNavigationTitle(name + "模板")
+            .toolbar { Button("保存模板") { save(text, preset); dismiss() } }
+    }
 }
