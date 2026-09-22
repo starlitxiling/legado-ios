@@ -2,6 +2,25 @@ import XCTest
 
 final class ReaderInterfaceUITests: XCTestCase {
     @MainActor
+    func testMissingSourceStillAllowsMenusAndImmediateReturn() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-detail-gallery", "-missing-reader-source", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO", "-autoChangeSource", "YES", "-doubleHorizontalPage", "0"]
+        app.launch()
+        XCTAssertTrue(app.buttons["detail.read"].waitForExistence(timeout: 10))
+        app.buttons["detail.read"].tap()
+        XCTAssertTrue(app.otherElements["reader.body"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["书源管理"].exists)
+        XCTAssertTrue(app.buttons["reader.error.dismiss"].exists)
+        app.buttons["reader.error.dismiss"].tap()
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        XCTAssertTrue(app.buttons["界面"].waitForExistence(timeout: 5))
+        snapshot(app, "a2-missing-source-menu")
+        app.buttons["返回"].tap()
+        XCTAssertTrue(app.buttons["detail.read"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testDamagedStylesDoNotBlockReadingOrStylePanel() {
         continueAfterFailure = false
         let app = XCUIApplication()

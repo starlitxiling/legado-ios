@@ -53,7 +53,7 @@ final class EpubParserTests: XCTestCase {
         let result = try await web.content(book: parsed.book, chapter: chapters[0], includeTitle: false)
         XCTAssertTrue(result.rawContent.contains("第一段。"))
         var remote = parsed.book
-        remote.origin = "https://example.invalid"
+        remote.origin = "https://example.invalid"; remote.type = 8
         XCTAssertFalse(LocalBook.isLocal(remote))
     }
 }

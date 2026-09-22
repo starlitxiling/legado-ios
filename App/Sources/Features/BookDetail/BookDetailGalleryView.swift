@@ -11,7 +11,13 @@ struct BookDetailGalleryView: View {
     var body: some View {
         Group {
             if let container, let book {
-                NavigationStack { BookDetailView(book: book, container: container) }
+                NavigationStack {
+                    if ProcessInfo.processInfo.arguments.contains("-missing-reader-source") {
+                        NavigationLink("打开无源书") {
+                            ReaderView(book: book, database: container.database, client: container.httpClient)
+                        }.accessibilityIdentifier("detail.read").navigationTitle("缺源测试")
+                    } else { BookDetailView(book: book, container: container) }
+                }
                     .environment(container).modifier(ThemeEnvironmentModifier(store: theme))
             } else if let error { Text(error) }
             else { ProgressView() }
@@ -26,7 +32,7 @@ struct BookDetailGalleryView: View {
                         }
                     }
                 }
-                for index in 1...2 {
+                for index in 1...2 where !ProcessInfo.processInfo.arguments.contains("-missing-reader-source") {
                     var source = BookSourceRow()
                     source.bookSourceUrl = "https://detail\(index).test"; source.bookSourceName = "示例书源 \(index)"
                     source.mainJs = """

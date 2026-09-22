@@ -9,7 +9,29 @@ struct ReaderRecoveredSource {
 
 enum ReaderSourceRecovery {
     static func find(book: Book, chapterIndex: Int, chapterTitle: String, sources: [BookSource],
-                     client: any HttpClient, configuration: WebBookConfiguration) async throws -> ReaderRecoveredSource {
+                     client: any HttpClient, configuration: WebBookConfiguration,
+                     waitForTimeout: @escaping @Sendable () async throws -> Void = {
+                         try await Task.sleep(for: .seconds(60))
+                     }) async throws -> ReaderRecoveredSource {
+        try Task.checkCancellation()
+        guard !sources.isEmpty else { throw ReaderSourceRecoveryError.noCandidates }
+        let race = ReaderRecoveryRace()
+        return try await withTaskCancellationHandler {
+            try await withCheckedThrowingContinuation { continuation in
+                Task {
+                    await race.start(continuation: continuation, operation: {
+                        try await search(book: book, chapterIndex: chapterIndex, chapterTitle: chapterTitle,
+                                         sources: sources, client: client, configuration: configuration)
+                    }, waitForTimeout: waitForTimeout)
+                }
+            }
+        } onCancel: {
+            Task { await race.finish(.failure(CancellationError())) }
+        }
+    }
+
+    private static func search(book: Book, chapterIndex: Int, chapterTitle: String, sources: [BookSource],
+                               client: any HttpClient, configuration: WebBookConfiguration) async throws -> ReaderRecoveredSource {
         var failures: [String] = []
         let result = await withTaskGroup(of: (ReaderRecoveredSource?, String?).self, returning: ReaderRecoveredSource?.self) { group in
             var remaining = sources.makeIterator()
@@ -50,5 +72,47 @@ enum ReaderSourceRecovery {
                 "没有可用的替代书源。" + (failures.isEmpty ? "" : "\n" + failures.prefix(5).joined(separator: "\n"))])
         }
         return result
+    }
+}
+
+
+enum ReaderSourceRecoveryError: LocalizedError {
+    case noCandidates, timedOut
+    var errorDescription: String? {
+        switch self {
+        case .noCandidates: return "没有可用的替代书源，请先导入或启用书源。"
+        case .timedOut: return "自动换源已超过 60 秒，已停止查找。请手动换源或稍后重试。"
+        }
+    }
+}
+
+private actor ReaderRecoveryRace {
+    private var continuation: CheckedContinuation<ReaderRecoveredSource, Error>?
+    private var result: Result<ReaderRecoveredSource, Error>?
+    private var tasks: [Task<Void, Never>] = []
+
+    func start(continuation: CheckedContinuation<ReaderRecoveredSource, Error>,
+               operation: @escaping @Sendable () async throws -> ReaderRecoveredSource,
+               waitForTimeout: @escaping @Sendable () async throws -> Void) {
+        if let result { continuation.resume(with: result); return }
+        self.continuation = continuation
+        tasks = [Task.detached {
+            do { await self.finish(.success(try await operation())) }
+            catch { await self.finish(.failure(error)) }
+        }, Task.detached {
+            do {
+                try await waitForTimeout()
+                await self.finish(.failure(ReaderSourceRecoveryError.timedOut))
+            } catch { await self.finish(.failure(error)) }
+        }]
+    }
+
+    func finish(_ result: Result<ReaderRecoveredSource, Error>) {
+        guard self.result == nil else { return }
+        self.result = result
+        continuation?.resume(with: result)
+        continuation = nil
+        tasks.forEach { $0.cancel() }
+        tasks = []
     }
 }

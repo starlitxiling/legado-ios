@@ -71,8 +71,11 @@ final class ReaderViewModel {
     private var pendingRulesRefresh = false
     private let preDownloadCount: @Sendable () -> Int
     var autoChangeSource: () -> Bool = { false }
-    private var recoveringSource = false
-    private var recoveryTask: Task<ReaderRecoveredSource, Error>?
+    private(set) var recoveringMessage: String?
+    private(set) var isPlaceholder = false
+    @ObservationIgnored private(set) var sourceRecoveryTask: Task<Void, Never>?
+    private var recoveryGeneration = UUID()
+    var acceptsInput: Bool { !isLoading && book != nil }
     private let sourceConcurrency: Int
     var manualReplace: () -> Bool = { false }
     var replaceEnableDefault: () -> Bool = { true }
@@ -118,7 +121,7 @@ final class ReaderViewModel {
     private func beginRequest() -> UUID {
         previewGeneration = UUID(); nextChapterPagination = nil
         generation = UUID(); layoutGeneration = UUID()
-        downloadTask?.cancel(); prefetchTask?.cancel(); layoutTask?.cancel(); recoveryTask?.cancel()
+        downloadTask?.cancel(); prefetchTask?.cancel(); layoutTask?.cancel(); cancelSourceRecovery()
         chapterUpdateTask?.cancel(); chapterUpdateTask = nil
         return generation
     }
@@ -130,7 +133,7 @@ final class ReaderViewModel {
         let token = beginRequest()
         loadDestination = ReaderDestination(bookURL: bookURL, chapterIndex: requestedIndex)
         failedRequest = nil
-        isLoading = true; errorMessage = nil
+        isLoading = true; errorMessage = nil; isPlaceholder = false
         pagination = nil; layoutInput = nil; book = nil; chapters = []; bookmarks = []
         highlights = []; cachedChapterIndices = []
         do {
@@ -161,8 +164,7 @@ final class ReaderViewModel {
                 entity = try ReaderEntityBridge.decode(Book.self, row: book)
                 chapters = restored
             }
-            if chapters.isEmpty, !LocalBook.isLocal(entity) {
-                guard let source else { throw ReaderError.missingSource }
+            if chapters.isEmpty, !LocalBook.isLocal(entity), let source {
                 let parsed = try await WebBook(source: source, client: client).chapterList(book: &entity)
                 let restored = try parsed.map { try ReaderEntityBridge.decode(BookChapterRow.self, row: $0) }
                 try Task.checkCancellation()
@@ -176,6 +178,13 @@ final class ReaderViewModel {
                 entity = try ReaderEntityBridge.decode(Book.self, row: refreshed)
                 chapters = restored
             }
+            if chapters.isEmpty, source == nil, !LocalBook.isLocal(entity) {
+                var placeholder = BookChapterRow()
+                placeholder.bookUrl = bookURL; placeholder.url = bookURL + "#missing-source"
+                placeholder.index = requestedIndex ?? book.durChapterIndex
+                placeholder.title = book.durChapterTitle ?? "没有书源"
+                chapters = [placeholder]
+            }
             guard !chapters.isEmpty else { throw ReaderError.emptyChapters }
             let bookmarks = try await BookmarkRepository(database: database).list(bookName: book.name, bookAuthor: book.author)
             guard generation == token else { return }
@@ -187,40 +196,70 @@ final class ReaderViewModel {
         } catch {
             guard generation == token, !Task.isCancelled else { return }
             errorMessage = error.localizedDescription; isLoading = false
-            if !(error is CancellationError) { await recoverSource(bookURL: bookURL, index: requestedIndex, token: token) }
+            if !error.isCancellation { startSourceRecovery(bookURL: bookURL, index: requestedIndex, token: token) }
         }
     }
 
-    private func recoverSource(bookURL: String, index: Int?, token: UUID) async {
-        guard autoChangeSource(), !recoveringSource, token == generation else { return }
-        recoveringSource = true
-        defer { recoveringSource = false }
+    func dismissError() { errorMessage = nil }
+
+    func cancelSourceRecovery() {
+        recoveryGeneration = UUID()
+        sourceRecoveryTask?.cancel(); sourceRecoveryTask = nil; recoveringMessage = nil
+    }
+
+    private func startSourceRecovery(bookURL: String, index: Int?, token: UUID) {
+        guard autoChangeSource(), sourceRecoveryTask == nil, token == generation else { return }
+        let recovery = UUID(); recoveryGeneration = recovery
+        recoveringMessage = "正在自动换源…"
+        sourceRecoveryTask = Task { [weak self] in
+            guard let self else { return }
+            defer {
+                if recoveryGeneration == recovery { recoveringMessage = nil; sourceRecoveryTask = nil }
+            }
+            do {
+                guard let row = try await BookshelfRepository(database: database).get(bookUrl: bookURL) else { return }
+                let previous = try ReaderEntityBridge.decode(Book.self, row: row)
+                guard !LocalBook.isLocal(previous) else { return }
+                let rows = try await BookSourceRepository(database: database).list(enabled: true)
+                let sources = try rows.filter { $0.bookSourceType == 0 && $0.bookSourceUrl != row.origin }
+                    .map { try ReaderEntityBridge.decode(BookSource.self, row: $0) }
+                try Task.checkCancellation()
+                guard token == generation else { return }
+                let configuration = WebBookConfiguration(cacheDirectory: cacheDirectory, threadCount: sourceConcurrency, adaptSpecialStyle: adaptSpecialStyle)
+                let requested = index ?? row.durChapterIndex
+                let title = chapters.first { $0.index == requested }?.title ?? row.durChapterTitle ?? ""
+                let candidate = try await ReaderSourceRecovery.find(book: previous, chapterIndex: requested,
+                    chapterTitle: title, sources: sources, client: client, configuration: configuration)
+                try Task.checkCancellation()
+                guard token == generation else { return }
+                let chapterRows = try candidate.chapters.map { try DiscoveryStorage.row($0, defaults: BookChapterRow()) }
+                let saved = try await SourceChangeTransaction.save(book: candidate.book, previous: previous, chapters: chapterRows, database: database)
+                try Task.checkCancellation()
+                guard token == generation, let url = saved.bookUrl else { return }
+                sourceRecoveryTask = nil; recoveringMessage = nil
+                await load(bookURL: url, chapterIndex: candidate.index)
+            } catch {
+                guard token == generation, !Task.isCancelled, !error.isCancellation else { return }
+                errorMessage = (errorMessage.map { $0 + "\n" } ?? "") + error.localizedDescription
+            }
+        }
+    }
+
+    private func showMissingSource(_ request: ChapterRequest, token: UUID) async {
+        guard let entity, let row = chapters.first(where: { $0.index == request.index }) else { return }
         do {
-            guard let row = try await BookshelfRepository(database: database).get(bookUrl: bookURL) else { return }
-            let previous = try ReaderEntityBridge.decode(Book.self, row: row)
-            guard !LocalBook.isLocal(previous), previous.isOnLineTxt else { return }
-            let rows = try await BookSourceRepository(database: database).list(enabled: true)
-            let sources = try rows.filter { $0.bookSourceType == 0 && $0.bookSourceUrl != row.origin }
-                .map { try ReaderEntityBridge.decode(BookSource.self, row: $0) }
-            guard token == generation, !Task.isCancelled else { return }
-            isLoading = true
-            let configuration = WebBookConfiguration(cacheDirectory: cacheDirectory, threadCount: sourceConcurrency, adaptSpecialStyle: adaptSpecialStyle)
-            let client = client
-            let requested = index ?? row.durChapterIndex
-            let title = chapters.first { $0.index == requested }?.title ?? row.durChapterTitle ?? ""
-            let task = Task { try await ReaderSourceRecovery.find(book: previous, chapterIndex: requested, chapterTitle: title,
-                sources: sources, client: client, configuration: configuration) }
-            recoveryTask = task
-            let candidate = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
-            guard token == generation, !Task.isCancelled else { return }
-            let chapterRows = try candidate.chapters.map { try DiscoveryStorage.row($0, defaults: BookChapterRow()) }
-            let saved = try await SourceChangeTransaction.save(book: candidate.book, previous: previous, chapters: chapterRows, database: database)
-            guard token == generation, !Task.isCancelled, let url = saved.bookUrl else { return }
-            await load(bookURL: url, chapterIndex: candidate.index)
+            let chapter = try ReaderEntityBridge.decode(BookChapter.self, row: row)
+            let input = ReaderLayoutInput(book: entity, chapter: chapter,
+                rawContent: "加载正文失败\n没有书源", rules: [], sourceImageStyle: nil,
+                replaceEnableDefault: false)
+            let layoutToken = UUID(); layoutGeneration = layoutToken
+            layoutInput = input; chapterIndex = request.index; characterOffset = 0; isPlaceholder = true
+            let result = try await render(input: input, debounce: false)
+            guard token == generation, layoutToken == layoutGeneration, !Task.isCancelled else { return }
+            chapterTitle = result.title; pagination = result.pagination; pageIndex = 0
         } catch {
-            guard token == generation, !Task.isCancelled else { return }
-            errorMessage = (errorMessage.map { $0 + "\n" } ?? "") + error.localizedDescription
-            isLoading = false
+            guard token == generation, !error.isCancellation else { return }
+            AppLogStore.shared.append("Missing-source placeholder: \(String(reflecting: error))")
         }
     }
 
@@ -228,7 +267,8 @@ final class ReaderViewModel {
         guard let entity else { return }
         isLoading = true; errorMessage = nil; failedRequest = request
         do {
-            let latest = try await ChapterRepository(database: database).list(bookUrl: entity.bookUrl ?? "")
+            let stored = try await ChapterRepository(database: database).list(bookUrl: entity.bookUrl ?? "")
+            let latest = stored.isEmpty && source == nil && !LocalBook.isLocal(entity) ? chapters : stored
             guard let position = latest.firstIndex(where: { $0.index == request.index }) else { throw ReaderError.emptyChapters }
             guard token == generation else { return }
             chapters = latest
@@ -261,7 +301,7 @@ final class ReaderViewModel {
                     pageIndex = result.pagination.pageIndex(at: request.offset)
                     characterOffset = request.offset == Int.max ? result.pagination.firstCharacterOffset(on: pageIndex) :
                         max(0, min(request.offset, max(0, result.pagination.text.length - 1)))
-                    failedRequest = nil; isLoading = false
+                    failedRequest = nil; isLoading = false; isPlaceholder = false
                     await saveProgress()
                     guard token == generation else { return }
                     if pendingRulesRefresh {
@@ -276,8 +316,9 @@ final class ReaderViewModel {
         } catch {
             guard token == generation, !Task.isCancelled else { return }
             errorMessage = error.localizedDescription; isLoading = false
-            if !(error is CancellationError), (error as? ReaderError) != .chapterLocked {
-                await recoverSource(bookURL: entity.bookUrl ?? "", index: request.index, token: token)
+            if (error as? ReaderError) == .missingSource { await showMissingSource(request, token: token) }
+            if !error.isCancellation, (error as? ReaderError) != .chapterLocked {
+                startSourceRecovery(bookURL: entity.bookUrl ?? "", index: request.index, token: token)
             }
         }
     }
@@ -376,15 +417,15 @@ final class ReaderViewModel {
         layoutGeneration = layoutToken; layoutTask?.cancel()
         guard !isLoading, var input = layoutInput else { return }
         do {
-            input.rules = try await ReplaceRuleRepository(database: database).list()
-            input.highlightRules = try await HighlightRuleRepository(database: database).all()
+            input.rules = isPlaceholder ? [] : try await ReplaceRuleRepository(database: database).list()
+            input.highlightRules = isPlaceholder ? [] : try await HighlightRuleRepository(database: database).all()
             guard token == generation, layoutToken == layoutGeneration else { return }
             if let entity { input.book = entity }
             input.sourceImageStyle = source?.ruleContent?.imageStyle
             input.adaptSpecialStyle = adaptSpecialStyle
             input.chineseConverterType = chineseConverterType()
             input.manualReplace = manualReplace()
-            input.replaceEnableDefault = replaceEnableDefault()
+            input.replaceEnableDefault = !isPlaceholder && replaceEnableDefault()
             layoutInput = input
             let result = try await render(input: input, debounce: settings != nil)
             guard token == generation, layoutToken == layoutGeneration else { return }
@@ -401,7 +442,7 @@ final class ReaderViewModel {
     }
 
     func saveProgress() async {
-        guard let book, pagination != nil else { return }
+        guard let book, pagination != nil, !isPlaceholder else { return }
         let index = chapterIndex, offset = characterOffset, title = chapterTitle, time = now()
         let previous = saveTask
         let repository = BookshelfRepository(database: database)
@@ -421,6 +462,7 @@ final class ReaderViewModel {
         prefetchTask?.cancel(); prefetchErrorMessage = nil
         let previewToken = UUID(); previewGeneration = previewToken; nextChapterPagination = nil
         let count = min(100, max(0, preDownloadCount()))
+        guard !isPlaceholder else { return }
         if count > 0 { scheduleChapterUpdate() }
         guard count > 0, let entity, chapterPosition + 1 < availableChapterCount else { return }
         let position = chapterPosition + 1

@@ -131,7 +131,7 @@ final class UrlPipelineTests: XCTestCase {
         let url = try WebDavClient.remoteURL(path)
         await replay.enqueue(url: url, response: .init(status: 200, body: Data("book bytes".utf8), finalURL: url))
         let client = try await WebDavClient.fromPath(path, servers: servers, httpClient: replay)
-        var book = BookRow(); book.bookUrl = "portable-book-id"; book.origin = "webDav::" + path; book.originName = "book.txt"
+        var book = BookRow(); book.bookUrl = "portable-book-id"; book.origin = "webDav::" + path; book.originName = "book.txt"; book.type = 264
         let restored = try await WebDavLocalBookRestore(client: client, destination: root).restore(book, enabled: false)
         XCTAssertEqual(restored.bookUrl, book.bookUrl)
         let entity = try JSONDecoder().decode(Book.self, from: JSONEncoder().encode(restored))

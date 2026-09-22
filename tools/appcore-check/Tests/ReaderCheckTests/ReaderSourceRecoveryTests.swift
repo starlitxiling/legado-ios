@@ -4,6 +4,89 @@ import LegadoCore
 
 @MainActor
 final class ReaderSourceRecoveryTests: XCTestCase {
+    func testRecoveryDeadlineReturnsEvenWhenClientIgnoresCancellation() async throws {
+        let client = RecoveryRequestGate()
+        var source = BookSource(); source.bookSourceUrl = "https://slow.test"
+        source.searchUrl = "https://slow.test/search"
+        var book = Book(); book.name = "Timeout"
+        let finished = expectation(description: "Recovery deadline returns")
+        let task = Task {
+            defer { finished.fulfill() }
+            do {
+                _ = try await ReaderSourceRecovery.find(book: book, chapterIndex: 0, chapterTitle: "",
+                    sources: [source], client: client, configuration: .init(),
+                    waitForTimeout: { await client.waitUntilRequested() })
+                XCTFail("Expected deadline failure")
+            } catch {
+                guard case ReaderSourceRecoveryError.timedOut = error else {
+                    XCTFail("Unexpected error: \(error)"); return
+                }
+            }
+        }
+        await fulfillment(of: [finished], timeout: 2)
+        await client.release()
+        await task.value
+    }
+
+    func testNoCandidatesFailsWithoutStartingDeadlineOrNetwork() async throws {
+        do {
+            _ = try await ReaderSourceRecovery.find(book: Book(), chapterIndex: 0, chapterTitle: "", sources: [],
+                client: ReplayHttpClient(), configuration: .init(), waitForTimeout: { XCTFail("No timer needed") })
+            XCTFail("Expected no candidates")
+        } catch {
+            guard case ReaderSourceRecoveryError.noCandidates = error else { XCTFail("Unexpected error: \(error)"); return }
+        }
+    }
+
+    func testSlowRecoveryNeverBlocksReaderAndCloseCancelsIt() async throws {
+        let database = try AppDatabase.inMemory()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var row = BookRow(); row.bookUrl = "https://missing.test/book"; row.origin = "https://missing.test"
+        row.name = "Missing"; row.type = 0
+        try await BookshelfRepository(database: database).insert(row)
+        var source = BookSourceRow(); source.bookSourceUrl = "https://slow.test"; source.searchUrl = "https://slow.test/search"
+        try await BookSourceRepository(database: database).insert(source)
+        let client = RecoveryRequestGate()
+        let model = ReaderViewModel(database: database, client: client, cacheDirectory: root, preDownloadCount: { 0 })
+        model.autoChangeSource = { true }
+        await model.load(bookURL: row.bookUrl)
+        XCTAssertTrue(model.acceptsInput)
+        XCTAssertNotNil(model.pagination)
+        let recovery = model.sourceRecoveryTask
+        await client.waitUntilRequested()
+        XCTAssertFalse(model.isLoading)
+        XCTAssertNotNil(model.recoveringMessage)
+        await model.close()
+        XCTAssertNil(model.recoveringMessage)
+        await client.release()
+        await recovery?.value
+        XCTAssertEqual(model.book?.origin, row.origin)
+        let saved = try await BookshelfRepository(database: database).get(bookUrl: row.bookUrl)
+        XCTAssertNotNil(saved)
+    }
+
+    func testMissingSourceShowsPlaceholderWithoutWaitingForRecovery() async throws {
+        let database = try AppDatabase.inMemory()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var row = BookRow(); row.bookUrl = "https://missing.test/book"; row.origin = "https://missing.test"
+        row.name = "Missing"; row.durChapterPos = 37
+        try await BookshelfRepository(database: database).insert(row)
+        let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: root, preDownloadCount: { 0 })
+        await model.load(bookURL: row.bookUrl)
+        XCTAssertFalse(model.isLoading)
+        XCTAssertTrue(model.acceptsInput)
+        XCTAssertEqual(model.book?.bookUrl, row.bookUrl)
+        XCTAssertTrue(model.pagination?.text.string.contains("没有书源") == true)
+        await model.reflow(size: CGSize(width: 300, height: 500))
+        XCTAssertTrue(model.pagination?.text.string.contains("没有书源") == true)
+        await model.saveProgress()
+        let saved = try await BookshelfRepository(database: database).get(bookUrl: row.bookUrl)
+        XCTAssertEqual(saved?.durChapterPos, 37)
+        await model.close()
+    }
+
     func testFailedContentSwitchesOnlyAfterReplacementChapterLoads() async throws {
         let database = try AppDatabase.inMemory()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
@@ -28,6 +111,7 @@ final class ReaderSourceRecoveryTests: XCTestCase {
         XCTAssertNotNil(model.errorMessage)
         model.autoChangeSource = { true }
         await model.retry()
+        await model.sourceRecoveryTask?.value
         XCTAssertNil(model.errorMessage)
         XCTAssertEqual(model.book?.origin, "https://new.test")
         XCTAssertEqual(model.book?.group, 4)
@@ -54,10 +138,36 @@ final class ReaderSourceRecoveryTests: XCTestCase {
         let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: root, preDownloadCount: { 0 })
         model.autoChangeSource = { true }
         await model.load(bookURL: row.bookUrl)
+        await model.sourceRecoveryTask?.value
         XCTAssertNotNil(model.errorMessage)
         let saved = try await BookshelfRepository(database: database).get(bookUrl: row.bookUrl)
         XCTAssertNotNil(saved)
-        XCTAssertNil(model.pagination)
+        XCTAssertTrue(model.pagination?.text.string.contains("没有书源") == true)
         await model.close()
+    }
+}
+
+private actor RecoveryRequestGate: HttpClient {
+    private var continuation: CheckedContinuation<HttpResponse, Error>?
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+    private var requested = false
+    private var released = false
+
+    func send(_ request: HttpRequest) async throws -> HttpResponse {
+        requested = true
+        waiters.forEach { $0.resume() }; waiters = []
+        if released { throw CancellationError() }
+        return try await withCheckedThrowingContinuation { continuation = $0 }
+    }
+
+    func waitUntilRequested() async {
+        if requested || released { return }
+        await withCheckedContinuation { waiters.append($0) }
+    }
+
+    func release() {
+        released = true
+        continuation?.resume(throwing: CancellationError()); continuation = nil
+        waiters.forEach { $0.resume() }; waiters = []
     }
 }

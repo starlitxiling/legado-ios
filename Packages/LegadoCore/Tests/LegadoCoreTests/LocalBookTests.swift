@@ -3,6 +3,20 @@ import GRDB
 @testable import LegadoCore
 
 final class LocalBookTests: XCTestCase {
+    func testLegacyLocalTypeFallsBackToOriginWithoutIOSFileURL() {
+        var book = Book(); book.type = 0; book.bookUrl = "/storage/emulated/0/Books/legacy.txt"
+        book.origin = "loc_book"
+        XCTAssertTrue(LocalBook.isLocal(book))
+        book.origin = "webDav::https://files.test/legacy.txt"
+        XCTAssertTrue(LocalBook.isLocal(book))
+        book.origin = "https://source.test"
+        XCTAssertFalse(LocalBook.isLocal(book))
+        book.type = 256
+        XCTAssertTrue(LocalBook.isLocal(book))
+        book.type = 8; book.origin = "loc_book"
+        XCTAssertFalse(LocalBook.isLocal(book))
+    }
+
     func testFilename() {
         XCTAssertEqual(LocalBook.nameAuthor("《测试书》作者：张三.txt").name, "测试书")
         XCTAssertEqual(LocalBook.nameAuthor("测试书 by 张三.epub").author, "张三")

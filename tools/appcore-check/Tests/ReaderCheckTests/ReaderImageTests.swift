@@ -87,7 +87,7 @@ final class ReaderImageTests: XCTestCase {
         }
     }
     func testLocalBookImagesResolveAgainstArchiveRoot() throws {
-        var book = Book(); book.bookUrl = "file:///book.epub"; book.origin = "loc_book"
+        var book = Book(); book.bookUrl = "file:///book.epub"; book.origin = "loc_book"; book.type = 264
         var chapter = BookChapter(); chapter.url = "OPS/chapter.xhtml"; chapter.baseUrl = book.bookUrl
         let input = ReaderLayoutInput(book: book, chapter: chapter,
             rawContent: "<img src=\"OPS/images/picture.png\">", rules: [])

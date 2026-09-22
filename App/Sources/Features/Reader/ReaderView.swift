@@ -158,15 +158,19 @@ struct ReaderView: View {
 
                     ReaderInfoView(settings: model.settings, header: false, values: infoValues)
                 }
-                if model.isLoading { ProgressView("正在加载正文…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12)) }
-                if let error = model.errorMessage {
-                    VStack(spacing: 12) {
-                        Text(error)
-                        Button("重试") {
-                            Task { await model.retry() }
+                if model.isLoading {
+                    ProgressView("正在加载正文…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                } else {
+                    VStack(spacing: 8) {
+                        if let error = model.errorMessage { errorBanner(error) }
+                        if let message = model.recoveringMessage {
+                            HStack {
+                                ProgressView(); Text(message)
+                                Button("停止") { model.cancelSourceRecovery() }
+                            }.padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
                         }
-                        Button("返回") { Task { await model.close(); dismiss() } }
-                    }.padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                        Spacer()
+                    }.padding(.top, 24).padding(.horizontal, 12)
                 }
                 if showsControls { controls }
             }
@@ -181,7 +185,7 @@ struct ReaderView: View {
             guard acceptsInput, press.phase != .repeat || behavior.boolean("keyPageOnLongPress") else { return .ignored }
             if press.key == .escape {
                 guard !behavior.boolean("disableReturnKey") else { return .handled }
-                Task { await model.close(); dismiss() }; return .handled
+                leaveReader(); return .handled
             }
             guard let code = ReaderKeyboard.androidCode(character: String(press.key.character)),
                   let forward = ReaderKeyboard.forward(code: code, previous: UserDefaults.standard.string(forKey: "prevKeys") ?? "", next: UserDefaults.standard.string(forKey: "nextKeys") ?? "") else { return .ignored }
@@ -268,8 +272,30 @@ struct ReaderView: View {
         return !themeColors.isEInk && value == 4 && behavior.boolean("noAnimScrollPage") ? 3 : value
     }
     private var acceptsInput: Bool {
-        !showsControls && !showsSettings && !showsBehavior && !showsChapters && !showsReadAloud && !showsBookmarks && !showsSelection && !showsHighlights && !showsReviews && actionSheet == nil && !model.isLoading && scenePhase == .active
+        !showsControls && !showsSettings && !showsBehavior && !showsChapters && !showsReadAloud && !showsBookmarks && !showsSelection && !showsHighlights && !showsReviews && actionSheet == nil && model.acceptsInput && scenePhase == .active
     }
+    private func leaveReader() {
+        model.cancelSourceRecovery()
+        dismiss()
+        Task { await model.close() }
+    }
+
+    private func errorBanner(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(alignment: .top) {
+                Text(message).font(.callout)
+                Spacer()
+                Button("关闭提示") { model.dismissError() }.accessibilityIdentifier("reader.error.dismiss")
+            }
+            HStack {
+                Button("重试") { Task { await model.retry() } }
+                Button("换源") { model.cancelSourceRecovery(); showPanel("source") }
+                Button("书源管理") { model.cancelSourceRecovery(); showPanel("sources") }
+                Button("返回", action: leaveReader).accessibilityIdentifier("reader.error.back")
+            }.font(.callout)
+        }.padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+    }
+
     private var readingEdges: Edge.Set {
         if behavior.boolean("paddingDisplayCutouts") { return [] }
         var edges: Edge.Set = []
@@ -279,7 +305,7 @@ struct ReaderView: View {
     }
     private var controls: some View {
         ReaderMenuView(model: model, configuration: behavior, device: device, automatic: autoRead.isRunning,
-                       close: { showsControls = false }, leave: { Task { await model.close(); dismiss() } },
+                       close: { showsControls = false }, leave: leaveReader,
                        action: perform, show: showPanel, autoRead: toggleAutoRead, night: toggleNight)
             .transition(themeColors.isEInk ? .identity : .opacity)
     }
@@ -371,6 +397,12 @@ struct ReaderView: View {
         case "editContent": ReaderContentEditor(model: model)
         case "replace": NavigationStack { ReplaceRulesView(repository: container.replaceRules, httpClient: container.httpClient) }
         case "cache": if let book = model.book { NavigationStack { BookCacheExportView(book: book, model: container.downloads) } }
+        case "sources":
+            NavigationStack {
+                SourcesView(repository: container.bookSources, replaceRules: container.replaceRules,
+                    httpClient: container.httpClient, sourceLogin: container.sourceLogin, sourceChecker: container.sourceChecker)
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("关闭") { actionSheet = nil } } }
+            }
         case "source":
             NavigationStack {
                 BookSourceSwitchView(book: model.readerBook, initial: [], container: container) { result in

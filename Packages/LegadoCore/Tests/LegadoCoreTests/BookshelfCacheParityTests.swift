@@ -40,7 +40,7 @@ final class BookshelfCacheParityTests: XCTestCase {
     func testLocalTextIsAlwaysCachedAndCleanupRetainsRenamedBookAndUnrelatedFiles() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
-        var book = Book(); book.bookUrl = "file:///sample.txt"; book.origin = "loc_book"; book.name = "Before"
+        var book = Book(); book.bookUrl = "file:///sample.txt"; book.origin = "loc_book"; book.name = "Before"; book.type = 264
         var chapter = BookChapter(); chapter.url = "chapter"; chapter.title = "One"
         XCTAssertTrue(BookHelp.hasContent(directory: root, book: book, chapter: chapter))
         try BookHelp.save("Retained", directory: root, book: book, chapter: chapter)
