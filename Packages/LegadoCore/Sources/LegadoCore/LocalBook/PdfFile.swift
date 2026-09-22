@@ -10,7 +10,7 @@ public enum PdfFileError: Error, LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .invalidDocument: return "PDF 文件无效或没有页面"
-        case .locked: return "PDF 文件已加密，需要先解锁"
+        case .locked: return "PDF 文件已加密，需要先解密"
         case .invalidChapter: return "PDF 章节页码无效"
         }
     }

@@ -231,7 +231,11 @@ public enum ConformanceRunner {
         return first!
     }
 
-    private enum DOMRepeatError: Error { case inconsistent }
+    private enum DOMRepeatError: LocalizedError {
+        case inconsistent
+        var errorDescription: String? { "重复解析网页得到不同结果。" }
+        var recoverySuggestion: String? { "请检查解析状态是否在调用之间被修改。" }
+    }
 
     private static func result(_ test: ConformanceCase, status: Status,
                                actual: ConformanceCase.Expectation? = nil, detail: String) -> Result {

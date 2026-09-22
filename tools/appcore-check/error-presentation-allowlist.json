@@ -1,0 +1,371 @@
+{
+  "App/Sources/App/LegadoApp.swift": [
+    "startupError = error.localizedDescription"
+  ],
+  "App/Sources/Features/AudioPlay/AVPlayerAudioPlayer.swift": [
+    "event?(.failed(item.error?.localizedDescription ?? \"音频播放失败\"))"
+  ],
+  "App/Sources/Features/AudioPlay/MediaBookLibrary.swift": [
+    "catch { errorMessage = \"保存进度失败：\" + error.localizedDescription }",
+    "if !Task.isCancelled { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Backup/BackupLifecycleModifier.swift": [
+    "} catch { model?.errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Backup/BackupView.swift": [
+    "} catch { model.errorMessage = error.localizedDescription }",
+    "} catch { model.errorMessage = error.localizedDescription }",
+    "} catch { model.errorMessage = error.localizedDescription }",
+    "} catch { setupError = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Backup/BackupViewModel.swift": [
+    "catch { self.errorMessage = \"主题列表恢复失败：\" + error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/BookDetail/BookDetailEditors.swift": [
+    "catch { self.error = error.localizedDescription }",
+    "catch { self.error = error.localizedDescription }",
+    "catch { self.error = error.localizedDescription }",
+    "catch { self.error = error.localizedDescription }",
+    "catch { self.error = error.localizedDescription }",
+    "} catch { message = error.localizedDescription }",
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/BookDetail/BookDetailGalleryView.swift": [
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/BookDetail/BookDetailView.swift": [
+    "catch { message = error.localizedDescription }",
+    "catch { message = error.localizedDescription; AppLogStore.shared.append(\"Book detail: \" + error.localizedDescription) }"
+  ],
+  "App/Sources/Features/BookDetail/BookDetailViewModel.swift": [
+    "catch { errorMessage = error.localizedDescription }",
+    "if request == generation, !Task.isCancelled { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription; return nil }"
+  ],
+  "App/Sources/Features/BookDetail/BookSourceSwitchView.swift": [
+    "} catch { if !Task.isCancelled { states[origin] = error.localizedDescription } }"
+  ],
+  "App/Sources/Features/BookDetail/Edit/BookInfoEditModel.swift": [
+    "} catch { errorMessage = error.localizedDescription; return false }"
+  ],
+  "App/Sources/Features/Bookshelf/AddBookURLModel.swift": [
+    "catch { failures.append(\"第 \\(index + 1) 行：\" + error.localizedDescription) }"
+  ],
+  "App/Sources/Features/Bookshelf/BookshelfBackgroundRefresh.swift": [
+    "catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Bookshelf/BookshelfBookListExportView.swift": [
+    "catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Bookshelf/BookshelfBookListModel.swift": [
+    "failures = [error.localizedDescription]",
+    "return (index, error.localizedDescription)"
+  ],
+  "App/Sources/Features/Bookshelf/BookshelfBookListView.swift": [
+    "} catch { fileError = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Bookshelf/BookshelfCacheSelectionView.swift": [
+    "catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Bookshelf/BookshelfGalleryView.swift": [
+    "catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Bookshelf/BookshelfRefreshReportView.swift": [
+    "catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Bookshelf/GroupEditView.swift": [
+    "catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Bookshelf/RemoteBooksModel.swift": [
+    "errorMessage = error.localizedDescription",
+    "errorMessage = file.displayName + \"：\" + error.localizedDescription",
+    "failures.append(entry.name + \"：\" + error.localizedDescription)"
+  ],
+  "App/Sources/Features/Bookshelf/RemoteBooksView.swift": [
+    "catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/CheckSource/CheckSourceViewModel.swift": [
+    "catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Download/DownloadCenterModel.swift": [
+    "catch { errorMessage = error.localizedDescription }",
+    "errorMessage = \"封面加载失败，将无封面导出：\\(error.localizedDescription)\"",
+    "} catch { errorMessage = \"\\(row.name)：\\(error.localizedDescription)\" }"
+  ],
+  "App/Sources/Features/Download/DownloadCenterView.swift": [
+    "catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Explore/ExploreGalleryView.swift": [
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Explore/ExploreViewModel.swift": [
+    "errorMessage = error.localizedDescription",
+    "errorMessage = error.localizedDescription",
+    "if kindGeneration == generation, !(error is CancellationError) { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/LocalImport/LocalBookGalleryView.swift": [
+    "} catch { status = error.localizedDescription }"
+  ],
+  "App/Sources/Features/LocalImport/LocalDirectoryScanner.swift": [
+    "catch { errorMessage = \"读取扫描目录失败：\" + error.localizedDescription }",
+    "do { try persist() } catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = \"保存扫描目录失败：\" + error.localizedDescription }",
+    "} catch { errorMessage = \"打开扫描目录失败：\" + error.localizedDescription }",
+    "} catch { errorMessage = \"扫描目录失败：\" + error.localizedDescription }"
+  ],
+  "App/Sources/Features/LocalImport/LocalImportView.swift": [
+    "case .failure(let error): pickerError = error.localizedDescription"
+  ],
+  "App/Sources/Features/LocalImport/LocalImportViewModel.swift": [
+    "catch { errors.append(error.localizedDescription); return }",
+    "catch { ruleError = error.localizedDescription }",
+    "catch { ruleError = error.localizedDescription }",
+    "errors.append(\"\\(url.lastPathComponent)：\\(error.localizedDescription)\")",
+    "if !(error is CancellationError) { errors.append(\"\\(name)：\\(error.localizedDescription)\") }",
+    "} catch { errors.append(\"下载导入失败：\" + error.localizedDescription) }",
+    "} catch { errors.append(\"恢复原文件失败：\\(error.localizedDescription)\") }"
+  ],
+  "App/Sources/Features/Manga/MangaReaderModel.swift": [
+    "catch { errorMessage = error.localizedDescription }",
+    "if token == generation, !Task.isCancelled { errorMessage = error.localizedDescription }",
+    "} else { imageErrors[index] = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Manga/MangaReaderView.swift": [
+    "} catch { syncError = error.localizedDescription }"
+  ],
+  "App/Sources/Features/ReadAloud/ReadAloudController.swift": [
+    "catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Reader/FontPicker/FontPicker.swift": [
+    "catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Reader/Highlight/ReaderDictionaryView.swift": [
+    "catch { self.error = error.localizedDescription; running = false }",
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Reader/Highlight/ReaderHighlightRulesView.swift": [
+    "Button(\"删除\", role: .destructive) { Task { do { _ = try await repository.delete(rule); await reload(); await changed() } catch { self.error = error.localizedDescription } } }",
+    "Task { do { try await repository.upsert(rules); await changed() } catch { self.error = error.localizedDescription; await reload() } }",
+    "catch { self.error = error.localizedDescription }",
+    "catch { self.error = error.localizedDescription }",
+    "catch { self.error = error.localizedDescription }",
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Reader/ReaderBehaviorPanel.swift": [
+    "private func save() { do { try value.save(selection: selection) } catch { self.error = error.localizedDescription } }"
+  ],
+  "App/Sources/Features/Reader/ReaderInterfacePanel.swift": [
+    "do { try await action() } catch { self.error = error.localizedDescription }",
+    "if case .failure(let failure) = result { error = failure.localizedDescription }"
+  ],
+  "App/Sources/Features/Reader/ReaderManualReplaceView.swift": [
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Reader/ReaderMemoView.swift": [
+    "} catch { self.error = error.localizedDescription }",
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Reader/ReaderSearchView.swift": [
+    "catch { self.error = error.localizedDescription; running = false }"
+  ],
+  "App/Sources/Features/Reader/ReaderSourceRecovery.swift": [
+    "catch { return (nil, (source.bookSourceName ?? source.bookSourceUrl ?? \"Source\") + \": \" + error.localizedDescription) }"
+  ],
+  "App/Sources/Features/Reader/ReaderSourceReimportView.swift": [
+    "} catch { model.errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Reader/ReaderTocView.swift": [
+    "catch { self.error = error.localizedDescription }",
+    "catch { self.error = error.localizedDescription }",
+    "catch { self.error = error.localizedDescription }",
+    "if case .failure(let failure) = result { error = failure.localizedDescription }",
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Reader/ReaderView.swift": [
+    "catch { styleError = error.localizedDescription }",
+    "catch { styleError = error.localizedDescription }",
+    "} catch { styleError = error.localizedDescription; return }"
+  ],
+  "App/Sources/Features/Reader/ReaderViewModel.swift": [
+    "catch { errorMessage = error.localizedDescription }",
+    "catch { errorMessage = error.localizedDescription }",
+    "catch { errorMessage = error.localizedDescription }",
+    "else { errorMessage = ReaderError.chapterLocked.localizedDescription }",
+    "errorMessage = (errorMessage.map { $0 + \"\\n\" } ?? \"\") + error.localizedDescription",
+    "errorMessage = error.localizedDescription",
+    "errorMessage = error.localizedDescription; isLoading = false",
+    "errorMessage = error.localizedDescription; isLoading = false",
+    "if !Task.isCancelled { self?.errorMessage = error.localizedDescription }",
+    "if generation == token, !Task.isCancelled { prefetchErrorMessage = error.localizedDescription }",
+    "isLoading = false; errorMessage = error.localizedDescription",
+    "self?.prefetchErrorMessage = error.localizedDescription",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription; isLoading = false }",
+    "} catch { if generation == token { errorMessage = error.localizedDescription } }",
+    "} catch { if token == generation { errorMessage = error.localizedDescription } }",
+    "} catch { self?.errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Reader/Review/ReaderReviewView.swift": [
+    "if !Task.isCancelled { errorMessage = error.localizedDescription; isLoading = false }"
+  ],
+  "App/Sources/Features/ReplaceRules/Edit/ReplaceRuleEditView.swift": [
+    "catch { model.errorMessage = error.localizedDescription }",
+    "catch { model.errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/ReplaceRules/ReplaceRulesView.swift": [
+    "catch { model.errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/ReplaceRules/ReplaceRulesViewModel.swift": [
+    "catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Search/SearchGalleryView.swift": [
+    "do { try await prepare() } catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Search/SearchViewModel.swift": [
+    "catch { errorMessage = error.localizedDescription }",
+    "catch { errorMessage = error.localizedDescription }",
+    "catch { errorMessage = error.localizedDescription }",
+    "if request == generation, !Task.isCancelled { errorMessage = error.localizedDescription }",
+    "if sourceFailures.count < 500 { sourceFailures.append(String((name + \": \" + error.localizedDescription).prefix(2048))) }",
+    "} catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/AutoTaskController.swift": [
+    "} catch { if !Task.isCancelled { errorMessage = error.localizedDescription } }",
+    "} catch { if !Task.isCancelled { errorMessage = error.localizedDescription } }"
+  ],
+  "App/Sources/Features/Settings/AutoTasksView.swift": [
+    "catch { self.error = error.localizedDescription }",
+    "catch { self.error = error.localizedDescription }",
+    "catch { self.error = error.localizedDescription }",
+    "catch { self.error = error.localizedDescription }",
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/BackupSettingsView.swift": [
+    "} catch { message = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/CoverAdditionalSettingsView.swift": [
+    "catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/CoverResourcePicker.swift": [
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/CoverRuleSettingsModel.swift": [
+    "} catch { message = error.localizedDescription }",
+    "} catch { message = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/LauncherIconModel.swift": [
+    "} catch { message = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/LibraryManagementViews.swift": [
+    "catch { self.error = error.localizedDescription }",
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/OtherSettingsView.swift": [
+    "catch { message = error.localizedDescription }",
+    "catch { message = error.localizedDescription }",
+    "catch { message = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/Rules/RulesManagementModel.swift": [
+    "catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/ServerSettingsView.swift": [
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/SettingsGalleryView.swift": [
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/SettingsView.swift": [
+    "catch { container.autoTasks.errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/SettingsViewModel.swift": [
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/SubscriptionSettingsModel.swift": [
+    "catch { errorMessage = error.localizedDescription }",
+    "catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription; return false }",
+    "} catch { errorMessage = error.localizedDescription; return false }"
+  ],
+  "App/Sources/Features/Settings/ThemeSettingsView.swift": [
+    "catch { message = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/UploadRuleSettingsModel.swift": [
+    "} catch { message = error.localizedDescription }",
+    "} catch { message = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Settings/UploadRuleSettingsView.swift": [
+    "catch { model.message = error.localizedDescription }",
+    "} catch { model.message = error.localizedDescription }"
+  ],
+  "App/Sources/Features/SourceLogin/CookieManagementView.swift": [
+    "catch { errorMessage = error.localizedDescription }",
+    "catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/SourceLogin/SourceLoginViewModel.swift": [
+    "catch { errorMessage = error.localizedDescription }",
+    "catch { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Sources/Edit/BookSourceEditView.swift": [
+    "catch { model.errorMessage = error.localizedDescription }",
+    "catch { model.errorMessage = error.localizedDescription }",
+    "catch { model.errorMessage = error.localizedDescription }",
+    "} catch { model.errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Sources/SourceGalleryView.swift": [
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Sources/SourceImportSheet.swift": [
+    "case .failure(let error): fileError = error.localizedDescription"
+  ],
+  "App/Sources/Features/Sources/SourceManagementPanels.swift": [
+    "do { try scanner.startScanning() } catch { DispatchQueue.main.async { failure(error.localizedDescription) } }",
+    "} catch { self.error = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Sources/SourcesView.swift": [
+    "catch { model.errorMessage = error.localizedDescription }",
+    "catch { model.errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Sources/SourcesViewModel.swift": [
+    "catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/Toc/TocViewModel.swift": [
+    "if !Task.isCancelled { errorMessage = error.localizedDescription }",
+    "} catch { errorMessage = error.localizedDescription }"
+  ],
+  "App/Sources/Features/WebService/NWWebServiceTransport.swift": [
+    "case .failed(let error): state(.failed(error.localizedDescription))"
+  ],
+  "App/Sources/Features/WebService/WebServiceController.swift": [
+    "catch { message = error.localizedDescription }",
+    "} catch { stop(); message = error.localizedDescription }"
+  ]
+}

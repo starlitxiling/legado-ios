@@ -173,8 +173,8 @@ struct AppThemeConfiguration: Codable, Equatable {
         self.backgroundImgPath = backgroundImgPath; self.backgroundImgBlur = backgroundImgBlur
     }
 
-    struct InvalidColor: LocalizedError { var errorDescription: String? { "Invalid theme color; use #RRGGBB or #AARRGGBB" } }
-    struct InvalidName: LocalizedError { var errorDescription: String? { "Theme name must not be empty" } }
+    struct InvalidColor: LocalizedError { var errorDescription: String? { "主题颜色无效，请使用 #RRGGBB 或 #AARRGGBB 格式。" } }
+    struct InvalidName: LocalizedError { var errorDescription: String? { "主题名称不能为空。" } }
     static func color(_ value: String) -> Int32? {
         let hex = value.hasPrefix("#") ? String(value.dropFirst()) : value
         guard [6, 8].contains(hex.count), let number = UInt32(hex, radix: 16) else { return nil }

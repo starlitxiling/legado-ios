@@ -204,7 +204,16 @@ public struct BackupImporter {
         return report
     }
 
-    private enum ImportError: Error { case missingDeviceID, invalidSources }
+    private enum ImportError: LocalizedError {
+        case missingDeviceID, invalidSources
+        var errorDescription: String? {
+            switch self {
+            case .missingDeviceID: return "恢复备份缺少设备标识。"
+            case .invalidSources: return "备份中的书源数据格式不正确。"
+            }
+        }
+        var recoverySuggestion: String? { "请检查备份配置与书源文件，重新导出后再恢复。" }
+    }
 
     static func normalizeBook(_ book: BookRow) -> BookRow {
         var result = book

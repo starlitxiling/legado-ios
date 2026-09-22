@@ -4,7 +4,7 @@ import zlib
 public enum UmdError: Error, LocalizedError {
     case invalid(String)
     public var errorDescription: String? {
-        switch self { case .invalid(let reason): return "UMD: \(reason)" }
+        switch self { case .invalid(let reason): return "UMD 解析失败：\(reason)" }
     }
 }
 

@@ -5,10 +5,10 @@ struct MultipartBody {
         case invalidForm, invalidFilePart(String), invalidContentType, invalidBoundary
         var errorDescription: String? {
             switch self {
-            case .invalidForm: return "Multipart upload body must be a nonempty JSON object."
-            case let .invalidFilePart(name): return "Invalid multipart file part: " + name
-            case .invalidContentType: return "Invalid multipart content type."
-            case .invalidBoundary: return "Invalid multipart boundary."
+            case .invalidForm: return "上传表单必须是非空 JSON 对象。"
+            case let .invalidFilePart(name): return "上传文件字段无效：" + name
+            case .invalidContentType: return "上传内容类型无效。"
+            case .invalidBoundary: return "上传表单分隔符无效。"
             }
         }
     }

@@ -38,9 +38,15 @@ public enum RuleEvaluationError: Error, Equatable {
 }
 
 extension RuleEvaluationError: LocalizedError {
+    public var recoverySuggestion: String? { "请检查书源解析规则与正则捕获组，或切换书源。" }
     public var errorDescription: String? {
-        if self == .nullContent { return "内容不可空（Content cannot be null）" }
-        return nil
+        switch self {
+        case .nullContent: return "内容不可空（Content cannot be null）"
+        case .unsupported(let mode): return "不支持此解析规则：\(mode.rawValue)"
+        case .emptyRegex: return "正则表达式不能为空。"
+        case .unmatchedCapture(let index): return "正则捕获组不存在：\(index)"
+        case .invalidReplacement: return "正则替换内容无效。"
+        }
     }
 }
 

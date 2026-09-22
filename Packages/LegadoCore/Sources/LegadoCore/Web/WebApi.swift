@@ -258,7 +258,12 @@ public final class WebApi: Sendable {
         WebHttpResponse(status: status, body: try JSONEncoder().encode(ReturnData<String>(errorMsg: message)))
     }
 
-    private struct ApiError: Error { let message: String; init(_ message: String) { self.message = message } }
+    private struct ApiError: LocalizedError {
+        let message: String
+        init(_ message: String) { self.message = message }
+        var errorDescription: String? { "Web 服务请求失败：" + message }
+        var recoverySuggestion: String? { "请检查请求参数后重试。" }
+    }
 }
 
 /// HTTP 使用实体 JSON，数据库复合列使用 JSON 文本。

@@ -6,8 +6,8 @@ public enum NetworkRoutingError: Error, Equatable, LocalizedError {
 
     public var errorDescription: String? {
         switch self {
-        case .invalidCustomHosts: return "customHosts must be a JSON object mapping hosts to IP strings or arrays."
-        case let .invalidAddress(host): return "Invalid IP address mapping for host: " + host
+        case .invalidCustomHosts: return "自定义主机映射必须为 JSON 对象，值为 IP 字符串或数组。"
+        case let .invalidAddress(host): return "主机的 IP 映射无效：" + host
         }
     }
 }

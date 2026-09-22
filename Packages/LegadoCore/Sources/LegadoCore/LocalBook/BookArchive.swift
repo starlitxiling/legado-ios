@@ -11,11 +11,11 @@ public enum BookArchiveError: Error, LocalizedError {
     case invalid(String), sizeLimit, missing(String), unsafePath(String), duplicate(String)
     public var errorDescription: String? {
         switch self {
-        case .invalid(let reason): return "Archive: \(reason)"
-        case .sizeLimit: return "Archive exceeds the configured size or entry limit"
-        case .missing(let name): return "Archive entry not found: \(name)"
-        case .unsafePath(let name): return "Unsafe archive path: \(name)"
-        case .duplicate(let name): return "Duplicate archive path: \(name)"
+        case .invalid(let reason): return "电子书压缩包损坏：\(reason)"
+        case .sizeLimit: return "电子书压缩包超过大小或条目数量限制。"
+        case .missing(let name): return "电子书缺少文件：\(name)"
+        case .unsafePath(let name): return "电子书包含不安全的路径：\(name)"
+        case .duplicate(let name): return "电子书包含重复路径：\(name)"
         }
     }
 }

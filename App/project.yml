@@ -1,5 +1,7 @@
 name: Legado
 options:
+  developmentLanguage: zh-Hans
+  knownRegions: [zh-Hans, en, Base]
   deploymentTarget:
     iOS: '17.0'
 settings:
@@ -19,6 +21,8 @@ targets:
     platform: iOS
     sources:
       - Sources
+      - path: Resources/zh-Hans.lproj
+        buildPhase: resources
       - path: Resources/AlternateIcons
         buildPhase: resources
     settings:
@@ -32,6 +36,8 @@ targets:
     info:
       path: Info.plist
       properties:
+        CFBundleDevelopmentRegion: zh-Hans
+        CFBundleLocalizations: [zh-Hans, en]
         CFBundleDisplayName: 阅读
         NSCameraUsageDescription: 扫描书源二维码以导入书源
         CFBundleURLTypes:
