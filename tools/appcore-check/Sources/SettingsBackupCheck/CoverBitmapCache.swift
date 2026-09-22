@@ -1,0 +1,1 @@
+../../../../App/Sources/Shared/CoverBitmapCache.swift

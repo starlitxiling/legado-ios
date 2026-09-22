@@ -2,6 +2,39 @@ import XCTest
 
 final class BookshelfLayoutUITests: XCTestCase {
     @MainActor
+    func testContextMenuAndBoundedFastIndex() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery", "-large-bookshelf-gallery"]
+        app.launch()
+        let book = app.buttons["bookshelf.book.fixture:book:0"]
+        XCTAssertTrue(book.waitForExistence(timeout: 20)); book.press(forDuration: 0.8)
+        XCTAssertTrue(app.buttons["置顶"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["移出书架"].exists)
+        XCTAssertTrue(app.buttons["分组"].exists)
+        app.buttons["书籍详情"].tap()
+        XCTAssertTrue(app.buttons["detail.read"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["bookshelf.fastIndex"].tap()
+        XCTAssertLessThanOrEqual(app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "bookshelf.index.")).count, 20)
+        let last = app.buttons["bookshelf.index.499"]
+        XCTAssertTrue(last.waitForExistence(timeout: 5)); last.tap()
+        XCTAssertTrue(app.buttons["bookshelf.book.fixture:book:499"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testEmptyShelfHasSourceAndLocalImportActions() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery", "-empty-bookshelf-gallery"]
+        app.launch()
+        XCTAssertTrue(app.buttons["导入书源"].waitForExistence(timeout: 15))
+        XCTAssertTrue(app.buttons["添加本地书"].exists)
+        app.buttons["导入书源"].tap()
+        XCTAssertTrue(app.navigationBars["书源"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
     func testCancelledReadDoesNotShowErrorAndGroupChangeRecovers() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -129,6 +162,7 @@ final class BookshelfLayoutUITests: XCTestCase {
         let book = app.buttons["bookshelf.book.fixture:book:0"]
         XCTAssertTrue(book.waitForExistence(timeout: 5))
         book.press(forDuration: 0.8)
+        app.buttons["书籍详情"].tap()
         XCTAssertTrue(app.navigationBars["书籍详情"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Sample Book 01"].exists)
     }

@@ -18,6 +18,7 @@ struct BookshelfGalleryView: View {
         }
         let preferences = AppPreferences(defaults: defaults)
         if ProcessInfo.processInfo.arguments.contains("-bookshelf-gallery-dark") { preferences.set("themeMode", .string("2")) }
+        if ProcessInfo.processInfo.arguments.contains("-large-bookshelf-gallery") { preferences.set("showBookshelfFastScroller", .boolean(true)) }
         self.preferences = preferences
         theme = ThemeStore(preferences: preferences)
     }
@@ -49,20 +50,24 @@ struct BookshelfGalleryView: View {
         try await container.bookGroups.ensureBuiltinGroups()
         var group = BookGroupRow(); group.groupId = 1; group.groupName = "Sample Group"
         try await container.bookGroups.insert(group)
+        if ProcessInfo.processInfo.arguments.contains("-empty-bookshelf-gallery") { return container }
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("bookshelf-gallery", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let colors: [UIColor] = [.systemBlue, .systemBrown, .systemGreen, .systemIndigo]
-        for index in 0..<18 {
+        let count = ProcessInfo.processInfo.arguments.contains("-large-bookshelf-gallery") ? 500 : 18
+        for index in 0..<count {
             let title = String(format: "Sample Book %02d", index + 1)
+            let file = folder.appendingPathComponent(String(index % 18) + ".png")
+            if index < 18 {
             let image = UIGraphicsImageRenderer(size: CGSize(width: 132, height: 180)).image { context in
                 colors[index % colors.count].setFill()
                 context.fill(CGRect(x: 0, y: 0, width: 132, height: 180))
                 (title as NSString).draw(in: CGRect(x: 12, y: 28, width: 108, height: 100), withAttributes: [
                     .font: UIFont.systemFont(ofSize: 21, weight: .semibold), .foregroundColor: UIColor.white])
             }
-            let file = folder.appendingPathComponent(String(index) + ".png")
             guard let data = image.pngData() else { throw CocoaError(.fileWriteUnknown) }
             try data.write(to: file, options: .atomic)
+            }
             var book = BookRow(); book.bookUrl = "fixture:book:" + String(index); book.name = title
             book.author = "Sample Author"; book.origin = "fixture:source"; book.originName = "Fixture"
             book.coverUrl = file.absoluteString; book.group = index < 9 ? 1 : 0; book.type = 8

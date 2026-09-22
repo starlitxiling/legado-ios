@@ -4,6 +4,17 @@ import GRDB
 @testable import BookshelfAdvancedCheck
 
 final class BookshelfLayoutTests: XCTestCase {
+    func testFastScrollIndexIsBoundedAndIncludesBothEnds() {
+        XCTAssertEqual(BookshelfFastIndex.positions(count: 0), [])
+        XCTAssertEqual(BookshelfFastIndex.positions(count: 1), [0])
+        for count in [18, 21, 500, 10000] {
+            let positions = BookshelfFastIndex.positions(count: count)
+            XCTAssertLessThanOrEqual(positions.count, 20)
+            XCTAssertEqual(positions.first, 0); XCTAssertEqual(positions.last, count - 1)
+            XCTAssertEqual(positions, Array(Set(positions)).sorted())
+        }
+    }
+
     func testCancellationPresentationRecognizesBridgedAndWrappedErrors() {
         let cancelled = CancellationError() as NSError
         let errors: [Error] = [CancellationError(), cancelled,

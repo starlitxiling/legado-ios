@@ -1,18 +1,26 @@
-import UIKit
-import CryptoKit
+import Foundation
+import CoreGraphics
+import ImageIO
 
-@MainActor
-enum CoverBitmapCache {
-    private static let cache = NSCache<NSString, UIImage>()
-    static func image(_ data: Data, maximumMegabytes: Int) -> UIImage? {
+actor CoverBitmapCache {
+    static let shared = CoverBitmapCache()
+    private let cache = NSCache<NSString, CGImage>()
+
+    func image(_ data: Data, key: String, maximumPixels: Int, maximumMegabytes: Int) -> CGImage? {
         let limit = max(0, min(1024, maximumMegabytes)) * 1024 * 1024
+        let pixels = max(1, min(4096, maximumPixels))
         cache.totalCostLimit = limit
-        if limit == 0 { cache.removeAllObjects(); return UIImage(data: data) }
-        let key = SHA256.hash(data: data).map { String(format: "%02x", $0) }.joined() as NSString
-        if let image = cache.object(forKey: key) { return image }
-        guard let image = UIImage(data: data) else { return nil }
-        let cost = image.cgImage.map { $0.bytesPerRow * $0.height } ?? data.count
-        cache.setObject(image, forKey: key, cost: cost)
+        if limit == 0 { cache.removeAllObjects() }
+        let cacheKey = "\(pixels):\(key)" as NSString
+        if limit > 0, let image = cache.object(forKey: cacheKey) { return image }
+        guard let source = CGImageSourceCreateWithData(data as CFData, [kCGImageSourceShouldCache: false] as CFDictionary),
+              let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceShouldCacheImmediately: true,
+                kCGImageSourceThumbnailMaxPixelSize: pixels
+              ] as CFDictionary) else { return nil }
+        if limit > 0 { cache.setObject(image, forKey: cacheKey, cost: image.bytesPerRow * image.height) }
         return image
     }
 }

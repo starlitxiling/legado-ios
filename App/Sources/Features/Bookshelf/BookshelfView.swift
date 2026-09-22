@@ -15,6 +15,7 @@ struct BookshelfView: View {
     @State private var selected = Set<String>()
     @State private var actionError: String?
     @State private var confirmingDelete = false
+    @State private var removingBook: BookRow?
     @State private var preferences = AppPreferences.shared
     @State private var showingLayout = false
     @State private var showingRefreshReport = false
@@ -69,8 +70,14 @@ struct BookshelfView: View {
                     ScrollView {
                         Color.clear.frame(height: 0).id("bookshelf.top")
                         if model.books.isEmpty && (!folderRoot || model.groups.isEmpty) {
-                            Text("书架为空").font(.system(size: 14)).foregroundStyle(themeColors.textSecondary)
-                                .frame(maxWidth: .infinity).containerRelativeFrame(.vertical)
+                            VStack(spacing: 16) {
+                                Text("书架为空").font(.body).foregroundStyle(themeColors.textSecondary)
+                                NavigationLink("导入书源") {
+                                    SourcesView(repository: container.bookSources, replaceRules: container.replaceRules,
+                                        httpClient: ImportHttpClient(), sourceLogin: container.sourceLogin, sourceChecker: container.sourceChecker)
+                                }
+                                NavigationLink("添加本地书") { LocalImportView(database: container.database) }
+                            }.frame(maxWidth: .infinity).containerRelativeFrame(.vertical)
                         } else if let columns = layout.columns {
                             LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: margin), count: columns), spacing: margin) {
                                 shelfItems
@@ -89,10 +96,13 @@ struct BookshelfView: View {
                     .overlay(alignment: .trailing) {
                         if preferences.boolean("showBookshelfFastScroller"), !model.books.isEmpty {
                             Menu {
-                                ForEach(model.books, id: \.bookUrl) { book in
-                                    Button(book.name) { scroll.scrollTo(book.bookUrl, anchor: .top) }
+                                ForEach(BookshelfFastIndex.positions(count: model.books.count), id: \.self) { index in
+                                    let book = model.books[index]
+                                    Button("\(index + 1). " + book.name) { scroll.scrollTo(book.bookUrl, anchor: .top) }
+                                        .accessibilityIdentifier("bookshelf.index." + String(index))
                                 }
                             } label: { Image(systemName: "arrow.up.arrow.down").padding(8) }
+                            .accessibilityLabel("快速定位").accessibilityIdentifier("bookshelf.fastIndex")
                         }
                     }
                 }
@@ -194,6 +204,13 @@ struct BookshelfView: View {
         }
         .sheet(isPresented: $showingAddURL, onDismiss: { Task { await refreshBooks() } }) {
             AddBookURLView(database: container.database, client: container.httpClient, groupID: model.selectedGroupID)
+        }
+        .confirmationDialog("移出书架？", isPresented: Binding(get: { removingBook != nil }, set: { if !$0 { removingBook = nil } }), titleVisibility: .visible) {
+            if let book = removingBook {
+                Button("移出「" + book.name + "」", role: .destructive) {
+                    Task { await perform { try await container.bookshelf.deleteBooks([book.bookUrl]) } }
+                }
+            }
         }
         .confirmationDialog("删除所选书籍？", isPresented: $confirmingDelete, titleVisibility: .visible) {
             Button("删除 \(selected.count) 本书", role: .destructive) {
@@ -351,6 +368,14 @@ struct BookshelfView: View {
 
     private func open(_ book: BookRow) { resumeBook = book; showingResume = true }
 
+    private func moveBook(_ book: BookRow, to group: Int64) {
+        Task { await perform {
+            let groups = try await container.bookGroups.list()
+            let mask = groups.filter { $0.groupId > 0 }.reduce(Int64(0)) { $0 | $1.groupId }
+            try await container.bookshelf.move(bookURLs: [book.bookUrl], from: mask, to: group)
+        } }
+    }
+
     private func bookSummary(_ book: BookRow) -> some View {
         HStack(spacing: 4) {
             if selecting {
@@ -360,16 +385,29 @@ struct BookshelfView: View {
                 loading: container.downloads.refreshingBookURLs.contains(book.bookUrl))
         }
         .contentShape(Rectangle())
-        .gesture(LongPressGesture().exclusively(before: TapGesture()).onEnded { action in
-            switch action {
-            case .first:
-                detailBook = book; showingDetail = true
-            case .second:
-                if selecting {
-                    if !selected.insert(book.bookUrl).inserted { selected.remove(book.bookUrl) }
-                } else { open(book) }
+        .onTapGesture {
+            if selecting {
+                if !selected.insert(book.bookUrl).inserted { selected.remove(book.bookUrl) }
+            } else { open(book) }
+        }
+        .contextMenu {
+            Button("置顶") {
+                Task { await perform {
+                    if let current = try await container.bookshelf.get(bookUrl: book.bookUrl) {
+                        _ = try await container.bookshelf.saveAtTop(current)
+                        preferences.set("bookshelfSort", .int(3))
+                    }
+                } }
             }
-        })
+            Button("移出书架", role: .destructive) { removingBook = book }
+            Menu("分组") {
+                Button("未分组") { moveBook(book, to: 0) }
+                ForEach(model.groups.filter { $0.groupId > 0 }, id: \.groupId) { group in
+                    Button(group.groupName) { moveBook(book, to: group.groupId) }
+                }
+            }
+            Button("书籍详情") { detailBook = book; showingDetail = true }
+        }
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { open(book) }
         .accessibilityAction(named: Text("书籍详情")) { detailBook = book; showingDetail = true }

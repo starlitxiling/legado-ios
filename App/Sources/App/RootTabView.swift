@@ -23,7 +23,7 @@ struct RootTabView: View {
                     .id(restoreRevision)
                     .background(tabObserver)
             }
-            .tabItem { Image(systemName: "books.vertical").accessibilityLabel("书架") }
+            .tabItem { Label("书架", systemImage: "books.vertical") }
             .tag("bookshelf")
             if preferences.boolean("showDiscovery") {
                 NavigationStack {
@@ -31,7 +31,7 @@ struct RootTabView: View {
                         .background(tabObserver)
                 }
                 .id(exploreRevision)
-                .tabItem { Image(systemName: "safari").accessibilityLabel("发现") }
+                .tabItem { Label("发现", systemImage: "safari") }
                 .tag("explore")
             }
             if preferences.boolean("showRss") {
@@ -39,13 +39,13 @@ struct RootTabView: View {
                     RssSourceListView(container: container).id(restoreRevision)
                         .background(tabObserver)
                 }
-                .tabItem { Image(systemName: "dot.radiowaves.left.and.right").accessibilityLabel("订阅") }
+                .tabItem { Label("订阅", systemImage: "dot.radiowaves.left.and.right") }
                 .tag("rss")
             }
             NavigationStack {
                 SettingsView(container: container).background(tabObserver)
             }
-            .tabItem { Image(systemName: "person.crop.circle").accessibilityLabel("我的") }
+            .tabItem { Label("我的", systemImage: "person.crop.circle") }
             .tag("my")
         }
         .onReceive(NotificationCenter.default.publisher(for: BackupViewModel.restoredNotification)) { _ in

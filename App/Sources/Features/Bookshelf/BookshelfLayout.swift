@@ -37,3 +37,12 @@ struct BookshelfBookMetrics: Equatable, Sendable {
         else { progress = min(1, max(0, Double(chapter) / Double(count - 1))) }
     }
 }
+
+enum BookshelfFastIndex {
+    static func positions(count: Int) -> [Int] {
+        guard count > 0 else { return [] }
+        let slots = min(count, 20)
+        guard slots > 1 else { return [0] }
+        return (0..<slots).map { Int((Double($0) * Double(count - 1) / Double(slots - 1)).rounded()) }
+    }
+}
