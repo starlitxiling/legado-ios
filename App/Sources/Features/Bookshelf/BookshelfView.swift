@@ -32,8 +32,11 @@ struct BookshelfView: View {
     @State private var showingResume = false
 
     init(bookshelf: any BookshelfReading, groups: any BookGroupReading, preferences: AppPreferences? = nil) {
-        _model = State(initialValue: BookshelfViewModel(bookshelf: bookshelf, groups: groups))
-        _preferences = State(initialValue: preferences ?? .shared)
+        let preferences = preferences ?? .shared
+        let model = BookshelfViewModel(bookshelf: bookshelf, groups: groups)
+        model.selectedGroupID = preferences.integer("bookGroupStyle") == 1 ? -100 : -1
+        _model = State(initialValue: model)
+        _preferences = State(initialValue: preferences)
     }
 
     private var layout: BookshelfLayout { BookshelfLayout(rawValue: preferences.integer("bookshelfLayout")) ?? .list }
@@ -51,7 +54,7 @@ struct BookshelfView: View {
                 if !folderStyle { groupTabs }
                 if selecting { selectionActions }
                 shelfHeader
-                if let actionError { Text(actionError).foregroundStyle(themeColors.error).font(.system(size: 13)) }
+                if let actionError { Text(actionError).foregroundStyle(themeColors.error).font(.system(size: 13)).accessibilityIdentifier("bookshelf.actionError") }
                 if let report = container.downloads.refreshReport, !report.failures.isEmpty {
                     Button("已更新 \(report.updated.count) 本，\(report.failures.count) 本失败") { showingRefreshReport = true }
                         .accessibilityIdentifier("bookshelf.refreshReport")
@@ -60,7 +63,7 @@ struct BookshelfView: View {
                 if model.isLoading && model.books.isEmpty && !folderRoot {
                     LoadingView()
                 } else if let error = model.errorMessage {
-                    VStack { Text(error); Button("重试") { Task { await refreshBooks() } } }
+                    VStack { Text(error).accessibilityIdentifier("bookshelf.error"); Button("重试") { Task { await refreshBooks() } } }
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                 } else {
                     ScrollView {
@@ -122,7 +125,10 @@ struct BookshelfView: View {
                             do {
                                 exportBooks = folderRoot ? try await container.bookshelf.list() : model.books
                                 showingExportList = true
-                            } catch { actionError = error.localizedDescription }
+                            } catch {
+                                guard !error.isCancellation else { return }
+                                actionError = error.presentableMessage
+                            }
                         }
                     }
                     Button("导入书单") { showingImportList = true }
@@ -133,6 +139,7 @@ struct BookshelfView: View {
         }
         .task(id: model.selectedGroupID) {
             await refreshBooks()
+            guard !Task.isCancelled else { return }
             if !appliedStartupSettings {
                 appliedStartupSettings = true
                 if preferences.boolean("defaultToRead"), let book = model.recentBook, book.durChapterTime > 0 {
@@ -204,12 +211,17 @@ struct BookshelfView: View {
     private func refreshBooks() async {
         guard !container.databaseLifecycle.isSuspended else { return }
         do { try await container.bookGroups.ensureBuiltinGroups() }
-        catch { actionError = error.localizedDescription; return }
-        if !appliedStartupSettings { model.selectedGroupID = folderStyle ? -100 : -1 }
+        catch {
+            guard !error.isCancellation else { return }
+            actionError = error.presentableMessage
+            return
+        }
         model.folderMode = folderStyle
         model.sort = BookshelfSort(rawValue: preferences.integer("bookshelfSort")) ?? .lastRead
         await model.load()
+        guard !Task.isCancelled, model.errorMessage == nil else { return }
         selected.formIntersection(Set(model.books.map(\.bookUrl)))
+        actionError = nil
     }
 
     private func updateChapters() async {
@@ -224,7 +236,11 @@ struct BookshelfView: View {
                 AppLogStore.shared.append("Bookshelf refresh: \(report.updated.count) updated, \(report.failures.count) failed")
                 for failure in report.failures { AppLogStore.shared.append(String(describing: failure)) }
             }
-        } catch { actionError = error.localizedDescription }
+        } catch {
+            guard !error.isCancellation else { return }
+            actionError = error.presentableMessage
+            return
+        }
         await refreshBooks()
     }
 
@@ -264,7 +280,10 @@ struct BookshelfView: View {
     @MainActor
     private func perform(_ action: () async throws -> Void) async {
         do { try await action(); actionError = nil; await refreshBooks() }
-        catch { actionError = error.localizedDescription }
+        catch {
+            guard !error.isCancellation else { return }
+            actionError = error.presentableMessage
+        }
     }
 
     @ViewBuilder private var shelfItems: some View {

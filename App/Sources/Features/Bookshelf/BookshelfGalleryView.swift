@@ -5,6 +5,7 @@ import LegadoCore
 
 struct BookshelfGalleryView: View {
     @State private var container: AppContainer?
+    @State private var reading: (any BookshelfReading)?
     @State private var error: String?
     private let preferences: AppPreferences
     private let theme: ThemeStore
@@ -24,14 +25,20 @@ struct BookshelfGalleryView: View {
         Group {
             if let container {
                 NavigationStack {
-                    BookshelfView(bookshelf: container.bookshelf, groups: container.bookGroups, preferences: preferences)
+                    BookshelfView(bookshelf: reading ?? container.bookshelf, groups: container.bookGroups, preferences: preferences)
                 }.environment(container).modifier(ThemeEnvironmentModifier(store: theme))
             } else if let error { Text(error) }
             else { ProgressView("加载中") }
         }
         .task {
             guard container == nil else { return }
-            do { container = try await fixture() }
+            do {
+                let fixture = try await fixture()
+                if ProcessInfo.processInfo.arguments.contains("-cancel-bookshelf-read") {
+                    reading = CancellingGalleryBookshelf(base: fixture.bookshelf)
+                }
+                container = fixture
+            }
             catch { self.error = error.localizedDescription }
         }
     }
@@ -64,6 +71,22 @@ struct BookshelfGalleryView: View {
             try await container.bookshelf.insert(book)
         }
         return container
+    }
+}
+
+@MainActor
+private final class CancellingGalleryBookshelf: BookshelfReading {
+    private let base: BookshelfRepository
+    private var cancelled = false
+
+    init(base: BookshelfRepository) { self.base = base }
+
+    func list(groupID: Int64, sort: BookshelfSort) async throws -> [BookRow] {
+        if !cancelled {
+            cancelled = true
+            throw CancellationError()
+        }
+        return try await base.list(groupID: groupID, sort: sort)
     }
 }
 #endif

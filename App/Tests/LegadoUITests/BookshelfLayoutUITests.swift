@@ -2,6 +2,29 @@ import XCTest
 
 final class BookshelfLayoutUITests: XCTestCase {
     @MainActor
+    func testCancelledReadDoesNotShowErrorAndGroupChangeRecovers() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery", "-cancel-bookshelf-read"]
+        app.launch()
+        XCTAssertTrue(app.staticTexts["书架为空"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.staticTexts["bookshelf.error"].exists)
+        XCTAssertFalse(app.staticTexts["bookshelf.actionError"].exists)
+        openLayout(app)
+        app.buttons["bookshelf.groupStyle"].tap()
+        app.buttons["文件夹"].tap()
+        app.buttons["确定"].tap()
+        let folder = app.buttons["bookshelf.folder.1"]
+        XCTAssertTrue(folder.waitForExistence(timeout: 5))
+        for _ in 0..<6 where !folder.isHittable { app.scrollViews["bookshelf.contents"].swipeUp() }
+        folder.tap()
+        XCTAssertTrue(app.buttons["bookshelf.book.fixture:book:0"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["bookshelf.error"].exists)
+        XCTAssertFalse(app.staticTexts["bookshelf.actionError"].exists)
+        snapshot(app, name: "a3-cancelled-read-recovered")
+    }
+
+    @MainActor
     func testRefreshFailuresOfferReplacementSearch() {
         continueAfterFailure = false
         let app = XCUIApplication()

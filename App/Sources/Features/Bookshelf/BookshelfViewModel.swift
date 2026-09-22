@@ -61,7 +61,7 @@ final class BookshelfViewModel {
             }
             let loadedBooks = try await bookshelf.list(groupID: groupID, sort: effectiveSort)
             let allBooks = groupID == -1 ? loadedBooks : try await bookshelf.list(groupID: -1, sort: .lastRead)
-            guard request == generation, groupID == selectedGroupID else { return }
+            guard !Task.isCancelled, request == generation, groupID == selectedGroupID else { return }
             var previews: [Int64: [BookRow]] = [:]
             var counts: [Int64: Int] = [:]
             if folderMode && groupID == -100 {
@@ -71,7 +71,7 @@ final class BookshelfViewModel {
                     counts[group.groupId] = groupBooks.count
                 }
             }
-            guard request == generation, groupID == selectedGroupID else { return }
+            guard !Task.isCancelled, request == generation, groupID == selectedGroupID else { return }
             books = loadedBooks
             groups = loadedGroups.filter { $0.show }
             groupPreviews = previews
@@ -85,8 +85,8 @@ final class BookshelfViewModel {
                 return $0.durChapterTime < $1.durChapterTime
             }
         } catch {
-            guard request == generation, groupID == selectedGroupID else { return }
-            errorMessage = error.localizedDescription
+            guard !error.isCancellation, request == generation, groupID == selectedGroupID else { return }
+            errorMessage = error.presentableMessage
         }
     }
 }

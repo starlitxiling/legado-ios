@@ -1,8 +1,36 @@
 import XCTest
 import LegadoCore
+import GRDB
 @testable import BookshelfAdvancedCheck
 
 final class BookshelfLayoutTests: XCTestCase {
+    func testCancellationPresentationRecognizesBridgedAndWrappedErrors() {
+        let cancelled = CancellationError() as NSError
+        let errors: [Error] = [CancellationError(), cancelled,
+            NSError(domain: cancelled.domain, code: cancelled.code), URLError(.cancelled),
+            NSError(domain: NSURLErrorDomain, code: URLError.cancelled.rawValue),
+            DatabaseError(resultCode: .SQLITE_INTERRUPT),
+            NSError(domain: "Storage", code: 1, userInfo: [NSUnderlyingErrorKey: cancelled])]
+        for error in errors {
+            XCTAssertTrue(error.isCancellation, String(describing: error))
+            XCTAssertNil(error.presentableMessage)
+        }
+        for error: Error in [URLError(.timedOut), DatabaseError(resultCode: .SQLITE_ABORT),
+                            DatabaseError(resultCode: .SQLITE_CORRUPT), CocoaError(.fileReadCorruptFile)] {
+            XCTAssertFalse(error.isCancellation)
+            XCTAssertNotNil(error.presentableMessage)
+        }
+    }
+
+    @MainActor
+    func testCancelledBookshelfReadDoesNotBecomeUserError() async throws {
+        let groups = BookGroupRepository(database: try AppDatabase.inMemory())
+        let model = BookshelfViewModel(bookshelf: CancelledBookshelfReading(), groups: groups)
+        await model.load()
+        XCTAssertNil(model.errorMessage)
+        XCTAssertFalse(model.isLoading)
+    }
+
     func testSevenLayoutsAndProgressCompatibility() {
         XCTAssertEqual(BookshelfLayout.allCases.count, 7)
         XCTAssertEqual(BookshelfLayout.allCases.compactMap(\.columns), [2, 3, 4, 5, 6])
@@ -58,5 +86,11 @@ final class BookshelfLayoutTests: XCTestCase {
         XCTAssertEqual(model.shelfBookCount, 6)
         XCTAssertEqual(model.readingCount, 1)
         XCTAssertEqual(model.recentBook?.bookUrl, "book:5")
+    }
+}
+
+private struct CancelledBookshelfReading: BookshelfReading {
+    func list(groupID: Int64, sort: BookshelfSort) async throws -> [BookRow] {
+        throw CancellationError()
     }
 }
