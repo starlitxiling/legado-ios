@@ -199,8 +199,9 @@ struct ReaderSettings: Equatable {
             value.configuration[keyPath: path] = min(100, max(0, configuration[keyPath: path]))
         }
         value.configuration.bgAlpha = min(100, max(0, configuration.bgAlpha))
-        value.configuration.underlineWidth = clamp(configuration.underlineWidth, 0...20, 1)
-        value.configuration.underlineDistance = clamp(configuration.underlineDistance, 0...100, 4)
+        value.configuration.underlineMode = min(6, max(0, configuration.underlineMode))
+        value.configuration.underlineWidth = clamp(configuration.underlineWidth, 0...10, 1)
+        value.configuration.underlineDistance = clamp(configuration.underlineDistance, 0...30, 4)
         if !["none", "lineEnd", "adjacent", "adjacentLineEnd", "all"].contains(value.punctuationCompress) { value.punctuationCompress = "none" }
         value.configuration.textBold = min(2, max(0, configuration.textBold))
         value.configuration.titleBold = min(2, max(-1, configuration.titleBold))

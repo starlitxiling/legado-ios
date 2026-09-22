@@ -49,6 +49,7 @@ struct ReaderInterfacePanel: View {
                             }
                             NavigationLink("边距") { margins }
                             NavigationLink("信息") { information }
+                            NavigationLink("下划线") { underline }
                         }.font(.system(size: 14)).buttonStyle(.bordered)
                     }
                     HStack {
@@ -267,6 +268,22 @@ struct ReaderInterfacePanel: View {
                 slider("下间距", value: number(\.titleBottomSpacing), range: 0...400, step: 1)
             }
         }.legadoNavigationTitle("信息与标题")
+    }
+
+    private var underline: some View {
+        Form {
+            Picker("线型", selection: config(\.underlineMode)) {
+                ForEach(Array(["关闭", "实线", "虚线", "点线", "双线", "波浪线", "双虚线"].enumerated()), id: \.offset) { index, name in
+                    Text(name).tag(index)
+                }
+            }.accessibilityIdentifier("reader.underline.mode")
+            Toggle("正文下划线", isOn: config(\.underlineBodyEnabled))
+            Toggle("标题下划线", isOn: config(\.underlineTitleEnabled))
+            Toggle("自定义下划线颜色", isOn: config(\.underlineColorSet))
+            if draft.configuration.underlineColorSet { ColorPicker("下划线颜色", selection: integerColor(\.underlineColor)) }
+            slider("线宽", value: config(\.underlineWidth), range: 0...10, step: 0.5)
+            slider("距基线", value: config(\.underlineDistance), range: 0...30, step: 1)
+        }.legadoNavigationTitle("下划线")
     }
 
     private var customization: some View {

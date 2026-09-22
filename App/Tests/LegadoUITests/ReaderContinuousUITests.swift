@@ -32,6 +32,28 @@ final class ReaderContinuousUITests: XCTestCase {
     }
 
     @MainActor
+    func testUnderlineOptionsPersistAfterClosingPanel() {
+        let app = launch(mode: 0)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        app.buttons["界面"].tap()
+        let entry = app.buttons["下划线"]
+        if !entry.isHittable { app.scrollViews.firstMatch.swipeLeft() }
+        XCTAssertTrue(entry.waitForExistence(timeout: 5)); entry.tap()
+        app.buttons["reader.underline.mode"].tap(); app.buttons["双虚线"].tap()
+        XCTAssertTrue(app.switches["正文下划线"].exists)
+        XCTAssertTrue(app.switches["标题下划线"].exists)
+        app.sliders["线宽"].adjust(toNormalizedSliderPosition: 0.3)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["完成"].tap(); app.buttons["收起"].tap()
+        let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.lifetime = .keepAlways; add(screenshot)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        app.buttons["界面"].tap()
+        if !entry.isHittable { app.scrollViews.firstMatch.swipeLeft() }
+        entry.tap()
+        XCTAssertTrue(app.buttons["reader.underline.mode"].label.contains("双虚线"))
+    }
+
+    @MainActor
     private func launch(mode: Int) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()

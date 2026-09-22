@@ -4,6 +4,45 @@ import LegadoCore
 @testable import ReaderCheck
 
 final class ReaderTypographyTests: XCTestCase {
+    func testUnderlineDoesNotRestartDashesAtCoreTextRunBoundaries() throws {
+        let text = NSMutableAttributedString(string: "Underline", attributes: ReaderTypography.bodyAttributes(ReaderSettings(), fontName: "Helvetica"))
+        let line = CTLineCreateWithAttributedString(text)
+        text.addAttribute(NSAttributedString.Key("test.segment"), value: 1, range: NSRange(location: 2, length: 3))
+        let segmented = CTLineCreateWithAttributedString(text)
+        func render(_ line: CTLine) throws -> Data {
+            let context = try XCTUnwrap(CGContext(data: nil, width: 200, height: 80, bitsPerComponent: 8, bytesPerRow: 800,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            var config = ReadBookConfig(); config.underlineMode = 6
+            ReaderUnderline.draw(line: line, origin: CGPoint(x: 10, y: 40), title: false, config: config, context: context)
+            return Data(bytes: try XCTUnwrap(context.data), count: 64000)
+        }
+        XCTAssertEqual(try render(line), try render(segmented))
+    }
+
+    func testUnderlineModesDrawAndRespectTitleAndBodySwitches() throws {
+        let line = CTLineCreateWithAttributedString(NSAttributedString(string: "Underline", attributes:
+            ReaderTypography.bodyAttributes(ReaderSettings(), fontName: "Helvetica")))
+        func bitmap(_ mode: Int, title: Bool = false, enabled: Bool = true) throws -> Data {
+            var config = ReadBookConfig(); config.underlineMode = mode
+            config.underlineBodyEnabled = enabled; config.underlineTitleEnabled = enabled
+            config.underlineColorSet = true; config.underlineColor = -65536
+            let context = try XCTUnwrap(CGContext(data: nil, width: 200, height: 80, bitsPerComponent: 8, bytesPerRow: 800,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            ReaderUnderline.draw(line: line, origin: CGPoint(x: 10, y: 40), title: title, config: config, context: context)
+            return Data(bytes: try XCTUnwrap(context.data), count: 64000)
+        }
+        let blank = try bitmap(0)
+        var rendered = Set<Data>()
+        for mode in 1...6 {
+            let image = try bitmap(mode)
+            XCTAssertNotEqual(image, blank)
+            rendered.insert(image)
+            XCTAssertEqual(try bitmap(mode, enabled: false), blank)
+            XCTAssertEqual(try bitmap(mode, title: true, enabled: false), blank)
+        }
+        XCTAssertEqual(rendered.count, 6)
+    }
+
     func testSplitChapterNumberPreservesBodyOffsetsAndStyle() throws {
         var settings = ReaderSettings(); settings.configuration.splitChapterTitle = true
         settings.configuration.titleNumberSize = 6; settings.configuration.titleNumberColor = -65536

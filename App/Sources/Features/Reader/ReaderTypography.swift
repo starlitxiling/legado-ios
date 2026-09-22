@@ -99,3 +99,55 @@ enum ReaderTypography {
         }
     }
 }
+
+enum ReaderUnderline {
+    static func draw(line: CTLine, origin: CGPoint, title: Bool, config: ReadBookConfig, context: CGContext) {
+        guard (1...6).contains(config.underlineMode), config.underlineWidth > 0,
+              title ? config.underlineTitleEnabled : config.underlineBodyEnabled else { return }
+        context.saveGState()
+        defer { context.restoreGState() }
+        let width = min(10, config.underlineWidth)
+        context.setLineWidth(width)
+        let y = origin.y - min(30, max(0, config.underlineDistance))
+        var segments: [(left: Double, right: Double, color: CGColor)] = []
+        for run in CTLineGetGlyphRuns(line) as! [CTRun] {
+            let attributes = CTRunGetAttributes(run) as NSDictionary
+            guard attributes[kCTRunDelegateAttributeName] == nil else { continue }
+            let foreground = attributes[kCTForegroundColorAttributeName].map { $0 as! CGColor } ?? CGColor(gray: 0, alpha: 1)
+            let color = config.underlineColorSet ? ReaderTypography.color(ARGBColor(UInt32(truncatingIfNeeded: config.underlineColor)).hex) : foreground
+            let range = CTRunGetStringRange(run)
+            let start = origin.x + CTLineGetOffsetForStringIndex(line, range.location, nil)
+            let end = origin.x + CTLineGetOffsetForStringIndex(line, range.location + range.length, nil)
+            let left = min(start, end), right = max(start, end)
+            guard right > left else { continue }
+            if let last = segments.last, abs(last.right - left) < 0.5, last.color == color {
+                segments[segments.count - 1].right = right
+            } else { segments.append((left, right, color)) }
+        }
+        for (left, right, color) in segments {
+            context.setStrokeColor(color); context.setFillColor(color)
+            func stroke(_ y: Double) {
+                context.move(to: CGPoint(x: left, y: y)); context.addLine(to: CGPoint(x: right, y: y)); context.strokePath()
+            }
+            context.setLineDash(phase: 0, lengths: [2, 6].contains(config.underlineMode) ? [width * 4, width * 2] : [])
+            switch config.underlineMode {
+            case 3:
+                let radius = max(0.5, width / 2)
+                for x in stride(from: left + radius, through: right - radius, by: radius * 4) {
+                    context.fillEllipse(in: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))
+                }
+            case 4, 6:
+                let separation = (width + 1) / 2
+                stroke(y - separation); stroke(y + separation)
+            case 5:
+                let amplitude = max(1, width), wavelength = max(4, width * 4)
+                context.move(to: CGPoint(x: left, y: y))
+                for x in stride(from: left + 0.5, through: right, by: 0.5) {
+                    context.addLine(to: CGPoint(x: x, y: y + sin((x - left) * .pi * 2 / wavelength) * amplitude))
+                }
+                context.strokePath()
+            default: stroke(y)
+            }
+        }
+    }
+}

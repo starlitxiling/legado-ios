@@ -629,6 +629,12 @@ private final class ReaderTextCanvas: UIView {
         context.textMatrix = .identity
         context.translateBy(x: 0, y: bounds.height)
         context.scaleBy(x: 1, y: -1)
+        if let config = pagination.underlineConfig {
+            for (index, line) in page.lines.enumerated() {
+                ReaderUnderline.draw(line: line, origin: page.lineOrigins[index],
+                    title: CTLineGetStringRange(line).location < pagination.titleLength, config: config, context: context)
+            }
+        }
         for (index, line) in page.lines.enumerated() {
             for run in CTLineGetGlyphRuns(line) as! [CTRun] {
                 let attributes = CTRunGetAttributes(run) as NSDictionary
