@@ -33,7 +33,7 @@ struct ThemePalette: Equatable {
     let isNight: Bool
     let isEInk: Bool
     var allowsAnimation: Bool { !isEInk }
-    func pageAnimation(_ savedMode: Int) -> Int { isEInk ? 4 : savedMode }
+    func pageAnimation(_ savedMode: Int, eInkMode: Int = 4) -> Int { isEInk ? eInkMode : savedMode }
     var onPrimary: ARGBColor { ARGBColor(primary.isDark ? 0xFFFFFFFF : 0xFF000000) }
     var onAccent: ARGBColor { ARGBColor(accent.isDark ? 0xFFFFFFFF : 0xFF000000) }
     var textPrimary: ARGBColor { ARGBColor(isEInk ? 0xFF000000 : isNight ? 0xFFFFFFFF : 0xDE000000) }

@@ -85,7 +85,7 @@ struct Paginator {
             let natural = try imageSizes[url] ?? imageSize(url)
             images.append(try ReaderImageLayout.spec(offset: (string as NSString).length, url: url, style: imageStyle,
                 natural: natural, available: contentSize, textSize: settings.textSize,
-                scroll: !settings.isEInk && (settings.pageAnim == 3 || settings.pageAnim == 4 && settings.noAnimScrollPage)))
+                scroll: (settings.isEInk ? settings.configuration.pageAnimEInk : settings.pageAnim) == 3 || !settings.isEInk && settings.pageAnim == 4 && settings.noAnimScrollPage))
             // Android 单图排版用一个空格占据章节字符坐标。
             string += " "
             start = NSMaxRange(match.range)

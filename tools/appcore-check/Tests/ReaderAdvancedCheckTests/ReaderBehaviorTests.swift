@@ -2,6 +2,18 @@ import XCTest
 @testable import ReaderCheck
 
 final class ReaderBehaviorTests: XCTestCase {
+    func testContinuousScrollAnchorSurvivesChapterWindowChanges() {
+        let old = ReaderScrollGeometry(items: [(0, 100), (1, 140), (1_000_000, 120)])
+        let anchor = old.anchor(at: 267)
+        XCTAssertEqual(anchor?.id, 1_000_000)
+        XCTAssertEqual(anchor?.distance, 27)
+        let next = ReaderScrollGeometry(items: [(1_000_000, 120), (1_000_001, 90)])
+        XCTAssertEqual(next.offset(for: anchor!), 27)
+        XCTAssertEqual(old.anchor(at: -10)?.id, 0)
+        XCTAssertEqual(old.anchor(at: 900)?.id, 1_000_000)
+        XCTAssertNil(ReaderScrollGeometry(items: []).anchor(at: 0))
+    }
+
     func testHorizontalDragThresholdMomentumAndDirection() {
         func target(_ delta: Double, _ projected: Double, previous: Bool = true, next: Bool = true) -> Bool? {
             ReaderHorizontalDrag(translation: delta, projected: projected, width: 300).destination(canPrevious: previous, canNext: next)

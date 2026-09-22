@@ -45,3 +45,32 @@ struct ReaderHorizontalDrag {
                 width + min(slide ? width : 0, delta))
     }
 }
+
+struct ReaderScrollGeometry {
+    struct Anchor {
+        let id: Int
+        let distance: Double
+    }
+    let items: [(id: Int, height: Double)]
+
+    func anchor(at offset: Double) -> Anchor? {
+        guard offset.isFinite else { return nil }
+        var start = 0.0
+        for (index, item) in items.enumerated() {
+            if offset < start + item.height || index == items.count - 1 {
+                return Anchor(id: item.id, distance: max(0, min(item.height, offset - start)))
+            }
+            start += item.height
+        }
+        return nil
+    }
+
+    func offset(for anchor: Anchor) -> Double? {
+        var start = 0.0
+        for item in items {
+            if item.id == anchor.id { return start + min(item.height, anchor.distance) }
+            start += item.height
+        }
+        return nil
+    }
+}

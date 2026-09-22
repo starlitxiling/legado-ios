@@ -184,6 +184,7 @@ struct ReaderSettings: Equatable {
         value.titleBottomSpacing = clamp(titleBottomSpacing, 0...400, 0)
         value.autoReadSpeed = clamp(autoReadSpeed, 1...600, 10)
         value.pageAnim = (0...4).contains(pageAnim) ? pageAnim : 0
+        value.configuration.pageAnimEInk = (0...4).contains(configuration.pageAnimEInk) ? configuration.pageAnimEInk : 4
         value.lineSpacingExtra = clamp(lineSpacingExtra, -10...40, 12)
         value.paragraphSpacing = clamp(paragraphSpacing, 0...20, 2)
         value.letterSpacing = clamp(letterSpacing, -0.5...0.5, 0.1)

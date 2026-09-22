@@ -141,7 +141,8 @@ struct ReaderView: View {
                         progress: autoRead.progress, enabled: acceptsInput,
                         canPrevious: model.pageIndex > 0 || model.chapterPosition > 0,
                         canNext: model.pageIndex + count < (model.pagination?.pages.count ?? 0) || model.chapterPosition + 1 < model.availableChapterCount,
-                        forward: model.lastTurnForward, touchSlop: Double(behavior.integer("pageTouchSlop")), pageHeight: spreadHeight(index: model.pageIndex, size: pageSize, count: count), turn: scrollTurnPage) {
+                        forward: model.lastTurnForward, touchSlop: Double(behavior.integer("pageTouchSlop")), pageHeight: spreadHeight(index: model.pageIndex, size: pageSize, count: count),
+                        scrollPages: animation == 3 ? continuousPages(size: pageSize, count: count) : [], scrollSelect: selectScrollPage, turn: scrollTurnPage) {
                         pageSpread(index: model.pageIndex, size: pageSize, count: count)
                     } next: {
                         if let pagination = model.pagination, model.pageIndex + count < pagination.pages.count {
@@ -159,7 +160,7 @@ struct ReaderView: View {
                     }
                     .frame(width: geometry.size.width, height: pageSize.height, alignment: .topLeading)
                     .background {
-                        ReaderInputView(configuration: behavior, enabled: acceptsInput, scrollMode: animation == 3, interactivePaging: animation == 0 || animation == 1,
+                        ReaderInputView(configuration: behavior, enabled: acceptsInput, scrollMode: animation == 3, interactivePaging: (0...2).contains(animation),
                             tap: { point, taps in tapped(point, taps: taps, size: CGSize(width: geometry.size.width, height: pageSize.height)) },
                             longPress: { point in held(point, size: CGSize(width: geometry.size.width, height: pageSize.height)) },
                             turn: turnPage, bookmark: { Task { await model.toggleBookmark() } },
@@ -286,7 +287,7 @@ struct ReaderView: View {
     }
 
     private var animation: Int {
-        let value = themeColors.palette.pageAnimation(model.readerBook?.readConfig?.pageAnim ?? model.settings.pageAnim)
+        let value = themeColors.palette.pageAnimation(model.readerBook?.readConfig?.pageAnim ?? model.settings.pageAnim, eInkMode: model.settings.configuration.pageAnimEInk)
         return !themeColors.isEInk && value == 4 && behavior.boolean("noAnimScrollPage") ? 3 : value
     }
     private var acceptsInput: Bool {
@@ -481,12 +482,43 @@ struct ReaderView: View {
             max(size.height, pagination.pages[$0].height + model.settings.paddingTop + model.settings.paddingBottom)
         }.max() ?? size.height
     }
-    private func pageSpread(index: Int, size: CGSize, count: Int, preview: ReaderPagination? = nil, currentChapter: Bool = true) -> some View {
+    private func pageSpread(index: Int, size: CGSize, count: Int, preview: ReaderPagination? = nil, currentChapter: Bool = true, chapterPosition: Int? = nil) -> some View {
         HStack(alignment: .top, spacing: 0) {
             ForEach(0..<count, id: \.self) { column in
-                pageContent(index: index + column, size: size, preview: preview, currentChapter: currentChapter)
+                pageContent(index: index + column, size: size, preview: preview, currentChapter: currentChapter, chapterPosition: chapterPosition)
             }
         }
+    }
+
+    private func continuousPages(size: CGSize, count: Int) -> [ReaderScrollPage] {
+        var result: [ReaderScrollPage] = []
+        let position = model.chapterPosition
+        let chapters: [(Int, ReaderPagination?)] = [(position - 1, model.previousChapterPagination),
+            (position, model.pagination), (position + 1, model.nextChapterPagination)]
+        for (chapter, pagination) in chapters where chapter >= 0 && chapter < model.availableChapterCount {
+            if let pagination {
+                for index in stride(from: 0, to: pagination.pages.count, by: count) {
+                    result.append(ReaderScrollPage(id: chapter * 1_000_000 + index,
+                        height: spreadHeight(index: index, size: size, count: count, preview: pagination),
+                        content: AnyView(pageSpread(index: index, size: size, count: count, preview: pagination,
+                            currentChapter: chapter == position, chapterPosition: chapter))))
+                }
+            } else if chapter != position {
+                result.append(ReaderScrollPage(id: chapter * 1_000_000, height: size.height,
+                    content: AnyView(background.overlay(Text(chapter > position ? "继续滚动加载下一章" : "继续滚动加载上一章")))))
+            }
+        }
+        return result
+    }
+
+    private func selectScrollPage(_ location: Int) async {
+        let chapter = location / 1_000_000, page = location % 1_000_000
+        guard chapter >= 0, chapter < model.availableChapterCount else { return }
+        if chapter != model.chapterPosition {
+            await model.goToChapter(model.chapters[chapter].index)
+        }
+        guard chapter == model.chapterPosition else { return }
+        await model.selectPage(page)
     }
 
     private func turnPage(_ forward: Bool) {
@@ -502,7 +534,7 @@ struct ReaderView: View {
         return chapter != model.chapterIndex || page != model.pageIndex
     }
 
-    @ViewBuilder private func pageContent(index: Int, size: CGSize, preview: ReaderPagination? = nil, currentChapter: Bool = true) -> some View {
+    @ViewBuilder private func pageContent(index: Int, size: CGSize, preview: ReaderPagination? = nil, currentChapter: Bool = true, chapterPosition: Int? = nil) -> some View {
         ZStack(alignment: .topLeading) {
             background
             if let pagination = preview ?? model.pagination, pagination.pages.indices.contains(index) {
@@ -517,7 +549,7 @@ struct ReaderView: View {
                     .padding(.leading, model.settings.paddingLeft).padding(.top, model.settings.paddingTop)
                     .accessibilityLabel(pagination.pages[index].text.string)
                     .accessibilityIdentifier("reader.body")
-                    .accessibilityValue("第 \(model.chapterPosition + 1) 章，第 \(index + 1) 页")
+                    .accessibilityValue("第 \((chapterPosition ?? model.chapterPosition) + 1) 章，第 \(index + 1) 页")
                 ForEach(Array(pagination.pages[index].images.enumerated()), id: \.offset) { _, image in
                     RemoteImage(url: image.url, origin: model.book?.origin, book: model.readerBook, isCover: false)
                         .frame(width: image.rect.width, height: image.rect.height)

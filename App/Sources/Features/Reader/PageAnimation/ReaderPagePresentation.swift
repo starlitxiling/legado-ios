@@ -10,6 +10,8 @@ struct ReaderPagePresentation<Content: View, Next: View, Previous: View>: View {
     var forward = true
     var touchSlop: Double = 10
     var pageHeight: Double = 0
+    var scrollPages: [ReaderScrollPage] = []
+    var scrollSelect: (Int) async -> Void = { _ in }
     let turn: (Bool) async -> Bool
     @ViewBuilder let content: () -> Content
     @ViewBuilder let next: () -> Next
@@ -38,11 +40,9 @@ struct ReaderPagePresentation<Content: View, Next: View, Previous: View>: View {
                 touchSlop: touchSlop, turn: turn, content: content, next: next, previous: previous)
         case .simulation:
             if progress > 0 { content().modifier(NoAnimTransition()) }
-            else { SimulationPageTransition(page: page, content: content) }
+            else { SimulationPageTransition(page: page, enabled: enabled, canPrevious: canPrevious, canNext: canNext, turn: turn, content: content, next: next, previous: previous) }
         case .scroll:
-            ScrollPageContainer(progress: progress, page: page, pageHeight: pageHeight, turn: turn) {
-                VStack(spacing: 0) { content(); next() }
-            }
+            ScrollPageContainer(pages: scrollPages, location: page, progress: progress, enabled: enabled, select: scrollSelect)
         case .none:
             content().modifier(NoAnimTransition())
         }

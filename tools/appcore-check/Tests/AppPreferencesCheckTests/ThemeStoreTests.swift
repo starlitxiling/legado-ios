@@ -59,6 +59,7 @@ final class ThemeStoreTests: XCTestCase {
             XCTAssertEqual(palette.textPrimary.value, 0xFF000000)
             XCTAssertFalse(palette.allowsAnimation)
             XCTAssertEqual(palette.pageAnimation(2), 4)
+            XCTAssertEqual(palette.pageAnimation(2, eInkMode: 3), 3)
             XCTAssertEqual(before.pageAnimation(2), 2)
             store.mode = .light
             XCTAssertEqual(store.palette(systemIsNight: false), before)

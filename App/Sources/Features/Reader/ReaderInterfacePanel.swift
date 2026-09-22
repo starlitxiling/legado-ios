@@ -62,9 +62,9 @@ struct ReaderInterfacePanel: View {
                         set: { setting(\.letterSpacing).wrappedValue = $0 / 100 - 0.5 }), range: 0...100, step: 1)
                     slider("行距", value: number(\.lineSpacingExtra), range: -10...40, step: 1, divisor: 10)
                     slider("段距", value: number(\.paragraphSpacing), range: 0...20, step: 1, divisor: 10)
-                    Picker("翻页动画", selection: config(\.pageAnim)) {
+                    Picker("翻页动画", selection: config(draft.isEInk ? \.pageAnimEInk : \.pageAnim)) {
                         Text("覆盖").tag(0); Text("滑动").tag(1); Text("仿真").tag(2); Text("滚动").tag(3); Text("无").tag(4)
-                    }.pickerStyle(.segmented).disabled(draft.isEInk)
+                    }.pickerStyle(.segmented)
                     HStack {
                         Text("样式（长按自定义）").font(.caption)
                         Spacer(minLength: 4)
