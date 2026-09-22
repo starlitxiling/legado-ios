@@ -58,6 +58,10 @@ struct ReaderMenuView: View {
                 Button(action: close) { Color.clear.contentShape(Rectangle()) }.buttonStyle(.plain).accessibilityLabel("收起")
                 if device.brightnessOnRight { brightness }
                 VStack(spacing: 12) {
+                    if model.supportsReviews {
+                        Button { show("reviews") } label: { ReaderReviewIcon(settings: model.settings) }
+                            .accessibilityLabel("段评").padding(6).background(menuColor.opacity(0.9), in: RoundedRectangle(cornerRadius: 8))
+                    }
                     floating("全文搜索", icon: "magnifyingglass") { action(.search) }
                     floating(automatic ? "停止自动阅读" : "自动阅读", icon: automatic ? "pause.rectangle" : "play.rectangle", action: autoRead)
                         .contextMenu { Button("自动阅读速度") { show("autoSpeed") } }

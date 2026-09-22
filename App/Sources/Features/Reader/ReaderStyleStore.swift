@@ -126,6 +126,15 @@ final class ReaderStyleStore {
         try await persist()
     }
 
+    func importStyles(from address: String, client: any ResponseLimitedHttpClient) async throws {
+        guard let url = URL(string: address.trimmingCharacters(in: .whitespacesAndNewlines)),
+              ["http", "https"].contains(url.scheme?.lowercased() ?? ""), url.host?.isEmpty == false else { throw URLError(.badURL) }
+        let response = try await client.send(HttpRequest(url: url), maximumResponseBytes: 16 * 1024 * 1024)
+        guard (200..<300).contains(response.status) else { throw WebBookError.httpStatus(response.status, url.absoluteString) }
+        try Task.checkCancellation()
+        try await importStyles(response.body)
+    }
+
     func exportSelected() throws -> Data {
         try ReaderStyleArchive.encode(current, background: { name in
             let url = resourceDirectory.appendingPathComponent(URL(fileURLWithPath: name).lastPathComponent)

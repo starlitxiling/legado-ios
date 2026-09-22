@@ -202,6 +202,7 @@ struct ReaderSettings: Equatable {
         for path in [\ReadBookConfig.headerPaddingLeft, \.headerPaddingRight, \.footerPaddingLeft, \.footerPaddingRight] {
             value.configuration[keyPath: path] = min(100, max(0, configuration[keyPath: path]))
         }
+        value.configuration.reviewIconScale = min(200, max(50, configuration.reviewIconScale))
         value.configuration.bgAlpha = min(100, max(0, configuration.bgAlpha))
         value.configuration.underlineMode = min(6, max(0, configuration.underlineMode))
         value.configuration.underlineWidth = clamp(configuration.underlineWidth, 0...10, 1)

@@ -15,10 +15,16 @@ struct ReaderInterfacePanel: View {
     @State private var importing = false
     @State private var importingImage = false
     @State private var selectedPhoto: PhotosPickerItem?
+    @State private var importingURL = false
+    @State private var styleURL = ""
+    @State private var sharingStyle = false
+    @State private var svgDraft = ""
+    @State private var svgName = ""
     @State private var exporting = false
     @State private var document = ReaderStyleDocument(data: Data())
     @State private var linkedMargins = true
     @AppStorage("chineseConverterType") private var chineseConverterType = 0
+    @Environment(AppContainer.self) private var container
     @Environment(\.dismiss) private var dismiss
 
     init(store: ReaderStyleStore, settings: ReaderSettings, apply: @escaping (ReaderSettings) async -> Void) {
@@ -133,7 +139,25 @@ struct ReaderInterfacePanel: View {
             }
         }
         .fileExporter(isPresented: $exporting, document: document, contentType: .zip, defaultFilename: "readConfig") { result in
-            if case .failure(let failure) = result { error = failure.presentation(operation: "导出阅读样式", sourceFile: "readConfig.zip") }
+            switch result {
+            case .failure(let failure): error = failure.presentation(operation: "导出阅读样式", sourceFile: "readConfig.zip")
+            case .success: sharingStyle = true
+            }
+        }
+        .alert("网络导入样式", isPresented: $importingURL) {
+            TextField("HTTP 或 HTTPS 地址", text: $styleURL).textInputAutocapitalization(.never).autocorrectionDisabled()
+            Button("导入") { enqueue(operation: "下载阅读样式", sourceFile: styleURL) {
+                try await store.importStyles(from: styleURL, client: container.httpClient); await adoptStyle()
+            } }
+            Button("取消", role: .cancel) {}
+        }
+        .sheet(isPresented: $sharingStyle) {
+            NavigationStack {
+                ShareLink(item: ReaderStyleShareFile(data: document.data), preview: SharePreview("阅读样式")) {
+                    Label("系统分享", systemImage: "square.and.arrow.up")
+                }.accessibilityIdentifier("reader.style.share").legadoNavigationTitle("分享阅读样式")
+                    .toolbar { Button("完成") { sharingStyle = false } }
+            }
         }
     }
 
@@ -297,12 +321,52 @@ struct ReaderInterfacePanel: View {
             ColorPicker("强调颜色", selection: color(accentPath))
             NavigationLink("背景图片") { backgroundImages }
             slider("背景透明度", value: number(\.bgAlpha), range: 0...100, step: 1)
+            NavigationLink("段评图标") { reviewIconSettings }
+            Button("网络导入样式") { importingURL = true }
+            Button("分享样式") { enqueue(operation: "分享阅读样式") { document = ReaderStyleDocument(data: try store.exportSelected()); sharingStyle = true } }
             Button("导入样式") { importingImage = false; importing = true }
             Button("导出样式") { enqueue { document = ReaderStyleDocument(data: try store.exportSelected()); exporting = true } }
             Button("删除样式", role: .destructive) {
                 enqueue { try await store.deleteSelected(); await adoptStyle(); customizing = false }
             }.disabled(store.styles.count <= 5)
         }.legadoNavigationTitle("自定义样式")
+    }
+
+    private var reviewIconSettings: some View {
+        Form {
+            Section("预览") {
+                ReaderReviewIcon(settings: draft, count: 88).frame(maxWidth: .infinity, minHeight: 80)
+                slider("图标缩放 (%)", value: number(\.reviewIconScale), range: 50...200, step: 10)
+                ColorPicker("段评图标颜色", selection: integerColor(\.reviewIconColor))
+                Button("跟随正文颜色") { config(\.reviewIconColor).wrappedValue = 0 }
+            }
+            Section("图标模板") {
+                Button("默认图标") { svgDraft = ""; config(\.reviewIconSvg).wrappedValue = "" }
+                ForEach(ReaderReviewIconStyle.builtins, id: \.0) { name, svg in
+                    Button(name) { svgDraft = svg; config(\.reviewIconSvg).wrappedValue = svg }
+                }
+                ForEach(Array(draft.configuration.reviewIconSvgTemplates.enumerated()), id: \.offset) { index, template in
+                    HStack {
+                        Button(template.name) { svgDraft = template.svg; config(\.reviewIconSvg).wrappedValue = template.svg }
+                        Spacer()
+                        Button("删除", role: .destructive) { mutate { $0.configuration.reviewIconSvgTemplates.remove(at: index) } }
+                    }
+                }
+            }
+            Section("自定义 SVG") {
+                TextField("模板名称", text: $svgName)
+                TextEditor(text: $svgDraft).frame(minHeight: 160).autocorrectionDisabled().textInputAutocapitalization(.never)
+                    .accessibilityIdentifier("reader.review.svg")
+                Text("使用 {{count}} 显示段评数，最多显示 999。").font(.caption)
+                Button("保存图标模板") {
+                    do {
+                        var config = draft.configuration
+                        try ReaderReviewIconStyle.saveTemplate(name: svgName, svg: svgDraft, configuration: &config)
+                        mutate { $0.configuration = config }
+                    } catch { self.error = error.presentation(operation: "保存段评图标", subject: svgName) }
+                }
+            }
+        }.legadoNavigationTitle("段评图标").onAppear { svgDraft = draft.configuration.reviewIconSvg }
     }
 
     private var textColorPath: WritableKeyPath<ReadBookConfig, String> {

@@ -12,6 +12,7 @@ struct ReaderReviewView: View {
     var body: some View {
         NavigationStack {
             List {
+                HStack { ReaderReviewIcon(settings: model.settings, count: items.count); Text("段评") }
                 Stepper("第 \(paragraph) 段", value: $paragraph, in: 1...10000)
                 if isLoading { ProgressView("正在加载段评") }
                 if let errorMessage { Text(errorMessage.displayText).foregroundStyle(.red) }

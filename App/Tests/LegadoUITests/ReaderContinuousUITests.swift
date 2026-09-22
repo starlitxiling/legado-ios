@@ -78,6 +78,31 @@ final class ReaderContinuousUITests: XCTestCase {
     }
 
     @MainActor
+    func testStyleNetworkImportValidationSharingAndReviewIcon() {
+        let app = launch(mode: 0)
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
+        app.buttons["界面"].tap(); app.buttons["reader.style.add"].tap()
+        XCTAssertTrue(app.buttons["网络导入样式"].waitForExistence(timeout: 5))
+        app.buttons["网络导入样式"].tap()
+        app.alerts.textFields.firstMatch.tap(); app.alerts.textFields.firstMatch.typeText("invalid")
+        app.alerts.buttons["导入"].tap()
+        XCTAssertTrue(app.alerts["阅读样式"].waitForExistence(timeout: 5)); app.alerts.buttons["好"].tap()
+        app.buttons["段评图标"].tap()
+        let preset = app.buttons["圆角气泡"]
+        for _ in 0..<6 where !preset.isHittable { app.swipeUp() }
+        XCTAssertTrue(preset.isHittable); preset.tap()
+        for _ in 0..<6 where !app.sliders["图标缩放 (%)"].isHittable { app.swipeDown() }
+        XCTAssertTrue(app.descendants(matching: .any)["reader.review.icon"].firstMatch.exists)
+        app.sliders["图标缩放 (%)"].adjust(toNormalizedSliderPosition: 0.7)
+        let screenshot = XCTAttachment(screenshot: app.screenshot()); screenshot.lifetime = .keepAlways; add(screenshot)
+        app.navigationBars.buttons.element(boundBy: 0).tap()
+        app.buttons["分享样式"].tap()
+        XCTAssertTrue(app.buttons["reader.style.share"].waitForExistence(timeout: 5)); app.buttons["reader.style.share"].tap()
+        XCTAssertTrue(app.otherElements["ActivityListView"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.cells["保存到“文件”"].exists)
+    }
+
+    @MainActor
     private func launch(mode: Int) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
