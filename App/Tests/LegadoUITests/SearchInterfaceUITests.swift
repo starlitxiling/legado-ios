@@ -2,6 +2,33 @@ import XCTest
 
 final class SearchInterfaceUITests: XCTestCase {
     @MainActor
+    func testEmptySourceSearchOffersImportDestination() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-search-gallery", "-reset-search-gallery", "-search-empty"]
+        app.launch()
+        XCTAssertTrue(app.buttons["search.importSources"].waitForExistence(timeout: 10))
+        app.buttons["search.importSources"].tap()
+        XCTAssertTrue(app.navigationBars["书源"].waitForExistence(timeout: 5))
+    }
+
+    @MainActor
+    func testSearchFailureDetailsShowSourceAndChineseTimeout() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-search-gallery", "-reset-search-gallery", "-search-timeout"]
+        app.launch()
+        XCTAssertTrue(app.buttons["search.history.Ocean"].waitForExistence(timeout: 10))
+        app.buttons["search.history.Ocean"].tap()
+        let failures = app.buttons["2 个书源搜索失败或超时"]
+        XCTAssertTrue(failures.waitForExistence(timeout: 10))
+        failures.tap()
+        XCTAssertTrue(app.staticTexts["Source A"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "网络请求超时")).firstMatch.exists)
+        snapshot(app, name: "a4c-search-failures")
+    }
+
+    @MainActor
     func testInputHelpResultsFilterAndScope() {
         continueAfterFailure = false
         let app = XCUIApplication()

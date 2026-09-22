@@ -22,6 +22,17 @@ final class SourceCheckerTests: XCTestCase {
         return (source, client, db)
     }
 
+    func testHostErrorDescriptionPersistsWithSourceIdentity() async throws {
+        let (source, client, db) = try await setup(failure: 0, timeout: true)
+        let checker = SourceChecker(client: client, database: db)
+        let result = try await checker.check(source: source, keyword: "demo", describeError: { _ in "书源搜索超时，请重试。" })
+        XCTAssertEqual(result.steps.first?.error, "书源搜索超时，请重试。")
+        XCTAssertEqual(result.sourceName, source.bookSourceName)
+        XCTAssertEqual(result.sourceURL, source.bookSourceUrl)
+        let saved = try await checker.lastResult(source: source.bookSourceUrl!)
+        XCTAssertEqual(saved, result)
+    }
+
     func testAllStepsAndPersistedState() async throws {
         let (source, client, db) = try await setup()
         let result = try await SourceChecker(client: client, database: db, clock: { 1 }).check(source: source, keyword: "demo")

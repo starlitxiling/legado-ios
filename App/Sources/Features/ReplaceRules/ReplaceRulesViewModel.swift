@@ -8,7 +8,9 @@ final class ReplaceRulesViewModel {
     private(set) var rules: [ReplaceRuleRow] = []
     private(set) var importPreview: ManagementImportPreview?
     private(set) var isBusy = false
-    var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
+    func dismissError() { userError = nil }
     var keyword = ""
     var selectedGroup: String?
 
@@ -34,10 +36,10 @@ final class ReplaceRulesViewModel {
         }
     }
 
-    func load() async { await perform { self.rules = try await self.repository.list() } }
+    func load() async { await perform(operation: "读取替换规则", subject: nil) { self.rules = try await self.repository.list() } }
 
     func setEnabled(_ rule: ReplaceRuleRow, enabled: Bool) async {
-        await perform {
+        await perform(operation: "切换替换规则状态", subject: rule.name) {
             guard let id = rule.id, var current = try await self.repository.get(id: id) else { return }
             current.isEnabled = enabled
             try await self.repository.update(current)
@@ -46,7 +48,7 @@ final class ReplaceRulesViewModel {
     }
 
     func delete(_ rule: ReplaceRuleRow) async {
-        await perform {
+        await perform(operation: "删除替换规则", subject: rule.name) {
             try await self.repository.delete(rule)
             self.rules = try await self.repository.list()
         }
@@ -55,18 +57,18 @@ final class ReplaceRulesViewModel {
     func cancelImport() {
         guard !isBusy else { return }
         clearPreview()
-        errorMessage = nil
+        userError = nil
     }
 
     func prepareImport(text: String) async {
-        await perform {
+        await perform(operation: "解析导入替换规则", subject: nil) {
             self.clearPreview()
             try await self.prepare(ManagementImport.text(Data(text.utf8)))
         }
     }
 
     func prepareImport(url: String) async {
-        await perform {
+        await perform(operation: "下载导入替换规则", subject: url) {
             self.clearPreview()
             let text = try await ManagementImport.download(url, client: self.httpClient)
             try await self.prepare(text)
@@ -75,7 +77,7 @@ final class ReplaceRulesViewModel {
 
     func confirmImport() async {
         guard importPreview != nil else { return }
-        await perform {
+        await perform(operation: "保存导入替换规则", subject: nil) {
             try await self.repository.upsert(self.pendingRules)
             self.clearPreview()
             self.rules = try await self.repository.list()
@@ -114,12 +116,12 @@ final class ReplaceRulesViewModel {
         importPreview = nil
     }
 
-    private func perform(_ operation: () async throws -> Void) async {
+    private func perform(operation: String, subject: String?, _ action: () async throws -> Void) async {
         guard !isBusy else { return }
         isBusy = true
-        errorMessage = nil
+        userError = nil
         defer { isBusy = false }
-        do { try await operation() }
-        catch { errorMessage = error.localizedDescription }
+        do { try await action() }
+        catch { userError = error.presentation(operation: operation, subject: subject) }
     }
 }

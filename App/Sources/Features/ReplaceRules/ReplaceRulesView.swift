@@ -68,7 +68,7 @@ struct ReplaceRulesView: View {
                     Button("新建规则") { editingRule = nil; showEditor = true }
                     Button("导出 JSON") {
                         do { shareText = try ReplaceRuleEditModel.export(model.filteredRules); showShare = true }
-                        catch { model.errorMessage = error.localizedDescription }
+                        catch { model.userError = error.presentation(operation: "导出替换规则") }
                     }
                     Button("从文件导入") { importEntry = .file }
                     Button("从剪贴板导入") { importEntry = .clipboard }

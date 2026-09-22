@@ -4,7 +4,7 @@ import LegadoCore
 
 struct ExploreGalleryView: View {
     @State private var container: AppContainer?
-    @State private var error: String?
+    @State private var error: UserFacingError?
     private let theme = ThemeStore(preferences: AppPreferences(defaults: UserDefaults(suiteName: "Legado.ExploreGallery")!))
 
     var body: some View {
@@ -12,7 +12,7 @@ struct ExploreGalleryView: View {
             if let container {
                 NavigationStack { ExploreView(container: container) }
                     .environment(container).modifier(ThemeEnvironmentModifier(store: theme))
-            } else if let error { Text(error) }
+            } else if let error { Text(error.displayText) }
             else { ProgressView("加载中") }
         }.task {
             guard container == nil else { return }
@@ -32,7 +32,7 @@ struct ExploreGalleryView: View {
                     try await container.bookSources.insert(source)
                 }
                 self.container = container
-            } catch { self.error = error.localizedDescription }
+            } catch { self.error = error.presentation(operation: "准备发现预览") }
         }
     }
 }

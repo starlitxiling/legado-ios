@@ -40,6 +40,7 @@ public struct SourceChecker {
     }
 
     public func check(source: BookSource, keyword: String = "我的", timeout: TimeInterval = 180,
+                      describeError: @escaping @Sendable (Error) -> String = { $0.localizedDescription },
                       progress: ((SourceCheckStepResult) async -> Void)? = nil) async throws -> BookSourceCheckState {
         try Task.checkCancellation()
         guard timeout.isFinite, timeout >= 0, timeout <= Double(UInt64.max / 1_000_000_000) else { throw URLError(.badURL) }
@@ -50,7 +51,7 @@ public struct SourceChecker {
         do {
             if timeout == 0 { throw URLError(.timedOut) }
             steps = try await withThrowingTaskGroup(of: [SourceCheckStepResult].self) { group in
-                group.addTask { try await self.runSteps(web: web, keyword: keyword, tracker: tracker, progress: progress) }
+                group.addTask { try await self.runSteps(web: web, keyword: keyword, tracker: tracker, describeError: describeError, progress: progress) }
                 group.addTask { try await self.sleep(timeout); try Task.checkCancellation(); throw URLError(.timedOut) }
                 defer { group.cancelAll() }
                 return try await group.next()!
@@ -81,7 +82,7 @@ public struct SourceChecker {
     }
 
     private func runSteps(web: WebBook, keyword: String, tracker: SourceCheckProgress,
-                          progress: ((SourceCheckStepResult) async -> Void)?) async throws -> [SourceCheckStepResult] {
+                          describeError: @Sendable (Error) -> String, progress: ((SourceCheckStepResult) async -> Void)?) async throws -> [SourceCheckStepResult] {
         var steps: [SourceCheckStepResult] = []
         var search: SearchBook?
         var book: Book?
@@ -112,7 +113,7 @@ public struct SourceChecker {
             } catch {
                 try Task.checkCancellation()
                 if error is CancellationError || (error as? URLError)?.code == .cancelled { throw CancellationError() }
-                failure = String(describing: error)
+                failure = describeError(error)
                 timedOut = (error as? URLError)?.code == .timedOut
                 invalidGroup = Self.group(for: error)
             }

@@ -15,7 +15,7 @@ struct SourceGroupManagementView: View {
                     Button(group) { editing = group; name = group }
                         .swipeActions { Button("删除", role: .destructive) { Task { await model.renameGroup(group, to: "") } } }
                 }
-                if let error = model.errorMessage { Text(error).foregroundStyle(.red) }
+                if let error = model.userError { Text(error.displayText).foregroundStyle(.red) }
             }.legadoNavigationTitle("分组管理")
                 .toolbar { ToolbarItem(placement: .cancellationAction) { Button("完成") { dismiss() } } }
                 .alert("重命名分组", isPresented: Binding(get: { editing != nil }, set: { if !$0 { editing = nil } })) {
@@ -31,7 +31,7 @@ struct SourceQRImportView: View {
     let completion: (String) -> Void
     @Environment(\.dismiss) private var dismiss
     @State private var photo: PhotosPickerItem?
-    @State private var error: String?
+    @State private var error: UserFacingError?
     @State private var scanning = false
     var body: some View {
         NavigationStack {
@@ -42,7 +42,7 @@ struct SourceQRImportView: View {
                     Button("扫描二维码") { scanning = true }
                         .disabled(!DataScannerViewController.isSupported || !DataScannerViewController.isAvailable)
                     PhotosPicker("从图片识别", selection: $photo, matching: .images)
-                    if let error { Text(error).foregroundStyle(.red) }
+                    if let error { Text(error.displayText).foregroundStyle(.red) }
                 }
             }.frame(maxWidth: .infinity, maxHeight: .infinity)
                 .legadoNavigationTitle("二维码导入")
@@ -53,10 +53,10 @@ struct SourceQRImportView: View {
                         guard let data = try await photo.loadTransferable(type: Data.self), let image = CIImage(data: data),
                               let detector = CIDetector(ofType: CIDetectorTypeQRCode, context: nil, options: [CIDetectorAccuracy: CIDetectorAccuracyHigh]),
                               let text = (detector.features(in: image).first as? CIQRCodeFeature)?.messageString else {
-                            error = "未找到可识别的二维码。"; return
+                            error = UserFacingError(title: "二维码识别失败", message: "未找到可识别的二维码，请选择清晰且完整的图片。"); return
                         }
                         completion(text)
-                    } catch { self.error = error.localizedDescription }
+                    } catch { self.error = error.presentation(operation: "识别书源二维码") }
                 }
         }
     }
@@ -64,12 +64,12 @@ struct SourceQRImportView: View {
 
 private struct SourceQRScanner: UIViewControllerRepresentable {
     let completion: (String) -> Void
-    let failure: (String) -> Void
+    let failure: (UserFacingError) -> Void
     func makeCoordinator() -> Coordinator { Coordinator(completion) }
     func makeUIViewController(context: Context) -> DataScannerViewController {
         let scanner = DataScannerViewController(recognizedDataTypes: [.barcode(symbologies: [.qr])], qualityLevel: .balanced, recognizesMultipleItems: false)
         scanner.delegate = context.coordinator
-        do { try scanner.startScanning() } catch { DispatchQueue.main.async { failure(error.localizedDescription) } }
+        do { try scanner.startScanning() } catch { DispatchQueue.main.async { if let message = error.presentation(operation: "启动二维码扫描") { failure(message) } } }
         return scanner
     }
     func updateUIViewController(_ uiViewController: DataScannerViewController, context: Context) {}

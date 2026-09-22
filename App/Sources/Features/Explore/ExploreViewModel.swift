@@ -59,7 +59,7 @@ final class ExploreSourcesViewModel {
             if result.refresh { await loadKinds(source: source, client: client, stateRepository: stateRepository, refresh: true) }
         } catch {
             if kindGeneration == generation, actionGeneration == action, !(error is CancellationError) {
-                errorMessage = error.localizedDescription
+                userError = error.presentation(operation: "执行发现操作", subject: source.bookSourceName)
             }
         }
     }
@@ -78,7 +78,7 @@ final class ExploreSourcesViewModel {
                 return rows
             }
             await load(repository: repository)
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "置顶发现书源", subject: source.bookSourceName) }
     }
 
     func delete(_ source: BookSource, repository: BookSourceRepository) async {
@@ -86,26 +86,27 @@ final class ExploreSourcesViewModel {
             if let url = source.bookSourceUrl, let row = try await repository.get(bookSourceUrl: url) { _ = try await repository.delete(row) }
             if expandedURL == source.bookSourceUrl { collapse() }
             await load(repository: repository)
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "删除发现书源", subject: source.bookSourceName) }
     }
     private(set) var kinds: [ExploreKind] = []
     private(set) var isLoading = false
-    private(set) var errorMessage: String?
+    private(set) var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
 
     func load(repository: BookSourceRepository) async {
-        isLoading = true; errorMessage = nil
+        isLoading = true; userError = nil
         defer { isLoading = false }
         do {
             let rows = try await repository.list(enabled: true)
             sources = try rows.filter { $0.enabledExplore && !($0.exploreUrl ?? "").isEmpty }
                 .map { try JSONDecoder().decode(BookSource.self, from: JSONEncoder().encode($0)) }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "读取发现书源", subject: nil) }
     }
 
     func loadKinds(source: BookSource, client: any HttpClient, stateRepository: SourceStateRepository,
                    refresh: Bool = false) async {
         let generation = UUID(); kindGeneration = generation
-        kindsLoading = true; errorMessage = nil; kinds = []
+        kindsLoading = true; userError = nil; kinds = []
         defer { if kindGeneration == generation { kindsLoading = false } }
         let values = controlValues
         let task = Task.detached {
@@ -133,7 +134,7 @@ final class ExploreSourcesViewModel {
                 }
             }
         } catch {
-            if kindGeneration == generation, !(error is CancellationError) { errorMessage = error.localizedDescription }
+            if kindGeneration == generation, !(error is CancellationError) { userError = error.presentation(operation: "加载发现分类", subject: [source.bookSourceName, source.bookSourceUrl].compactMap { $0 }.joined(separator: " · ")) }
         }
     }
 }
@@ -143,7 +144,8 @@ final class ExploreSourcesViewModel {
 final class ExploreViewModel {
     private(set) var books: [SearchBook] = []
     private(set) var isLoading = false
-    private(set) var errorMessage: String?
+    private(set) var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
     private(set) var hasMore = true
     private var category: ExploreKind?
     private var page = 1
@@ -160,14 +162,14 @@ final class ExploreViewModel {
     func select(_ category: ExploreKind) async {
         generation += 1
         self.category = category; page = 1; books = []; hasMore = !category.isHeading
-        isLoading = false; errorMessage = nil
+        isLoading = false; userError = nil
         await loadNextPage()
     }
 
     func loadNextPage() async {
         guard !isLoading, hasMore, let url = category?.url else { return }
         let request = generation
-        isLoading = true; errorMessage = nil
+        isLoading = true; userError = nil
         defer { if request == generation { isLoading = false } }
         do {
             let results = try await fetch(url, page)
@@ -183,7 +185,7 @@ final class ExploreViewModel {
             if hasMore { page += 1 }
         } catch {
             guard request == generation, !(error is CancellationError), (error as? URLError)?.code != .cancelled else { return }
-            errorMessage = error.localizedDescription
+            userError = error.presentation(operation: "加载发现书籍", subject: [category?.title, category?.url].compactMap { $0 }.joined(separator: " · "))
         }
     }
 }

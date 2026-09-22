@@ -86,9 +86,6 @@
     "catch { errorMessage = error.localizedDescription }",
     "} catch { errorMessage = error.localizedDescription }"
   ],
-  "App/Sources/Features/CheckSource/CheckSourceViewModel.swift": [
-    "catch { errorMessage = error.localizedDescription }"
-  ],
   "App/Sources/Features/Download/DownloadCenterModel.swift": [
     "catch { errorMessage = error.localizedDescription }",
     "errorMessage = \"封面加载失败，将无封面导出：\\(error.localizedDescription)\"",
@@ -96,17 +93,6 @@
   ],
   "App/Sources/Features/Download/DownloadCenterView.swift": [
     "catch { errorMessage = error.localizedDescription }"
-  ],
-  "App/Sources/Features/Explore/ExploreGalleryView.swift": [
-    "} catch { self.error = error.localizedDescription }"
-  ],
-  "App/Sources/Features/Explore/ExploreViewModel.swift": [
-    "errorMessage = error.localizedDescription",
-    "errorMessage = error.localizedDescription",
-    "if kindGeneration == generation, !(error is CancellationError) { errorMessage = error.localizedDescription }",
-    "} catch { errorMessage = error.localizedDescription }",
-    "} catch { errorMessage = error.localizedDescription }",
-    "} catch { errorMessage = error.localizedDescription }"
   ],
   "App/Sources/Features/LocalImport/LocalBookGalleryView.swift": [
     "} catch { status = error.localizedDescription }"
@@ -129,27 +115,6 @@
     "if !(error is CancellationError) { errors.append(\"\\(name)：\\(error.localizedDescription)\") }",
     "} catch { errors.append(\"下载导入失败：\" + error.localizedDescription) }",
     "} catch { errors.append(\"恢复原文件失败：\\(error.localizedDescription)\") }"
-  ],
-  "App/Sources/Features/ReplaceRules/Edit/ReplaceRuleEditView.swift": [
-    "catch { model.errorMessage = error.localizedDescription }",
-    "catch { model.errorMessage = error.localizedDescription }"
-  ],
-  "App/Sources/Features/ReplaceRules/ReplaceRulesView.swift": [
-    "catch { model.errorMessage = error.localizedDescription }"
-  ],
-  "App/Sources/Features/ReplaceRules/ReplaceRulesViewModel.swift": [
-    "catch { errorMessage = error.localizedDescription }"
-  ],
-  "App/Sources/Features/Search/SearchGalleryView.swift": [
-    "do { try await prepare() } catch { self.error = error.localizedDescription }"
-  ],
-  "App/Sources/Features/Search/SearchViewModel.swift": [
-    "catch { errorMessage = error.localizedDescription }",
-    "catch { errorMessage = error.localizedDescription }",
-    "catch { errorMessage = error.localizedDescription }",
-    "if request == generation, !Task.isCancelled { errorMessage = error.localizedDescription }",
-    "if sourceFailures.count < 500 { sourceFailures.append(String((name + \": \" + error.localizedDescription).prefix(2048))) }",
-    "} catch { errorMessage = error.localizedDescription }"
   ],
   "App/Sources/Features/Settings/AutoTaskController.swift": [
     "} catch { if !Task.isCancelled { errorMessage = error.localizedDescription } }",
@@ -225,38 +190,6 @@
   "App/Sources/Features/Settings/UploadRuleSettingsView.swift": [
     "catch { model.message = error.localizedDescription }",
     "} catch { model.message = error.localizedDescription }"
-  ],
-  "App/Sources/Features/SourceLogin/CookieManagementView.swift": [
-    "catch { errorMessage = error.localizedDescription }",
-    "catch { errorMessage = error.localizedDescription }"
-  ],
-  "App/Sources/Features/SourceLogin/SourceLoginViewModel.swift": [
-    "catch { errorMessage = error.localizedDescription }",
-    "catch { errorMessage = error.localizedDescription }",
-    "} catch { errorMessage = error.localizedDescription }"
-  ],
-  "App/Sources/Features/Sources/Edit/BookSourceEditView.swift": [
-    "catch { model.errorMessage = error.localizedDescription }",
-    "catch { model.errorMessage = error.localizedDescription }",
-    "catch { model.errorMessage = error.localizedDescription }",
-    "} catch { model.errorMessage = error.localizedDescription }"
-  ],
-  "App/Sources/Features/Sources/SourceGalleryView.swift": [
-    "} catch { self.error = error.localizedDescription }"
-  ],
-  "App/Sources/Features/Sources/SourceImportSheet.swift": [
-    "case .failure(let error): fileError = error.localizedDescription"
-  ],
-  "App/Sources/Features/Sources/SourceManagementPanels.swift": [
-    "do { try scanner.startScanning() } catch { DispatchQueue.main.async { failure(error.localizedDescription) } }",
-    "} catch { self.error = error.localizedDescription }"
-  ],
-  "App/Sources/Features/Sources/SourcesView.swift": [
-    "catch { model.errorMessage = error.localizedDescription }",
-    "catch { model.errorMessage = error.localizedDescription }"
-  ],
-  "App/Sources/Features/Sources/SourcesViewModel.swift": [
-    "catch { errorMessage = error.localizedDescription }"
   ],
   "App/Sources/Features/WebService/NWWebServiceTransport.swift": [
     "case .failed(let error): state(.failed(error.localizedDescription))"

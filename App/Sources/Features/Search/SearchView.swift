@@ -5,6 +5,8 @@ struct SearchView: View {
     @State private var model: SearchViewModel
     @State private var preferences: AppPreferences
     @State private var showingScope = false
+    @State private var showingSources = false
+    @State private var showingFailures = false
     @State private var showingFilter = false
     @State private var filterInput = ""
     @State private var loadedPreferences = false
@@ -27,7 +29,15 @@ struct SearchView: View {
             if model.isSearching {
                 RefreshProgressBar(progress: Double(model.completedSources) / Double(max(1, model.totalSources)))
             }
-            if let error = model.errorMessage { Text(error).font(.system(size: 13)).foregroundStyle(colors.error).padding(8) }
+            if let error = model.userError {
+                ErrorBanner(error: error, dismiss: model.dismissError) { action in
+                    if action == .manageSources { showingSources = true }
+                    if action == .retry { startSearch() }
+                }.padding(8)
+            }
+            if model.availableSources.isEmpty {
+                Button("请先导入书源") { showingSources = true }.padding().accessibilityIdentifier("search.importSources")
+            }
             if !model.hasSearched {
                 inputHelp
             } else {
@@ -47,7 +57,14 @@ struct SearchView: View {
                             Text("暂无搜索结果").foregroundStyle(colors.textSecondary).padding(.top, 80)
                         }
                         if model.failedSources > 0 {
-                            Text("\(model.failedSources) 个书源搜索失败或超时").font(.system(size: 12)).foregroundStyle(colors.textSecondary).padding()
+                            DisclosureGroup("\(model.failedSources) 个书源搜索失败或超时", isExpanded: $showingFailures) {
+                                ForEach(model.failures) { failure in
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(failure.name).font(.headline)
+                                        Text(failure.error.message).font(.callout).textSelection(.enabled)
+                                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.vertical, 8)
+                                }
+                            }.padding().accessibilityIdentifier("search.failures")
                         }
                         Color.clear.frame(height: 100)
                     }
@@ -100,6 +117,10 @@ struct SearchView: View {
                 .accessibilityIdentifier("search.startStop")
                 .disabled(!model.isSearching && model.query.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
             }.padding(16)
+        }
+        .navigationDestination(isPresented: $showingSources) {
+            SourcesView(repository: container.bookSources, replaceRules: container.replaceRules,
+                httpClient: container.httpClient, sourceLogin: container.sourceLogin, sourceChecker: container.sourceChecker)
         }
         .sheet(isPresented: $showingScope) {
             SearchScopeView(sources: model.availableSources, scope: model.scope) { scope in

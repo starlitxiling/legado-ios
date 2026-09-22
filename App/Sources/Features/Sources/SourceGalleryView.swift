@@ -4,7 +4,7 @@ import LegadoCore
 
 struct SourceGalleryView: View {
     @State private var container: AppContainer?
-    @State private var error: String?
+    @State private var error: UserFacingError?
     private let theme = ThemeStore(preferences: AppPreferences(defaults: UserDefaults(suiteName: "Legado.SourceGallery")!))
     var body: some View {
         Group {
@@ -13,7 +13,7 @@ struct SourceGalleryView: View {
                     SourcesView(repository: container.bookSources, replaceRules: container.replaceRules,
                         httpClient: ReplayHttpClient(), sourceLogin: container.sourceLogin, sourceChecker: container.sourceChecker)
                 }.environment(container).modifier(ThemeEnvironmentModifier(store: theme))
-            } else if let error { Text(error) } else { ProgressView() }
+            } else if let error { Text(error.displayText) } else { ProgressView() }
         }.task {
             guard container == nil else { return }
             do {
@@ -28,7 +28,7 @@ struct SourceGalleryView: View {
                 var book = BookRow(); book.bookUrl = "https://source1.test/book"; book.origin = "https://source1.test"; book.name = "Book"
                 try await container.bookshelf.insert(book)
                 self.container = container
-            } catch { self.error = error.localizedDescription }
+            } catch { self.error = error.presentation(operation: "准备书源预览") }
         }
     }
 }

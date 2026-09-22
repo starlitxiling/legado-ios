@@ -8,7 +8,9 @@ final class SourcesViewModel {
     private(set) var sources: [BookSourceRow] = []
     private(set) var importPreview: ManagementImportPreview?
     private(set) var isBusy = false
-    var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
+    func dismissError() { userError = nil }
     var keyword = ""
     var selectedGroup: String?
     var keepEnable = false
@@ -58,7 +60,7 @@ final class SourcesViewModel {
 
     func reorder(_ url: String, before target: String) async {
         guard url != target else { return }
-        await perform {
+        await perform(operation: "调整书源顺序", subject: url) {
             try await self.repository.editSources { rows in
                 var rows = SourceManagement.sorted(rows, by: .custom)
                 guard let from = rows.firstIndex(where: { $0.bookSourceUrl == url }) else { return rows }
@@ -73,14 +75,14 @@ final class SourcesViewModel {
 
     func batchEnabled(_ enabled: Bool) async {
         let selected = selectedURLs
-        await perform {
+        await perform(operation: "切换书源启用状态", subject: "已选 \(selected.count) 个书源") {
             try await self.repository.editSources { SourceManagement.setEnabled($0, selected: selected, enabled: enabled) }
             self.sources = try await self.repository.list()
         }
     }
 
     func move(selected: Set<String>, toTop: Bool) async {
-        await perform {
+        await perform(operation: "移动书源", subject: "已选 \(selected.count) 个书源") {
             try await self.repository.editSources { try SourceManagement.move($0, selected: selected, toTop: toTop) }
             self.sources = try await self.repository.list()
         }
@@ -88,7 +90,7 @@ final class SourcesViewModel {
 
     func batchExploreEnabled(_ enabled: Bool) async {
         let selected = selectedURLs
-        await perform {
+        await perform(operation: "切换发现启用状态", subject: "已选 \(selected.count) 个书源") {
             try await self.repository.editSources { SourceManagement.setExploreEnabled($0, selected: selected, enabled: enabled) }
             self.sources = try await self.repository.list()
         }
@@ -97,7 +99,7 @@ final class SourcesViewModel {
     func changeGroup(_ group: String, removing: Bool) async {
         let selected = selectedURLs
         let changes = SourceManagement.groups(group)
-        await perform {
+        await perform(operation: "修改书源分组", subject: group) {
             try await self.repository.editSources { rows in
                 rows.map { row in
                     guard selected.contains(row.bookSourceUrl) else { return row }
@@ -121,14 +123,14 @@ final class SourcesViewModel {
     }
 
     func load() async {
-        await perform {
+        await perform(operation: "读取书源列表", subject: nil) {
             self.sources = try await self.repository.list()
             self.metadata = try await self.repository.managementMetadata()
         }
     }
 
     func setEnabled(_ source: BookSourceRow, enabled: Bool) async {
-        await perform {
+        await perform(operation: "切换书源启用状态", subject: source.bookSourceName + " · " + source.bookSourceUrl) {
             guard var current = try await self.repository.get(bookSourceUrl: source.bookSourceUrl) else { return }
             current.enabled = enabled
             try await self.repository.update(current)
@@ -137,14 +139,14 @@ final class SourcesViewModel {
     }
 
     func delete(_ source: BookSourceRow) async {
-        await perform {
+        await perform(operation: "删除书源", subject: source.bookSourceName + " · " + source.bookSourceUrl) {
             try await self.repository.delete(source)
             self.sources = try await self.repository.list()
         }
     }
 
     func renameGroup(_ old: String, to new: String) async {
-        await perform {
+        await perform(operation: "重命名书源分组", subject: old) {
             try await self.repository.editSources { rows in rows.map { row in
                 var row = row
                 var groups = SourceManagement.groups(row.bookSourceGroup)
@@ -163,18 +165,18 @@ final class SourcesViewModel {
         guard !isBusy else { return }
         pendingSources = []
         importPreview = nil
-        errorMessage = nil
+        userError = nil
     }
 
     func prepareImport(text: String) async {
-        await perform {
+        await perform(operation: "解析导入书源", subject: nil) {
             self.clearPreview()
             try await self.prepare(ManagementImport.text(Data(text.utf8)))
         }
     }
 
     func prepareImport(url: String) async {
-        await perform {
+        await perform(operation: "下载导入书源", subject: url) {
             self.clearPreview()
             let text = try await ManagementImport.download(url, client: self.httpClient)
             try await self.prepare(text)
@@ -183,7 +185,7 @@ final class SourcesViewModel {
 
     func confirmImport() async {
         guard importPreview != nil else { return }
-        await perform {
+        await perform(operation: "保存导入书源", subject: "已选 \(selectedImportURLs.count) 个书源") {
             let keepEnable = self.keepEnable
             let local = Dictionary(uniqueKeysWithValues: try await self.repository.list().map { ($0.bookSourceUrl, $0) })
             let merged = self.pendingSources.filter { self.selectedImportURLs.contains($0.bookSourceUrl) }.map { imported in
@@ -249,12 +251,12 @@ final class SourcesViewModel {
         importPreview = nil
     }
 
-    private func perform(_ operation: () async throws -> Void) async {
+    private func perform(operation: String, subject: String?, _ action: () async throws -> Void) async {
         guard !isBusy else { return }
         isBusy = true
-        errorMessage = nil
+        userError = nil
         defer { isBusy = false }
-        do { try await operation() }
-        catch { errorMessage = error.localizedDescription }
+        do { try await action() }
+        catch { userError = error.presentation(operation: operation, subject: subject) }
     }
 }

@@ -13,13 +13,21 @@ final class SearchViewModel {
     private(set) var shelfBooks: [BookRow] = []
     private(set) var readRecords: [ReadRecordRow] = []
     private(set) var hasSearched = false
-    private(set) var sourceFailures: [String] = []
+    struct SourceFailure: Identifiable {
+        let id: String
+        let name: String
+        let error: UserFacingError
+    }
+    private(set) var failures: [SourceFailure] = []
+    var sourceFailures: [String] { failures.map { $0.error.displayText } }
     private(set) var results: [SearchResult] = []
     private(set) var isSearching = false
     private(set) var completedSources = 0
     private(set) var totalSources = 0
     private(set) var failedSources = 0
-    private(set) var errorMessage: String?
+    private(set) var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
+    func dismissError() { userError = nil }
     private(set) var history: [SearchKeyword] = []
     private let keywords: SearchKeywordRepository?
     private let bookshelf: BookshelfRepository?
@@ -60,12 +68,12 @@ final class SearchViewModel {
 
     func loadHistory() async {
         do { history = try await keywords?.history() ?? [] }
-        catch { errorMessage = error.localizedDescription }
+        catch { userError = error.presentation(operation: "读取搜索历史", subject: nil) }
     }
 
     func clearHistory() async {
         do { try await keywords?.clear(); history = [] }
-        catch { errorMessage = error.localizedDescription }
+        catch { userError = error.presentation(operation: "清空搜索历史", subject: nil) }
     }
 
     var visibleResults: [SearchResult] { results.filter { SearchResultFilter.allows($0.book, words: filterWords) } }
@@ -81,12 +89,12 @@ final class SearchViewModel {
             availableSources = try await sources.summaries()
             shelfBooks = try await bookshelf?.list() ?? []
             readRecords = try await records?.all() ?? []
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "读取搜索建议", subject: nil) }
     }
 
     func deleteHistory(_ keyword: SearchKeyword) async {
         do { _ = try await keywords?.delete(keyword); await loadHistory() }
-        catch { errorMessage = error.localizedDescription }
+        catch { userError = error.presentation(operation: "删除搜索历史", subject: keyword.word) }
     }
 
     func editQuery() {
@@ -125,9 +133,9 @@ final class SearchViewModel {
         completedSources = 0
         totalSources = 0
         failedSources = 0
-        sourceFailures = []
+        failures = []
         hasSearched = !key.isEmpty
-        errorMessage = nil
+        userError = nil
         guard !key.isEmpty, !Task.isCancelled else { return }
         let request = generation
         let precise = precisionSearch
@@ -159,11 +167,15 @@ final class SearchViewModel {
             scope = resolved.scope
             let enabled = resolved.sources
             totalSources = enabled.count
+            guard !enabled.isEmpty else {
+                userError = UserFacingError(title: "无法搜索", message: all.isEmpty ? "请先导入书源。" : "当前范围没有启用的书源，请启用书源或调整搜索范围。", actions: [.manageSources])
+                return
+            }
             let client = client
             let sources = sources
             let timeout = sourceTimeout
             let sleep = timeoutSleep
-            await withTaskGroup(of: (String, Result<[SearchBook], Error>).self) { group in
+            await withTaskGroup(of: (String, String, Result<[SearchBook], Error>).self) { group in
                 var next = 0
                 func enqueue() {
                     let row = enabled[next]
@@ -172,13 +184,13 @@ final class SearchViewModel {
                         do {
                             guard let full = try await sources.get(bookSourceUrl: row.id) else { throw WebBookError.missingRule("bookSource") }
                             let source = try DiscoveryStorage.source(full)
-                            return (row.name, .success(try await Self.searchSource(source, key: key, precise: precise,
+                            return (row.name, row.id, .success(try await Self.searchSource(source, key: key, precise: precise,
                                                                         client: client, timeout: timeout, sleep: sleep)))
-                        } catch { return (row.name, .failure(error)) }
+                        } catch { return (row.name, row.id, .failure(error)) }
                     }
                 }
                 for _ in 0..<min(concurrencyLimit, enabled.count) { enqueue() }
-                for await (name, outcome) in group {
+                for await (name, url, outcome) in group {
                     guard request == generation, !Task.isCancelled else {
                         group.cancelAll()
                         return
@@ -188,14 +200,19 @@ final class SearchViewModel {
                     case .success(let books):
                         results = mergedResults.merge(books, key: key, precision: precise)
                     case .failure(let error):
-                        failedSources += 1
-                        if sourceFailures.count < 500 { sourceFailures.append(String((name + ": " + error.localizedDescription).prefix(2048))) }
+                        if let presentation = error.presentation(operation: "书源搜索", subject: name + " · " + url) {
+                            failedSources += 1
+                            if failures.count < 500 {
+                                failures.append(SourceFailure(id: url, name: name, error: UserFacingError(title: presentation.title,
+                                    message: String(presentation.message.prefix(2048)))))
+                            }
+                        }
                     }
                     if next < enabled.count { enqueue() }
                 }
             }
         } catch {
-            if request == generation, !Task.isCancelled { errorMessage = error.localizedDescription }
+            if request == generation, !Task.isCancelled { userError = error.presentation(operation: "搜索书籍", subject: key, actions: [.retry, .manageSources]) }
         }
     }
 

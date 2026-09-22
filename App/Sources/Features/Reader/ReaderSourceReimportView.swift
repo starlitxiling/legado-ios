@@ -29,7 +29,7 @@ struct ReaderSourceReimportView: View {
                     guard let row = try await repository.get(bookSourceUrl: sourceURL) else { throw ReaderError.missingSource }
                     let source = try ReaderEntityBridge.decode(BookSource.self, row: row)
                     await model.prepareImport(text: String(decoding: try JSONEncoder().encode(source), as: UTF8.self))
-                } catch { model.errorMessage = error.presentation(operation: "重新导入书源", subject: sourceURL)?.displayText }
+                } catch { model.userError = error.presentation(operation: "重新导入书源", subject: sourceURL) }
             }
     }
 }

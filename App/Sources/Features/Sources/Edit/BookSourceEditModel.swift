@@ -26,7 +26,8 @@ final class BookSourceEditModel {
     private(set) var source: BookSource
     let originalURL: String?
     var jsonText: String
-    var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
     private let original: BookSource
     private var invalidFields: [String: String] = [:]
 

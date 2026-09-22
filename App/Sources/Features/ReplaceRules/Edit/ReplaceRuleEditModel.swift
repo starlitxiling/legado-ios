@@ -6,7 +6,8 @@ import LegadoCore
 final class ReplaceRuleEditModel {
     var rule: ReplaceRuleRow
     var jsonText = ""
-    var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
     private let originalID: Int64?
 
     init(rule: ReplaceRuleRow = ReplaceRuleRow()) { self.rule = rule; originalID = rule.id }

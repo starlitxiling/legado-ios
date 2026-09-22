@@ -25,7 +25,7 @@ struct SourceImportSheet: View {
     @State private var address = ""
     @State private var text = ""
     @State private var showsFilePicker = false
-    @State private var fileError: String?
+    @State private var fileError: UserFacingError?
 
     var body: some View {
         NavigationStack {
@@ -93,7 +93,7 @@ struct SourceImportSheet: View {
                     }
                 }
                 if isBusy { ProgressView("正在处理") }
-                if let error = fileError ?? errorMessage {
+                if let error = fileError?.displayText ?? errorMessage {
                     Section { Text(error).foregroundStyle(.red) }
                 }
             }
@@ -111,7 +111,7 @@ struct SourceImportSheet: View {
                         fileError = nil
                         text = value
                         Task { await prepareText(value) }
-                    case .failure(let error): fileError = error.localizedDescription
+                    case .failure(let error): fileError = error.presentation(operation: "读取导入文件", subject: title)
                     }
                 }
             }

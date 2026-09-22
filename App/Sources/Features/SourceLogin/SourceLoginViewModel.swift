@@ -11,7 +11,8 @@ final class SourceLoginViewModel {
     var values: [String: String] = [:]
     private(set) var isBusy = false
     private(set) var completed = false
-    var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
 
     init(source: BookSource, service: SourceLogin) { self.source = source; self.service = service }
     func load() async {
@@ -23,12 +24,12 @@ final class SourceLoginViewModel {
             let stored = try await service.storedValues(source: source)
             values = Dictionary(uniqueKeysWithValues: rows.filter { !["button", "label"].contains($0.type) }
                 .map { ($0.name, stored[$0.name] ?? $0.defaultValue ?? "") })
-            errorMessage = nil
-        } catch { errorMessage = error.localizedDescription }
+            userError = nil
+        } catch { userError = error.presentation(operation: "读取登录表单", subject: [source.bookSourceName, source.bookSourceUrl].compactMap { $0 }.joined(separator: " · ")) }
     }
     func submit(action: String? = nil) async {
         guard !isBusy else { return }
-        isBusy = true; completed = false; errorMessage = nil
+        isBusy = true; completed = false; userError = nil
         defer { isBusy = false }
         do {
             let effects = try await service.submit(source: source, values: values, action: action)
@@ -47,17 +48,17 @@ final class SourceLoginViewModel {
             }
             completed = true
         }
-        catch { errorMessage = error.localizedDescription }
+        catch { userError = error.presentation(operation: "书源登录", subject: [source.bookSourceName, source.bookSourceUrl].compactMap { $0 }.joined(separator: " · ")) }
     }
 
     func completeWebLogin(cookies: [HTTPCookie], currentURL: URL?) async {
         guard !isBusy else { return }
-        isBusy = true; completed = false; errorMessage = nil
+        isBusy = true; completed = false; userError = nil
         defer { isBusy = false }
         guard let currentURL, ["http", "https"].contains(currentURL.scheme?.lowercased() ?? "") else {
-            errorMessage = "登录页面尚未加载完成"; return
+            userError = UserFacingError(title: "保存网页登录状态失败", message: "登录页面尚未加载完成，请等待页面加载后再确认。"); return
         }
         do { try await service.saveWebCookies(cookies, url: currentURL); completed = true }
-        catch { errorMessage = error.localizedDescription }
+        catch { userError = error.presentation(operation: "保存网页登录状态", subject: [source.bookSourceName, source.bookSourceUrl].compactMap { $0 }.joined(separator: " · ")) }
     }
 }

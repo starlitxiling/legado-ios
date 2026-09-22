@@ -82,7 +82,7 @@ struct BookSourceEditView: View {
                 Menu {
                     Toggle("JSON 模式", isOn: Binding(get: { jsonMode }, set: { enabled in
                         do { if !enabled { try model.applyJSON(model.jsonText) }; jsonMode = enabled }
-                        catch { model.errorMessage = error.localizedDescription }
+                        catch { model.userError = error.presentation(operation: "切换书源编辑模式", subject: model.source.bookSourceName) }
                     }))
                     Picker("辅助键行数", selection: $assistRows) { ForEach(1...5, id: \.self) { Text("\($0) 行").tag($0) } }
                     NavigationLink("调试") { SourceDebugView(source: model.source, client: client) }
@@ -101,8 +101,8 @@ struct BookSourceEditView: View {
     }
     private func field(_ key: String) -> Binding<String> {
         Binding(get: { model.value(key) }, set: {
-            do { try model.setValue($0, for: key); model.errorMessage = nil }
-            catch { model.errorMessage = error.localizedDescription }
+            do { try model.setValue($0, for: key); model.userError = nil }
+            catch { model.userError = error.presentation(operation: "修改书源字段", subject: [model.source.bookSourceName, key].compactMap { $0 }.joined(separator: " · ")) }
         })
     }
     private func inputHeight(_ key: String) -> CGFloat {
@@ -111,8 +111,8 @@ struct BookSourceEditView: View {
     }
 
     private func applyJSON() {
-        do { try model.applyJSON(model.jsonText); model.errorMessage = nil }
-        catch { model.errorMessage = error.localizedDescription }
+        do { try model.applyJSON(model.jsonText); model.userError = nil }
+        catch { model.userError = error.presentation(operation: "解析书源 JSON", subject: model.source.bookSourceName) }
     }
 
     private func save() async {
@@ -121,6 +121,6 @@ struct BookSourceEditView: View {
         do {
             try await model.save(repository: repository, jsonMode: jsonMode, now: Int64(Date().timeIntervalSince1970 * 1000))
             await onSave(); dismiss()
-        } catch { model.errorMessage = error.localizedDescription }
+        } catch { model.userError = error.presentation(operation: "保存书源", subject: [model.source.bookSourceName, model.source.bookSourceUrl].compactMap { $0 }.joined(separator: " · ")) }
     }
 }

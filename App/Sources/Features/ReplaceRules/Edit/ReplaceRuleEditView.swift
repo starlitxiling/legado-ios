@@ -37,8 +37,8 @@ struct ReplaceRuleEditView: View {
             Section("JSON 粘贴") {
                 TextEditor(text: $model.jsonText).font(.system(.caption, design: .monospaced)).frame(minHeight: 130)
                 Button("应用 JSON") {
-                    do { try model.applyJSON(); model.errorMessage = nil }
-                    catch { model.errorMessage = error.localizedDescription }
+                    do { try model.applyJSON(); model.userError = nil }
+                    catch { model.userError = error.presentation(operation: "解析替换规则 JSON") }
                 }
             }
         }
@@ -52,7 +52,7 @@ struct ReplaceRuleEditView: View {
                         saving = true
                         defer { saving = false }
                         do { try await model.save(repository: repository); await onSave(); dismiss() }
-                        catch { model.errorMessage = error.localizedDescription }
+                        catch { model.userError = error.presentation(operation: "保存替换规则") }
                     }
                 }
             }

@@ -6,7 +6,7 @@ import LegadoCore
 struct SearchGalleryView: View {
     @State private var container: AppContainer?
     @State private var model: SearchViewModel?
-    @State private var error: String?
+    @State private var error: UserFacingError?
     private let preferences: AppPreferences
     private let theme: ThemeStore
 
@@ -23,11 +23,11 @@ struct SearchGalleryView: View {
             if let container, let model {
                 NavigationStack { SearchView(container: container, model: model, preferences: preferences) }
                     .environment(container).modifier(ThemeEnvironmentModifier(store: theme))
-            } else if let error { Text(error) }
+            } else if let error { Text(error.displayText) }
             else { ProgressView("加载中") }
         }.task {
             guard container == nil else { return }
-            do { try await prepare() } catch { self.error = error.localizedDescription }
+            do { try await prepare() } catch { self.error = error.presentation(operation: "准备搜索预览") }
         }
     }
 
@@ -40,7 +40,7 @@ struct SearchGalleryView: View {
         let cover = FileManager.default.temporaryDirectory.appendingPathComponent("search-gallery-cover.png")
         guard let data = image.pngData() else { throw CocoaError(.fileWriteUnknown) }
         try data.write(to: cover, options: .atomic)
-        for (index, host) in ["a", "b"].enumerated() {
+        for (index, host) in ["a", "b"].enumerated() where !ProcessInfo.processInfo.arguments.contains("-search-empty") {
             var source = BookSource(); source.bookSourceUrl = "https://\(host).fixture.test"; source.bookSourceName = "Source " + host.uppercased()
             source.bookSourceGroup = index == 0 ? "Fiction" : "History"; source.searchUrl = "/search"
             source.ruleSearch = SearchRule(); source.ruleSearch?.bookList = "tag.article"; source.ruleSearch?.name = "tag.h2@text"
@@ -58,7 +58,7 @@ struct SearchGalleryView: View {
         let html = ["Ocean Journey", "Mountain Stories", "History Notebook"].enumerated().map { index, name in
             "<article><h2>\(name)</h2><b>\(["A.", "B.", "C."][index]) Writer</b><a href='/book/\(index)'>Link</a><img src='\(cover.absoluteString)'><i>Fiction,Adventure</i><small>Chapter 100</small><p>A journey through unfamiliar places. This sample description verifies the three-line introduction in search results.</p></article>"
         }.joined()
-        model = SearchViewModel(sources: container.bookSources, client: SearchGalleryClient(body: html), keywords: keywords,
+        model = SearchViewModel(sources: container.bookSources, client: SearchGalleryClient(body: html, failure: ProcessInfo.processInfo.arguments.contains("-search-timeout") ? .timedOut : nil), keywords: keywords,
             bookshelf: container.bookshelf, records: container.readProgress)
         self.container = container
     }
@@ -66,8 +66,10 @@ struct SearchGalleryView: View {
 
 private struct SearchGalleryClient: HttpClient {
     let body: String
+    var failure: URLError.Code?
     func send(_ request: HttpRequest) async throws -> HttpResponse {
         try Task.checkCancellation()
+        if let failure { throw URLError(failure) }
         guard request.url.host?.hasSuffix(".fixture.test") == true else { throw URLError(.unsupportedURL) }
         return .init(status: 200, body: Data(body.utf8), finalURL: request.url)
     }

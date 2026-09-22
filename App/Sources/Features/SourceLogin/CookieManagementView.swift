@@ -4,10 +4,10 @@ import LegadoCore
 struct CookieManagementView: View {
     let service: SourceLogin
     @State private var domains: [CookieRow] = []
-    @State private var errorMessage: String?
+    @State private var errorMessage: UserFacingError?
     var body: some View {
         List {
-            if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
+            if let errorMessage { Text(errorMessage.displayText).foregroundStyle(.red) }
             ForEach(domains, id: \.url) { row in
                 HStack {
                     Text(row.url)
@@ -15,7 +15,7 @@ struct CookieManagementView: View {
                     Button("清除", role: .destructive) {
                         Task {
                             do { try await service.clearCookies(domain: row.url); await load() }
-                            catch { errorMessage = error.localizedDescription }
+                            catch { errorMessage = error.presentation(operation: "清除 Cookie", subject: row.url) }
                         }
                     }
                 }
@@ -28,6 +28,6 @@ struct CookieManagementView: View {
     }
     private func load() async {
         do { domains = try await service.cookieDomains(); errorMessage = nil }
-        catch { errorMessage = error.localizedDescription }
+        catch { errorMessage = error.presentation(operation: "读取 Cookie 列表") }
     }
 }

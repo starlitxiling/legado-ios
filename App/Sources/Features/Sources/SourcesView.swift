@@ -240,12 +240,12 @@ struct SourcesView: View {
 
     private func edit(_ row: BookSourceRow) {
         do { editor = SourceEditorRequest(source: try JSONDecoder().decode(BookSource.self, from: JSONEncoder().encode(row))) }
-        catch { model.errorMessage = error.localizedDescription }
+        catch { model.userError = error.presentation(operation: "打开书源编辑", subject: row.bookSourceName + " · " + row.bookSourceUrl) }
     }
 
     private func export(selected: Set<String>?) {
         do { shareText = try model.exportText(selected: selected); showShare = true }
-        catch { model.errorMessage = error.localizedDescription }
+        catch { model.userError = error.presentation(operation: "导出书源", subject: "所选书源") }
     }
 
     private func loginSource(_ row: BookSourceRow) -> BookSource? {
