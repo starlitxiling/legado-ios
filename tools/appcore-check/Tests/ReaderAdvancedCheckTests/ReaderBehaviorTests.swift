@@ -2,6 +2,24 @@ import XCTest
 @testable import ReaderCheck
 
 final class ReaderBehaviorTests: XCTestCase {
+    func testHorizontalDragThresholdMomentumAndDirection() {
+        func target(_ delta: Double, _ projected: Double, previous: Bool = true, next: Bool = true) -> Bool? {
+            ReaderHorizontalDrag(translation: delta, projected: projected, width: 300).destination(canPrevious: previous, canNext: next)
+        }
+        XCTAssertNil(target(-60, -60))
+        XCTAssertEqual(target(-100, -100), true)
+        XCTAssertEqual(target(150, 150), false)
+        XCTAssertEqual(target(-25, -250), true)
+        XCTAssertNil(target(-25, 250))
+        XCTAssertNil(target(150, 200, previous: false))
+        XCTAssertNil(target(-150, -200, next: false))
+        XCTAssertNil(target(.nan, -200))
+        let cover = ReaderHorizontalDrag(translation: 90, projected: 90, width: 300).offsets(slide: false)
+        XCTAssertEqual(cover.previous, -210); XCTAssertEqual(cover.current, 0); XCTAssertEqual(cover.next, 300)
+        let slide = ReaderHorizontalDrag(translation: -90, projected: -90, width: 300).offsets(slide: true)
+        XCTAssertEqual(slide.previous, -390); XCTAssertEqual(slide.current, -90); XCTAssertEqual(slide.next, 210)
+    }
+
     func testDefaultControlsAndPortablePreferenceRoundTrip() throws {
         XCTAssertEqual(ReaderBehaviorConfiguration.definitions.count, 41)
         let suite = "ReaderBehaviorTests." + UUID().uuidString

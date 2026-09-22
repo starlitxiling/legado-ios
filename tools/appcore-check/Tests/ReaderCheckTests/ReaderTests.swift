@@ -80,6 +80,7 @@ final class ReaderTests: XCTestCase {
         await model.advanceSpread(forward: true, columns: 2)
         XCTAssertEqual(model.chapterIndex, 1)
         XCTAssertEqual(model.pageIndex, 0)
+        XCTAssertEqual(model.previousChapterPagination?.pages.count, count)
         await model.advanceSpread(forward: false, columns: 2)
         XCTAssertEqual(model.chapterIndex, 0)
         XCTAssertEqual(model.pageIndex, (count - 1) / 2 * 2)

@@ -23,6 +23,8 @@ final class ReaderViewModel {
     private(set) var cachedChapterIndices: Set<Int> = []
     private(set) var pagination: ReaderPagination?
     private(set) var nextChapterPagination: ReaderPagination?
+    private(set) var previousChapterPagination: ReaderPagination?
+    private(set) var lastTurnForward = true
     private var previewGeneration = UUID()
 
     var nextPagePreview: (pagination: ReaderPagination, index: Int, currentChapter: Bool)? {
@@ -68,6 +70,7 @@ final class ReaderViewModel {
     private var downloadTask: Task<CachedReaderChapter, Error>?
     private var layoutTask: Task<ReaderLayoutResult, Error>?
     private var prefetchTask: Task<Void, Never>?
+    private var previousPreviewTask: Task<Void, Never>?
     private var chapterUpdateTask: Task<Void, Never>?
     private var rulesTask: Task<Void, Never>?
     private var pendingRulesRefresh = false
@@ -123,12 +126,13 @@ final class ReaderViewModel {
     private func beginRequest() -> UUID {
         previewGeneration = UUID(); nextChapterPagination = nil
         generation = UUID(); layoutGeneration = UUID()
-        downloadTask?.cancel(); prefetchTask?.cancel(); layoutTask?.cancel(); cancelSourceRecovery()
+        downloadTask?.cancel(); prefetchTask?.cancel(); previousPreviewTask?.cancel(); layoutTask?.cancel(); cancelSourceRecovery()
         chapterUpdateTask?.cancel(); chapterUpdateTask = nil
         return generation
     }
 
     func load(bookURL: String, chapterIndex requestedIndex: Int? = nil) async {
+        previousChapterPagination = nil
         rulesTask?.cancel(); rulesTask = nil; pendingRulesRefresh = false
         closedWebDav = false
         pendingWebDavProgress = nil
@@ -312,7 +316,11 @@ final class ReaderViewModel {
                     let result = try await render(input: input, debounce: true)
                     guard token == generation, layoutToken == layoutGeneration else { continue }
                     try Task.checkCancellation()
-                    if chapterIndex != request.index { highlights = [] }
+                    if chapterIndex != request.index {
+                        previousChapterPagination = position > 0 && latest[position - 1].index == chapterIndex ? pagination : nil
+                        lastTurnForward = request.index > chapterIndex
+                        highlights = []
+                    }
                     layoutInput = input; chapterIndex = request.index; chapterTitle = result.title
                     pagination = result.pagination
                     pageIndex = result.pagination.pageIndex(at: request.offset)
@@ -393,6 +401,7 @@ final class ReaderViewModel {
 
     func selectPage(_ index: Int) async {
         guard !isLoading, let pagination, pagination.pages.indices.contains(index) else { return }
+        lastTurnForward = index >= pageIndex
         pageIndex = index
         characterOffset = pagination.firstCharacterOffset(on: index)
         await saveProgress()
@@ -427,7 +436,7 @@ final class ReaderViewModel {
     }
 
     func reflow(size: CGSize? = nil, settings: ReaderSettings? = nil) async {
-        previewGeneration = UUID(); nextChapterPagination = nil; prefetchTask?.cancel()
+        previewGeneration = UUID(); nextChapterPagination = nil; previousChapterPagination = nil; prefetchTask?.cancel(); previousPreviewTask?.cancel()
         if let size { self.size = size }
         if let settings { self.settings = settings.normalized }
         let token = generation, layoutToken = UUID()
@@ -475,7 +484,42 @@ final class ReaderViewModel {
         await task.value
     }
 
+    private func preparePreviousPreview() {
+        previousPreviewTask?.cancel()
+        guard !isPlaceholder, previousChapterPagination == nil, chapterPosition > 0, let entity else { return }
+        let row = chapters[chapterPosition - 1], nextURL = chapters[chapterPosition].url
+        let token = generation, layoutToken = layoutGeneration
+        let cache = cache, client = client, database = database, size = size, settings = settings
+        let source = source, downloadAllowed = preDownloadCount() > 0
+        let manual = manualReplace(), replaceEnabled = replaceEnableDefault(), converter = chineseConverterType()
+        let adapt = adaptSpecialStyle, directory = cacheDirectory
+        previousPreviewTask = Task { [weak self] in
+            do {
+                let chapter = try ReaderEntityBridge.decode(BookChapter.self, row: row)
+                if !downloadAllowed && !LocalBook.isLocal(entity) {
+                    guard await cache.hasContent(book: entity, chapter: chapter) else { return }
+                }
+                let cached = try await cache.content(book: entity, chapter: chapter, nextURL: nextURL,
+                    source: downloadAllowed ? source : nil, client: client)
+                let rules = try await ReplaceRuleRepository(database: database).list()
+                let highlights = try await HighlightRuleRepository(database: database).all()
+                let input = ReaderLayoutInput(book: entity, chapter: chapter, rawContent: cached.rawContent,
+                    rules: rules, highlightRules: highlights, sourceImageStyle: source?.ruleContent?.imageStyle,
+                    manualReplace: manual, replaceEnableDefault: replaceEnabled, chineseConverterType: converter,
+                    adaptSpecialStyle: adapt, cacheDirectory: directory)
+                let layout = Task.detached { try ReaderLayout.build(input: input, size: size, settings: settings, didStart: {}) }
+                let result = try await withTaskCancellationHandler { try await layout.value } onCancel: { layout.cancel() }
+                guard !Task.isCancelled, self?.generation == token, self?.layoutGeneration == layoutToken else { return }
+                self?.previousChapterPagination = result.pagination
+            } catch {
+                guard !error.isCancellation, !Task.isCancelled, self?.generation == token else { return }
+                self?.reportPrefetch(error, operation: "预览上一章")
+            }
+        }
+    }
+
     private func prefetchNextChapter() {
+        preparePreviousPreview()
         prefetchTask?.cancel(); prefetchError = nil
         let previewToken = UUID(); previewGeneration = previewToken; nextChapterPagination = nil
         let count = min(100, max(0, preDownloadCount()))

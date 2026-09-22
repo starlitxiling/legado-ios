@@ -23,3 +23,25 @@ struct ReaderPresentationState {
         revealHeight = animation == .scroll || !progress.isFinite || !height.isFinite ? 0 : max(0, height) * min(1, max(0, progress))
     }
 }
+
+struct ReaderHorizontalDrag {
+    let translation: Double
+    let projected: Double
+    let width: Double
+
+    func destination(canPrevious: Bool, canNext: Bool) -> Bool? {
+        guard width.isFinite, width > 0, translation.isFinite, projected.isFinite,
+              abs(translation) >= 20 else { return nil }
+        let forward = translation < 0
+        guard forward ? canNext : canPrevious else { return nil }
+        let distance = abs(translation) >= width / 3
+        let momentum = translation * projected > 0 && abs(projected) >= width * 0.65
+        return distance || momentum ? forward : nil
+    }
+
+    func offsets(slide: Bool) -> (previous: Double, current: Double, next: Double) {
+        let delta = min(width, max(-width, translation))
+        return (-width + max(slide ? -width : 0, delta), slide ? delta : 0,
+                width + min(slide ? width : 0, delta))
+    }
+}

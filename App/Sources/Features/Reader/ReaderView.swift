@@ -138,7 +138,10 @@ struct ReaderView: View {
                     ReaderInfoView(settings: model.settings, header: true, values: infoValues)
                     ReaderPagePresentation(mode: animation,
                         page: model.chapterPosition * 1_000_000 + model.pageIndex,
-                        progress: autoRead.progress, pageHeight: spreadHeight(index: model.pageIndex, size: pageSize, count: count), turn: scrollTurnPage) {
+                        progress: autoRead.progress, enabled: acceptsInput,
+                        canPrevious: model.pageIndex > 0 || model.chapterPosition > 0,
+                        canNext: model.pageIndex + count < (model.pagination?.pages.count ?? 0) || model.chapterPosition + 1 < model.availableChapterCount,
+                        forward: model.lastTurnForward, touchSlop: Double(behavior.integer("pageTouchSlop")), pageHeight: spreadHeight(index: model.pageIndex, size: pageSize, count: count), turn: scrollTurnPage) {
                         pageSpread(index: model.pageIndex, size: pageSize, count: count)
                     } next: {
                         if let pagination = model.pagination, model.pageIndex + count < pagination.pages.count {
@@ -146,10 +149,17 @@ struct ReaderView: View {
                         } else if let pagination = model.nextChapterPagination {
                             pageSpread(index: 0, size: pageSize, count: count, preview: pagination, currentChapter: false)
                         } else { background.frame(width: geometry.size.width, height: pageSize.height) }
+                    } previous: {
+                        if model.pageIndex >= count {
+                            pageSpread(index: model.pageIndex - count, size: pageSize, count: count)
+                        } else if let pagination = model.previousChapterPagination {
+                            pageSpread(index: max(0, (pagination.pages.count - 1) / count * count), size: pageSize,
+                                       count: count, preview: pagination, currentChapter: false)
+                        } else { background.frame(width: geometry.size.width, height: pageSize.height) }
                     }
                     .frame(width: geometry.size.width, height: pageSize.height, alignment: .topLeading)
                     .background {
-                        ReaderInputView(configuration: behavior, enabled: acceptsInput, scrollMode: animation == 3,
+                        ReaderInputView(configuration: behavior, enabled: acceptsInput, scrollMode: animation == 3, interactivePaging: animation == 0 || animation == 1,
                             tap: { point, taps in tapped(point, taps: taps, size: CGSize(width: geometry.size.width, height: pageSize.height)) },
                             longPress: { point in held(point, size: CGSize(width: geometry.size.width, height: pageSize.height)) },
                             turn: turnPage, bookmark: { Task { await model.toggleBookmark() } },
