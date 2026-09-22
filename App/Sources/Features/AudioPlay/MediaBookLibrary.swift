@@ -7,7 +7,9 @@ final class MediaBookLibrary {
     private(set) var book: Book
     private(set) var chapters: [BookChapter] = []
     private(set) var source: BookSource?
-    private(set) var errorMessage: String?
+    private(set) var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
+    func dismissError() { userError = nil }
     private(set) var isLoading = false
     private let database: AppDatabase
     private let client: any HttpClient
@@ -24,7 +26,7 @@ final class MediaBookLibrary {
 
     func load() async {
         guard !isLoading else { return }
-        isLoading = true; errorMessage = nil
+        isLoading = true; userError = nil
         defer { isLoading = false }
         do {
             guard let row = try await BookSourceRepository(database: database).get(bookSourceUrl: book.origin ?? "") else {
@@ -51,7 +53,7 @@ final class MediaBookLibrary {
             let imageClient = (client as? any SourceSessionClientProviding)?.client(for: source) ?? client
             imageDownloader = ImageDownloader(client: imageClient, cookies: cookies)
         } catch {
-            if !Task.isCancelled { errorMessage = error.localizedDescription }
+            if !Task.isCancelled { userError = error.presentation(operation: "加载媒体目录", subject: book.name, actions: [.retry]) }
         }
     }
 
@@ -114,7 +116,7 @@ final class MediaBookLibrary {
         let pending = enqueueSave(chapter: chapter, position: position)
         Task {
             do { try await pending?.value }
-            catch { errorMessage = "保存进度失败：" + error.localizedDescription }
+            catch { userError = error.presentation(operation: "保存媒体进度", subject: book.name) }
         }
     }
 }

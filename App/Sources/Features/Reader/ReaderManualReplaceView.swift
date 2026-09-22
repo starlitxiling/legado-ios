@@ -8,7 +8,7 @@ struct ReaderManualReplaceView: View {
     @State private var selected: Set<Int64?> = []
     @State private var enabled = false
     @State private var saving = false
-    @State private var error: String?
+    @State private var error: UserFacingError?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -46,12 +46,12 @@ struct ReaderManualReplaceView: View {
                         rules = try await repository.list().filter { !($0.scopeSource && !$0.scopeTitle && !$0.scopeContent) }
                         selected = Set(model.readerBook?.readConfig?.manualReplaceRuleIds ?? []).intersection(rules.map(\.id))
                         enabled = UserDefaults.standard.bool(forKey: "manualReplaceRule")
-                    } catch { self.error = error.localizedDescription }
+                    } catch { self.error = error.presentation(operation: "读取手动替换规则", subject: model.book?.name) }
                 }
         }.interactiveDismissDisabled(saving)
             .alert("手动替换", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
                 Button("好") { error = nil }
-            } message: { Text(error ?? "") }
+            } message: { Text(error?.displayText ?? "") }
     }
 
     private func save() {
@@ -63,7 +63,7 @@ struct ReaderManualReplaceView: View {
             UserDefaults.standard.set(enabled, forKey: "manualReplaceRule")
             await model.updateReadConfig { $0.manualReplaceRuleIds = ids }
             saving = false
-            if let message = model.errorMessage {
+            if let message = model.userError {
                 UserDefaults.standard.set(previous, forKey: "manualReplaceRule")
                 error = message
             } else { dismiss() }

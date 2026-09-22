@@ -46,7 +46,8 @@ struct UserFacingError: Equatable, Identifiable {
     let title: String
     let message: String
     var actions: [Action] = []
-    var id: String { title + "\n" + message }
+    var id: String { displayText }
+    var displayText: String { title + "\n" + message }
 }
 
 extension Error {

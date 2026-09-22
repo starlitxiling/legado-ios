@@ -14,7 +14,9 @@ final class MangaReaderModel {
     private(set) var imageData: [Int: Data] = [:]
     private(set) var imageErrors: [Int: String] = [:]
     private(set) var isLoading = false
-    private(set) var errorMessage: String?
+    private(set) var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
+    func dismissError() { userError = nil }
     private let loadContent: (Int) async throws -> [MediaResource]
     private let loadImage: (MediaResource) async throws -> Data
     private let saveProgress: (Int, Int) async throws -> Void
@@ -60,7 +62,7 @@ final class MangaReaderModel {
         guard (0..<chapterCount).contains(index) else { return }
         generation += 1; prefetchGeneration += 1
         let token = generation
-        isLoading = true; errorMessage = nil
+        isLoading = true; userError = nil
         images = []; imageData = [:]; imageErrors = [:]
         defer { if generation == token { isLoading = false } }
         do {
@@ -74,7 +76,7 @@ final class MangaReaderModel {
             isLoading = false
             await prefetch()
         } catch {
-            if token == generation, !Task.isCancelled { errorMessage = error.localizedDescription }
+            if token == generation, !Task.isCancelled { userError = error.presentation(operation: "加载漫画章节", subject: "第 \(index + 1) 章", actions: [.retry]) }
         }
     }
 
@@ -82,7 +84,7 @@ final class MangaReaderModel {
         guard !isLoading, images.indices.contains(index) else { return }
         page = index
         do { try await saveProgress(chapter, page) }
-        catch { errorMessage = error.localizedDescription }
+        catch { userError = error.presentation(operation: "保存漫画进度", subject: "第 \(chapter + 1) 章，第 \(index + 1) 页") }
         await prefetch()
     }
 
@@ -126,7 +128,7 @@ final class MangaReaderModel {
                 guard token == generation, prefetchToken == prefetchGeneration, !Task.isCancelled else { return }
                 if let imageError = error as? ImageDownloadError, case .invalidDecodeResult = imageError {
                     imageDecodingFailed(at: index)
-                } else { imageErrors[index] = error.localizedDescription }
+                } else { imageErrors[index] = error.presentation(operation: "图片加载", subject: "第 \(index + 1) 页：\(resource.url.absoluteString)")?.displayText }
             }
         }
     }

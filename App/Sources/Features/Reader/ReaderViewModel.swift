@@ -34,8 +34,10 @@ final class ReaderViewModel {
     private(set) var pageIndex = 0
     private(set) var chapterTitle = ""
     private(set) var isLoading = false
-    private(set) var errorMessage: String?
-    private(set) var prefetchErrorMessage: String?
+    private(set) var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
+    private(set) var prefetchError: UserFacingError?
+    var prefetchErrorMessage: String? { prefetchError?.displayText }
     private(set) var settings: ReaderSettings
     private(set) var characterOffset = 0
     private(set) var readAloudRange: NSRange?
@@ -133,7 +135,7 @@ final class ReaderViewModel {
         let token = beginRequest()
         loadDestination = ReaderDestination(bookURL: bookURL, chapterIndex: requestedIndex)
         failedRequest = nil
-        isLoading = true; errorMessage = nil; isPlaceholder = false
+        isLoading = true; userError = nil; isPlaceholder = false
         pagination = nil; layoutInput = nil; book = nil; chapters = []; bookmarks = []
         highlights = []; cachedChapterIndices = []
         do {
@@ -195,12 +197,27 @@ final class ReaderViewModel {
             if generation == token { observeReplaceRules() }
         } catch {
             guard generation == token, !Task.isCancelled else { return }
-            errorMessage = error.localizedDescription; isLoading = false
+            report(error, operation: "打开书籍", actions: [.retry, .manageSources, .back]); isLoading = false
             if !error.isCancellation { startSourceRecovery(bookURL: bookURL, index: requestedIndex, token: token) }
         }
     }
 
-    func dismissError() { errorMessage = nil }
+    func dismissError() { userError = nil }
+
+    private func report(_ error: Error, operation: String, chapter: String? = nil,
+                        actions: [UserFacingError.Action] = []) {
+        guard !error.isCancellation else { return }
+        let subject = [book?.name ?? loadDestination?.bookURL, chapter ?? chapterTitle, source?.bookSourceName]
+            .compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
+        AppLogStore.shared.append("\(operation): \(String(reflecting: error))")
+        userError = error.presentation(operation: operation, subject: subject, actions: actions)
+    }
+
+    private func reportPrefetch(_ error: Error, operation: String) {
+        guard !error.isCancellation else { return }
+        AppLogStore.shared.append("\(operation): \(String(reflecting: error))")
+        prefetchError = error.presentation(operation: operation, subject: book?.name)
+    }
 
     func cancelSourceRecovery() {
         recoveryGeneration = UUID()
@@ -240,7 +257,7 @@ final class ReaderViewModel {
                 await load(bookURL: url, chapterIndex: candidate.index)
             } catch {
                 guard token == generation, !Task.isCancelled, !error.isCancellation else { return }
-                errorMessage = (errorMessage.map { $0 + "\n" } ?? "") + error.localizedDescription
+                report(error, operation: "自动换源", actions: [.retry, .changeSource, .manageSources, .back])
             }
         }
     }
@@ -265,7 +282,7 @@ final class ReaderViewModel {
 
     private func openChapter(_ request: ChapterRequest, token: UUID) async {
         guard let entity else { return }
-        isLoading = true; errorMessage = nil; failedRequest = request
+        isLoading = true; userError = nil; failedRequest = request
         do {
             let stored = try await ChapterRepository(database: database).list(bookUrl: entity.bookUrl ?? "")
             let latest = stored.isEmpty && source == nil && !LocalBook.isLocal(entity) ? chapters : stored
@@ -315,7 +332,7 @@ final class ReaderViewModel {
             }
         } catch {
             guard token == generation, !Task.isCancelled else { return }
-            errorMessage = error.localizedDescription; isLoading = false
+            report(error, operation: "正文加载", chapter: chapters.first { $0.index == request.index }?.title, actions: [.retry, .changeSource, .manageSources, .back]); isLoading = false
             if (error as? ReaderError) == .missingSource { await showMissingSource(request, token: token) }
             if !error.isCancellation, (error as? ReaderError) != .chapterLocked {
                 startSourceRecovery(bookURL: entity.bookUrl ?? "", index: request.index, token: token)
@@ -404,7 +421,7 @@ final class ReaderViewModel {
                 }
             } catch is CancellationError {
             } catch {
-                if !Task.isCancelled { self?.errorMessage = error.localizedDescription }
+                if !Task.isCancelled { self?.report(error, operation: "监听替换规则", actions: []) }
             }
         }
     }
@@ -437,7 +454,7 @@ final class ReaderViewModel {
         } catch is CancellationError {
         } catch {
             guard token == generation, layoutToken == layoutGeneration else { return }
-            errorMessage = error.localizedDescription
+            report(error, operation: "正文排版", actions: [])
         }
     }
 
@@ -452,14 +469,14 @@ final class ReaderViewModel {
                 let saved = try await repository.updateProgress(bookUrl: book.bookUrl, chapterIndex: index,
                     chapterPos: offset, chapterTitle: title, readTime: time)
                 if !saved { throw ReaderError.missingBook }
-            } catch { self?.errorMessage = error.localizedDescription }
+            } catch { self?.report(error, operation: "保存阅读进度", actions: []) }
         }
         saveTask = task
         await task.value
     }
 
     private func prefetchNextChapter() {
-        prefetchTask?.cancel(); prefetchErrorMessage = nil
+        prefetchTask?.cancel(); prefetchError = nil
         let previewToken = UUID(); previewGeneration = previewToken; nextChapterPagination = nil
         let count = min(100, max(0, preDownloadCount()))
         guard !isPlaceholder else { return }
@@ -497,7 +514,7 @@ final class ReaderViewModel {
                 }
             } catch {
                 guard !Task.isCancelled, self?.generation == token else { return }
-                self?.prefetchErrorMessage = error.localizedDescription
+                self?.reportPrefetch(error, operation: "预加载正文")
             }
         }
     }
@@ -528,7 +545,7 @@ final class ReaderViewModel {
                 chapters = try await ChapterRepository(database: database).list(bookUrl: saved.bookUrl ?? "")
                 prefetchNextChapter()
             } catch {
-                if generation == token, !Task.isCancelled { prefetchErrorMessage = error.localizedDescription }
+                if generation == token, !Task.isCancelled { reportPrefetch(error, operation: "自动刷新目录") }
             }
         }
     }
@@ -565,7 +582,7 @@ final class ReaderViewModel {
             let result = try await BookHighlightRepository(database: database).list(bookURL: book.bookUrl, chapterIndex: index)
             guard self.book?.bookUrl == book.bookUrl, chapterIndex == index else { return }
             highlights = result
-        } catch { errorMessage = error.localizedDescription }
+        } catch { report(error, operation: "读取批注", actions: []) }
     }
 
     func addHighlight(range: NSRange, note: String) async {
@@ -579,12 +596,12 @@ final class ReaderViewModel {
         value.layoutTitleLength = pagination.titleLength
         value.bookText = pagination.text.attributedSubstring(from: range).string; value.note = note
         do { try await BookHighlightRepository(database: database).upsert(value); await refreshHighlights() }
-        catch { errorMessage = error.localizedDescription }
+        catch { report(error, operation: "保存批注", actions: []) }
     }
 
     func deleteHighlight(_ value: BookHighlight) async {
         do { try await BookHighlightRepository(database: database).delete(value); await refreshHighlights() }
-        catch { errorMessage = error.localizedDescription }
+        catch { report(error, operation: "删除批注", actions: []) }
     }
 
     func addBookmark(selection: NSRange? = nil, note: String = "") async {
@@ -601,12 +618,12 @@ final class ReaderViewModel {
         do {
             try await BookmarkRepository(database: database).upsert(value)
             bookmarks = try await BookmarkRepository(database: database).list(bookName: book.name, bookAuthor: book.author)
-        } catch { errorMessage = error.localizedDescription }
+        } catch { report(error, operation: "添加书签", actions: []) }
     }
 
     func deleteBookmark(_ value: BookmarkRow) async {
         do { try await BookmarkRepository(database: database).delete(value); bookmarks.removeAll { $0.time == value.time } }
-        catch { errorMessage = error.localizedDescription }
+        catch { report(error, operation: "删除书签", actions: []) }
     }
 
     func openBookmark(_ value: BookmarkRow) async {
@@ -626,7 +643,7 @@ final class ReaderViewModel {
             guard let row = try await BookSourceRepository(database: database).get(bookSourceUrl: book.origin) else { throw ReaderError.missingSource }
             guard token == generation else { return }
             source = try ReaderEntityBridge.decode(BookSource.self, row: row)
-        } catch { errorMessage = error.localizedDescription }
+        } catch { report(error, operation: "重新加载书源", actions: [.manageSources]) }
     }
     var rawContent: String { layoutInput?.rawContent ?? "" }
     var currentChapterURL: String { chapters.first(where: { $0.index == chapterIndex })?.url ?? "" }
@@ -657,12 +674,12 @@ final class ReaderViewModel {
             self.book = saved; entity = try ReaderEntityBridge.decode(Book.self, row: saved)
             if chapterPosition >= availableChapterCount {
                 if availableChapterCount > 0 { await goToChapter(chapters[availableChapterCount - 1].index) }
-                else { errorMessage = ReaderError.chapterLocked.localizedDescription }
+                else { report(ReaderError.chapterLocked, operation: "打开章节") }
                 return
             }
-            errorMessage = nil
+            userError = nil
             await reflow()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { report(error, operation: "保存阅读设置", actions: []) }
     }
 
     func editContent(_ text: String) async {
@@ -671,9 +688,9 @@ final class ReaderViewModel {
         do {
             try BookHelp.save(text, directory: cacheDirectory, book: entity, chapter: input.chapter)
             guard token == generation else { return }
-            input.rawContent = text; layoutInput = input; errorMessage = nil
+            input.rawContent = text; layoutInput = input; userError = nil
             await reflow()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { report(error, operation: "保存正文修改", actions: []) }
     }
 
     func toggleBookmark() async {
@@ -690,7 +707,7 @@ final class ReaderViewModel {
             let enabled = BookHelp.removeSameTitle(directory: cacheDirectory, book: entity, chapter: input.chapter)
             try BookHelp.setRemoveSameTitle(!enabled, directory: cacheDirectory, book: entity, chapter: input.chapter)
             await reflow()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { report(error, operation: "切换同名标题过滤", actions: []) }
     }
 
     func reverseContent() async {
@@ -700,7 +717,7 @@ final class ReaderViewModel {
                 try BookHelp.save(input.rawContent, directory: cacheDirectory, book: entity, chapter: input.chapter)
             }
             if let reversed = try BookHelp.reverseContent(directory: cacheDirectory, book: entity, chapter: input.chapter) { await editContent(reversed) }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { report(error, operation: "反转正文", actions: []) }
     }
 
     func requestCloudProgress(overwrite: Bool) async {
@@ -718,9 +735,9 @@ final class ReaderViewModel {
             let progress = try await manualWebDav(current, overwrite)
             if token == generation, !closedWebDav {
                 pendingWebDavProgress = progress
-                if !overwrite && progress == nil { errorMessage = "云端没有这本书的阅读进度。" }
+                if !overwrite && progress == nil { userError = UserFacingError(title: "云端进度", message: "\(book.name)：云端没有这本书的阅读进度。") }
             }
-        } catch { if token == generation { errorMessage = error.localizedDescription } }
+        } catch { if token == generation { report(error, operation: "同步云端进度", actions: []) } }
     }
 
     private var scriptRefreshActive = false
@@ -744,7 +761,7 @@ final class ReaderViewModel {
             guard generation == token else { return }
             entity = saved; book = try ReaderEntityBridge.decode(BookRow.self, row: saved)
             chapters = try await ChapterRepository(database: database).list(bookUrl: saved.bookUrl ?? "")
-        } catch { if generation == token { errorMessage = error.localizedDescription } }
+        } catch { if generation == token { report(error, operation: "刷新书籍信息或目录", actions: [.manageSources]) } }
     }
 
     func refreshContent() async {
@@ -755,7 +772,7 @@ final class ReaderViewModel {
                 try BookHelp.clearCache(directory: cacheDirectory, book: entity,
                     chapters: chapters.map { try ReaderEntityBridge.decode(BookChapter.self, row: $0) })
                 await openChapter(ChapterRequest(index: position, offset: offset), token: token)
-            } catch { errorMessage = error.localizedDescription; isLoading = false }
+            } catch { report(error, operation: "刷新正文", actions: [.retry, .changeSource]); isLoading = false }
             return
         }
         guard let entity, let source, let input = layoutInput else { await retry(); return }
@@ -767,7 +784,7 @@ final class ReaderViewModel {
                 .content(book: entity, chapter: input.chapter, nextChapterUrl: next, includeTitle: false)
             guard token == generation else { return }
             await editContent(result.rawContent)
-        } catch { errorMessage = error.localizedDescription }
+        } catch { report(error, operation: "刷新正文", actions: [.retry, .changeSource]) }
     }
 
     func openSearchResult(_ result: ReaderSearchMatch) async {
@@ -813,7 +830,7 @@ final class ReaderViewModel {
         await saveProgress()
         let token = beginRequest(), position = chapterIndex, oldChapters = chapters
         await cache.cancelPending()
-        isLoading = true; errorMessage = nil
+        isLoading = true; userError = nil
         if let charset { updated.charset = charset }
         if automatic { updated.tocUrl = "" }
         else if let rule { updated.tocUrl = rule.persistedValue }
@@ -835,7 +852,7 @@ final class ReaderViewModel {
             await load(bookURL: url, chapterIndex: min(position, parsed.count - 1))
         } catch {
             guard token == generation else { return }
-            isLoading = false; errorMessage = error.localizedDescription
+            isLoading = false; report(error, operation: "重建本地目录", actions: [])
         }
     }
 
@@ -924,7 +941,7 @@ final class ReaderViewModel {
             guard let current = try await BookshelfRepository(database: database).get(bookUrl: book.bookUrl) else { return }
             let progress = try await synchronizeWebDav(current, exiting)
             if !exiting, !closedWebDav, token == generation { pendingWebDavProgress = progress }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { report(error, operation: "同步阅读进度", actions: []) }
     }
 
     func acceptWebDavProgress(_ progress: BookProgress) async {

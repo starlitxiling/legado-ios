@@ -9,7 +9,7 @@ struct ReaderSearchView: View {
     @State private var task: Task<Void, Never>?
     @State private var running = false
     @State private var progress = ""
-    @State private var error: String?
+    @State private var error: UserFacingError?
     @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
@@ -20,7 +20,7 @@ struct ReaderSearchView: View {
                         .disabled(query.isEmpty)
                 }
                 if !progress.isEmpty { Text(progress).font(.caption) }
-                if let error { Text(error).foregroundStyle(.red) }
+                if let error { Text(error.displayText).foregroundStyle(.red) }
                 ForEach(matches) { match in
                     Button {
                         task?.cancel(); dismiss(); Task { await model.openSearchResult(match); opened() }
@@ -46,7 +46,7 @@ struct ReaderSearchView: View {
                 let values = try await model.searchText(text) { done, total in progress = "已搜索 \(done) / \(total) 章" }
                 try Task.checkCancellation(); matches = values; running = false
             } catch is CancellationError { }
-            catch { self.error = error.localizedDescription; running = false }
+            catch { self.error = error.presentation(operation: "搜索正文", subject: model.book?.name); running = false }
         }
     }
 }

@@ -10,7 +10,7 @@ struct ReaderTocView: View {
     @State private var entries: [ReaderTocEntry] = []
     @State private var outline: [ReaderTocEntry] = []
     @State private var collapsed = Set<String>()
-    @State private var error: String?
+    @State private var error: UserFacingError?
     @State private var parsing = false
     @State private var log = false
     @State private var progress: (Int, Int)?
@@ -64,11 +64,11 @@ struct ReaderTocView: View {
         .sheet(isPresented: $log) { NavigationStack { AppLogView() } }
         .fileExporter(isPresented: $exporting, document: document, contentType: exportType,
                       defaultFilename: "bookmark-\(model.book?.name ?? "book")") { result in
-            if case .failure(let failure) = result { error = failure.localizedDescription }
+            if case .failure(let failure) = result { error = failure.presentation(operation: "导出书签", subject: model.book?.name) }
         }
         .alert("目录操作失败", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("好") { error = nil }
-        } message: { Text(error ?? "") }
+        } message: { Text(error?.displayText ?? "") }
     }
 
     private var chapterList: some View {
@@ -170,7 +170,7 @@ struct ReaderTocView: View {
             }
             await model.waitForPrefetch(); await model.refreshCacheStatus()
         } catch is CancellationError { }
-        catch { self.error = error.localizedDescription }
+        catch { self.error = error.presentation(operation: "读取目录", subject: model.book?.name) }
     }
     private func countWords() {
         guard countTask == nil else { return }
@@ -178,7 +178,7 @@ struct ReaderTocView: View {
             defer { countTask = nil; progress = nil }
             do { try await model.loadChapterWordCounts { progress = ($0, $1) } }
             catch is CancellationError { }
-            catch { self.error = error.localizedDescription }
+            catch { self.error = error.presentation(operation: "统计章节字数", subject: model.book?.name) }
         }
     }
     private func export(markdown: Bool) {
@@ -188,7 +188,7 @@ struct ReaderTocView: View {
                 exportType = UTType(filenameExtension: "md") ?? .plainText
             } else { document = ReaderDirectoryDocument(data: try JSONEncoder().encode(model.bookmarks)); exportType = .json }
             exporting = true
-        } catch { self.error = error.localizedDescription }
+        } catch { self.error = error.presentation(operation: "生成书签文件", subject: model.book?.name) }
     }
 }
 
@@ -206,7 +206,7 @@ struct ReaderTextParsingView: View {
     @State private var rules: [TxtTocRule] = []
     @State private var charset = "UTF-8"
     @State private var busy = false
-    @State private var error: String?
+    @State private var error: UserFacingError?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -233,18 +233,18 @@ struct ReaderTextParsingView: View {
         .task {
             charset = model.readerBook?.charset ?? "UTF-8"
             do { rules = try await TxtTocRuleRepository(database: database).list(); if rules.isEmpty { rules = TxtTocRule.builtIn } }
-            catch { self.error = error.localizedDescription }
+            catch { self.error = error.presentation(operation: "读取目录规则", subject: model.book?.name) }
         }
         .alert("目录重建失败", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("好") { error = nil }
-        } message: { Text(error ?? "") }
+        } message: { Text(error?.displayText ?? "") }
     }
     private func run(_ operation: @escaping () async -> Void) {
         guard !busy else { return }
         busy = true
         Task {
             await operation(); busy = false
-            if let message = model.errorMessage { error = message } else { dismiss() }
+            if let message = model.userError { error = message } else { dismiss() }
         }
     }
 }

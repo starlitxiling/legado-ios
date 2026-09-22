@@ -30,6 +30,7 @@ public enum AudioPlayerEvent {
     public private(set) var position = 0
     public private(set) var duration = 0
     public private(set) var retryCount = 0
+    public var describeError: (Error) -> String? = { $0.localizedDescription }
     public private(set) var errorMessage: String?
     public private(set) var timerDeadline: TimeInterval?
     public var progressChanged: ((Int, Int) -> Void)?
@@ -64,7 +65,7 @@ public enum AudioPlayerEvent {
         pauseReason = nil
         if prepared {
             do { try player.play(); transition(.playing) }
-            catch { fail(error.localizedDescription) }
+            catch { if let message = describeError(error) { fail(message) } else { stop() } }
         } else { start() }
     }
 
@@ -136,7 +137,7 @@ public enum AudioPlayerEvent {
                 self.loadingSince = nil; self.transition(.playing)
             } catch {
                 guard !Task.isCancelled, self.generation == token else { return }
-                self.fail(error.localizedDescription)
+                if let message = self.describeError(error) { self.fail(message) } else { self.stop() }
             }
         }
     }

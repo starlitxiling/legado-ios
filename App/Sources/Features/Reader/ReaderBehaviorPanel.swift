@@ -100,7 +100,7 @@ struct ReaderKeyboardConfigurationView: View {
 struct ReaderMenuConfigurationView: View {
     let selection: Bool
     @State private var value = ReaderMenuPartition(primary: [], more: [])
-    @State private var error: String?
+    @State private var error: UserFacingError?
     private var labels: [String: String] { Dictionary(uniqueKeysWithValues: selection ? ReaderMenuPartition.textActions : ReaderMenuPartition.readerActions) }
     var body: some View {
         List {
@@ -117,7 +117,7 @@ struct ReaderMenuConfigurationView: View {
         }.environment(\.editMode, .constant(.active))
             .legadoNavigationTitle(selection ? "选择菜单" : "阅读菜单")
             .onAppear { value = .load(selection: selection) }
-            .alert("菜单保存失败", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button("好") { error = nil } } message: { Text(error ?? "") }
+            .alert("菜单保存失败", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) { Button("好") { error = nil } } message: { Text(error?.displayText ?? "") }
     }
-    private func save() { do { try value.save(selection: selection) } catch { self.error = error.localizedDescription } }
+    private func save() { do { try value.save(selection: selection) } catch { self.error = error.presentation(operation: "保存阅读菜单", subject: selection ? "文本选择菜单" : "阅读菜单") } }
 }

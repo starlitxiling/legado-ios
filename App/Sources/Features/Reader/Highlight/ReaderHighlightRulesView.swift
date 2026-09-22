@@ -9,7 +9,7 @@ struct ReaderHighlightRulesView: View {
     @State private var query = ""
     @State private var draft: HighlightRule?
     @State private var editing = false
-    @State private var error: String?
+    @State private var error: UserFacingError?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -27,12 +27,12 @@ struct ReaderHighlightRulesView: View {
                             Task { var updated = rule; updated.isEnabled = enabled; await save(updated) }
                         })).labelsHidden()
                     }.swipeActions {
-                        Button("删除", role: .destructive) { Task { do { _ = try await repository.delete(rule); await reload(); await changed() } catch { self.error = error.localizedDescription } } }
+                        Button("删除", role: .destructive) { Task { do { _ = try await repository.delete(rule); await reload(); await changed() } catch { self.error = error.presentation(operation: "删除高亮规则", subject: rule.name) } } }
                     }
                 }.onMove { indices, destination in
                     rules.move(fromOffsets: indices, toOffset: destination)
                     for index in rules.indices { rules[index].order = index }
-                    Task { do { try await repository.upsert(rules); await changed() } catch { self.error = error.localizedDescription; await reload() } }
+                    Task { do { try await repository.upsert(rules); await changed() } catch { self.error = error.presentation(operation: "调整高亮规则顺序"); await reload() } }
                 }
             }.searchable(text: $query, prompt: "名称、规则或分组").legadoNavigationTitle("高亮规则")
                 .toolbar {
@@ -45,22 +45,22 @@ struct ReaderHighlightRulesView: View {
                 }
         }.alert("高亮规则", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("好") { error = nil }
-        } message: { Text(error ?? "") }
+        } message: { Text(error?.displayText ?? "") }
     }
     private func reload() async {
         do { rules = try await repository.all().sorted { ($0.order, $0.id) < ($1.order, $1.id) } }
-        catch { self.error = error.localizedDescription }
+        catch { self.error = error.presentation(operation: "读取高亮规则") }
     }
     private func save(_ rule: HighlightRule) async {
         do { error = nil; _ = try await repository.upsert(rule); await reload(); await changed() }
-        catch { self.error = error.localizedDescription }
+        catch { self.error = error.presentation(operation: "保存高亮规则", subject: rule.name) }
     }
 }
 
 private struct ReaderHighlightRuleEditor: View {
     @State var rule: HighlightRule
     let save: (HighlightRule) async -> Bool
-    @State private var error: String?
+    @State private var error: UserFacingError?
     @State private var saving = false
     @Environment(\.dismiss) private var dismiss
     private var style: [String: Any] { (try? JSONSerialization.jsonObject(with: Data(rule.style.utf8)) as? [String: Any]) ?? [:] }
@@ -109,7 +109,7 @@ private struct ReaderHighlightRuleEditor: View {
                         TextEditor(text: $rule.style).font(.body.monospaced()).padding().accessibilityIdentifier("highlight.styleJSON").legadoNavigationTitle("高级样式")
                     }
                 }
-                if let error { Text(error).foregroundStyle(.red) }
+                if let error { Text(error.displayText).foregroundStyle(.red) }
             }.disabled(saving).legadoNavigationTitle("编辑高亮规则")
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
@@ -123,7 +123,7 @@ private struct ReaderHighlightRuleEditor: View {
     private func set(_ key: String, _ value: Any?) {
         var object = style; object[key] = value
         do { rule.style = String(decoding: try JSONSerialization.data(withJSONObject: object, options: [.sortedKeys]), as: UTF8.self) }
-        catch { self.error = error.localizedDescription }
+        catch { self.error = error.presentation(operation: "修改高亮样式", subject: rule.name + " · " + key) }
     }
     private func string(_ key: String, fallback: String) -> Binding<String> {
         Binding(get: { style[key] as? String ?? fallback }, set: { set(key, $0) })
@@ -157,13 +157,13 @@ private struct ReaderHighlightRuleEditor: View {
     }
     private func submit() {
         do {
-            guard !rule.pattern.isEmpty else { error = "请输入匹配文本。"; return }
+            guard !rule.pattern.isEmpty else { error = UserFacingError(title: "保存高亮规则失败", message: "请输入匹配文本。"); return }
             if rule.isRegex { _ = try NSRegularExpression(pattern: rule.pattern) }
             if !rule.style.isEmpty {
-                guard try JSONSerialization.jsonObject(with: Data(rule.style.utf8)) is [String: Any] else { error = "样式必须是 JSON 对象。"; return }
+                guard try JSONSerialization.jsonObject(with: Data(rule.style.utf8)) is [String: Any] else { error = UserFacingError(title: "保存高亮规则失败", message: "样式必须是 JSON 对象。"); return }
             }
             saving = true
-            Task { if await save(rule) { dismiss() } else { error = "保存失败，请返回列表查看错误后重试。" }; saving = false }
-        } catch { self.error = error.localizedDescription }
+            Task { if await save(rule) { dismiss() } else { error = UserFacingError(title: "保存高亮规则失败", message: "保存失败，请返回列表查看错误后重试。") }; saving = false }
+        } catch { self.error = error.presentation(operation: "验证高亮规则", subject: rule.name) }
     }
 }

@@ -33,7 +33,9 @@ struct ReadAloudPanel: View {
                     }
                 }
                 if let seconds = controller.engine.remainingSeconds { Text("剩余播放时间：\(Int(seconds.rounded(.up))) 秒") }
-                if let error = controller.errorMessage ?? controller.engine.errorMessage { Text(error).foregroundStyle(.red) }
+                if let error = controller.userError {
+                    ErrorBanner(error: error, dismiss: controller.dismissError) { _ in controller.play() }
+                } else if let message = controller.engine.errorMessage { Text(message).foregroundStyle(.red) }
             }
             .legadoNavigationTitle("听书")
             .toolbar { Button("完成") { dismiss() } }

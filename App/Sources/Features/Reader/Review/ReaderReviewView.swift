@@ -5,7 +5,7 @@ struct ReaderReviewView: View {
     let model: ReaderViewModel
     @State private var paragraph = 1
     @State private var items: [ReaderReviewItem] = []
-    @State private var errorMessage: String?
+    @State private var errorMessage: UserFacingError?
     @State private var isLoading = false
     @Environment(\.dismiss) private var dismiss
 
@@ -14,7 +14,7 @@ struct ReaderReviewView: View {
             List {
                 Stepper("第 \(paragraph) 段", value: $paragraph, in: 1...10000)
                 if isLoading { ProgressView("正在加载段评") }
-                if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
+                if let errorMessage { Text(errorMessage.displayText).foregroundStyle(.red) }
                 if !isLoading && items.isEmpty && errorMessage == nil { Text("暂无段评") }
                 ForEach(items) { item in
                     VStack(alignment: .leading, spacing: 6) {
@@ -32,7 +32,7 @@ struct ReaderReviewView: View {
                     try Task.checkCancellation()
                     items = result; isLoading = false
                 } catch {
-                    if !Task.isCancelled { errorMessage = error.localizedDescription; isLoading = false }
+                    if !Task.isCancelled { errorMessage = error.presentation(operation: "加载段评", subject: "\(model.book?.name ?? "") · 第 \(paragraph) 段"); isLoading = false }
                 }
             }
         }

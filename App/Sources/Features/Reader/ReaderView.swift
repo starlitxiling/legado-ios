@@ -24,7 +24,7 @@ struct ReaderView: View {
     @State private var previewImageURL: String?
     @FocusState private var keyboardFocused: Bool
     @State private var styles: ReaderStyleStore
-    @State private var styleError: String?
+    @State private var styleError: UserFacingError?
     @State private var showsChapters = false
     @State private var showsBookmarks = false
     @State private var showsSelection = false
@@ -162,17 +162,25 @@ struct ReaderView: View {
                     ProgressView("正在加载正文…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
                 } else {
                     VStack(spacing: 8) {
-                        if let error = model.errorMessage { errorBanner(error) }
+                        Spacer()
                         if let message = model.recoveringMessage {
                             HStack {
                                 ProgressView(); Text(message)
                                 Button("停止") { model.cancelSourceRecovery() }
                             }.padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
                         }
-                        Spacer()
-                    }.padding(.top, 24).padding(.horizontal, 12)
+                    }.padding(.bottom, 24).padding(.horizontal, 12)
                 }
                 if showsControls { controls }
+            }
+            .errorBanner(model.isLoading || showsControls ? nil : model.userError, dismiss: model.dismissError) { action in
+                switch action {
+                case .retry: Task { await model.retry() }
+                case .changeSource: model.cancelSourceRecovery(); showPanel("source")
+                case .manageSources: model.cancelSourceRecovery(); showPanel("sources")
+                case .openSettings: showsBehavior = true
+                case .back: leaveReader()
+                }
             }
             .task(id: pageSize) {
                 columns = count
@@ -203,9 +211,9 @@ struct ReaderView: View {
         .sheet(isPresented: $showsSettings) {
             ReaderInterfacePanel(store: styles, settings: model.settings) { settings in await model.reflow(settings: settings) }
         }
-        .alert("阅读样式加载失败", isPresented: Binding(get: { styleError != nil }, set: { if !$0 { styleError = nil } })) {
+        .alert(styleError?.title ?? "阅读操作失败", isPresented: Binding(get: { styleError != nil }, set: { if !$0 { styleError = nil } })) {
             Button("好", role: .cancel) { styleError = nil }
-        } message: { Text(styleError ?? "") }
+        } message: { Text(styleError?.message ?? "") }
         .fullScreenCover(isPresented: $showsChapters) { ReaderTocView(model: model, database: container.database) }
         .sheet(isPresented: $showsReadAloud) { ReadAloudPanel(controller: readAloud) }
         .sheet(isPresented: $showsBookmarks) { BookmarkListView(model: model) }
@@ -278,22 +286,6 @@ struct ReaderView: View {
         model.cancelSourceRecovery()
         dismiss()
         Task { await model.close() }
-    }
-
-    private func errorBanner(_ message: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top) {
-                Text(message).font(.callout)
-                Spacer()
-                Button("关闭提示") { model.dismissError() }.accessibilityIdentifier("reader.error.dismiss")
-            }
-            HStack {
-                Button("重试") { Task { await model.retry() } }
-                Button("换源") { model.cancelSourceRecovery(); showPanel("source") }
-                Button("书源管理") { model.cancelSourceRecovery(); showPanel("sources") }
-                Button("返回", action: leaveReader).accessibilityIdentifier("reader.error.back")
-            }.font(.callout)
-        }.padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
     }
 
     private var readingEdges: Edge.Set {
@@ -372,7 +364,7 @@ struct ReaderView: View {
                 case .preview: previewImageURL = image.url; showPanel("image"); return
                 case .script(let code, let result): runImageScript(code, result: result); return
                 }
-            } catch { styleError = error.localizedDescription; return }
+            } catch { styleError = error.presentation(operation: "处理图片点击", subject: model.book?.name); return }
         }
         guard taps == 1, let action = ReaderTouchMap.action(x: point.x, y: point.y, width: size.width, height: size.height, actions: ReaderTouchMap.load()) else { return }
         perform(action)
@@ -410,7 +402,7 @@ struct ReaderView: View {
                     await detail.load()
                     if let book = await detail.prepareForReading(database: container.database), let url = book.bookUrl {
                         actionSheet = nil; await model.load(bookURL: url); await readAloud.attach(model)
-                    } else { styleError = detail.errorMessage }
+                    } else { styleError = detail.errorMessage.map { UserFacingError(title: "切换书源失败", message: $0) } }
                 }
             }
         case "log": NavigationStack { AppLogView() }
@@ -447,7 +439,7 @@ struct ReaderView: View {
         let chapter = model.readerChapter, client = container.httpClient
         Task {
             do { _ = try await Task.detached { try SourceCallback.imageClick(script: script, src: result, source: source, book: book, chapter: chapter, client: client) }.value }
-            catch { styleError = error.localizedDescription }
+            catch { styleError = error.presentation(operation: "执行图片脚本", subject: book.name) }
         }
     }
     private func customButton() {
@@ -457,7 +449,7 @@ struct ReaderView: View {
         Task {
             defer { customRunning = false }
             do { _ = try await Task.detached { try SourceCallback.run(source: source, book: book, chapter: chapter, event: "clickCustomButton", client: client) }.value }
-            catch { styleError = error.localizedDescription }
+            catch { styleError = error.presentation(operation: "执行书源自定义按钮", subject: source.bookSourceName) }
         }
     }
     private func toggleNight() {

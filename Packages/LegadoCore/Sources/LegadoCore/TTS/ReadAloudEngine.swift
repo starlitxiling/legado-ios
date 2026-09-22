@@ -51,6 +51,7 @@ public final class ReadAloudEngine {
     public private(set) var paragraphIndex = 0
     public private(set) var chapterIndex = 0
     public private(set) var characterOffset = 0
+    public var describeError: (Error) -> String? = { $0.localizedDescription }
     public private(set) var errorMessage: String?
     public private(set) var remainingSeconds: TimeInterval?
     public var stopAt: Date? { guard state == .playing, let remainingSeconds else { return nil }; return (activeSince ?? now()).addingTimeInterval(remainingSeconds) }
@@ -150,7 +151,7 @@ public final class ReadAloudEngine {
                 if self.state == .paused { self.completedWhilePaused = true }
                 else { self.advance() }
             case .failure(let error):
-                self.stop(); self.errorMessage = error.localizedDescription; self.stateChanged?()
+                self.stop(); self.errorMessage = self.describeError(error); self.stateChanged?()
             }
         })
     }
@@ -175,7 +176,7 @@ public final class ReadAloudEngine {
                 self.speakCurrent()
             } catch {
                 guard let self, self.generation == token else { return }
-                self.stop(); self.errorMessage = error.localizedDescription; self.stateChanged?()
+                self.stop(); self.errorMessage = self.describeError(error); self.stateChanged?()
             }
         }
     }

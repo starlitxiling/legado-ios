@@ -26,6 +26,9 @@ final class AVPlayerAudioPlayer: AudioPlayer {
         engine?.stop()
         self.library = library
         let engine = AudioPlayEngine(player: self) { [library] index in try await library.audio(index) }
+        engine.describeError = { [weak library] error in
+            error.presentation(operation: "音频播放", subject: library?.book.name)?.displayText
+        }
         self.engine = engine
         engine.load(chapterCount: library.chapters.count, chapter: library.initialChapter, position: library.book.durChapterPos)
         engine.progressChanged = { [weak self, library] chapter, position in
@@ -49,7 +52,9 @@ final class AVPlayerAudioPlayer: AudioPlayer {
         statusObservation = item.observe(\.status, options: [.new]) { [weak self, weak item] _, _ in
             Task { @MainActor in
                 guard let self, self.generation == token, let item, item.status == .failed else { return }
-                event?(.failed(item.error?.localizedDescription ?? "音频播放失败"))
+                if let error = item.error, error.isCancellation { return }
+                let failure = item.error?.presentation(operation: "音频播放", subject: self.library?.book.name)
+                event?(.failed(failure?.displayText ?? "音频播放失败，请重试或切换书源。"))
             }
         }
         playbackObservation = player.observe(\.timeControlStatus, options: [.new]) { [weak self] player, _ in

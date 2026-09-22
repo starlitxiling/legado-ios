@@ -14,7 +14,7 @@ struct MangaReaderView: View {
     @State private var networkMonitor: NWPathMonitor?
     @State private var networkAvailable: Bool?
     @State private var pendingProgress: BookProgress?
-    @State private var syncError: String?
+    @State private var syncError: UserFacingError?
     @State private var synchronizing = false
     @State private var syncWaiters: [CheckedContinuation<Void, Never>] = []
     @State private var exited = false
@@ -29,15 +29,15 @@ struct MangaReaderView: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            if let syncError { Text(syncError).foregroundStyle(.red) }
-            if let error = library.errorMessage {
-                Text(error).foregroundStyle(.red)
-                Button("重试") { Task { await load() } }
+            if let syncError { ErrorBanner(error: syncError, dismiss: { self.syncError = nil }) }
+            if let error = library.userError {
+                ErrorBanner(error: error, dismiss: library.dismissError) { _ in Task { await load() } }
             }
             if let model {
-                if let error = model.errorMessage {
-                    Text(error).foregroundStyle(.red)
-                    Button("重试章节") { Task { await model.open(chapter: model.chapter, page: model.page) } }
+                if let error = model.userError {
+                    ErrorBanner(error: error, dismiss: model.dismissError) { _ in
+                        Task { await model.open(chapter: model.chapter, page: model.page) }
+                    }
                 }
                 if model.isLoading { ProgressView("正在加载漫画") }
                 else {
@@ -146,7 +146,7 @@ struct MangaReaderView: View {
                 let uploaded = try await sync.upload(current, now: now)
                 try await BookProgressSync.save(uploaded, replacing: current, database: database)
             }
-        } catch { syncError = error.localizedDescription }
+        } catch { syncError = error.presentation(operation: "同步漫画进度", subject: library.book.name) }
     }
 
     private func load() async {

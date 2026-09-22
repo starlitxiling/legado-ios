@@ -14,6 +14,18 @@ final class ReadAloudTests: XCTestCase {
         func resume() { paused = false }
         func stop() { completion = nil }
     }
+    func testHostFormatsSpeechFailureAndCanSuppressCancellation() {
+        let speaker = FakeSpeaker(), engine = ReadAloudEngine(speaker: FakeSpeaker())
+        engine.replaceSpeaker(speaker)
+        engine.describeError = { error in error is CancellationError ? nil : "朗读引擎失败：请切换语音源。" }
+        engine.load(text: "Fixture", chapter: 0); engine.play()
+        speaker.completion?(.failure(URLError(.timedOut)))
+        XCTAssertEqual(engine.errorMessage, "朗读引擎失败：请切换语音源。")
+        engine.play(); speaker.completion?(.failure(CancellationError()))
+        XCTAssertNil(engine.errorMessage)
+        XCTAssertEqual(engine.state, .stopped)
+    }
+
     func testParagraphOffsetsAndPlayback() {
         let speaker = FakeSpeaker(), engine = ReadAloudEngine(speaker: FakeSpeaker())
         engine.replaceSpeaker(speaker)

@@ -12,9 +12,8 @@ struct AudioPlayView: View {
     var body: some View {
         VStack(spacing: 24) {
             if library.isLoading { ProgressView("正在加载音频目录") }
-            if let error = library.errorMessage {
-                Text(error).foregroundStyle(.red)
-                Button("重试") { Task { await load() } }
+            if let error = library.userError {
+                ErrorBanner(error: error, dismiss: library.dismissError) { _ in Task { await load() } }
             }
             if let engine = container.audioPlayback.engine,
                container.audioPlayback.library?.book.bookUrl == library.book.bookUrl {

@@ -43,14 +43,14 @@ private enum FontImportError: LocalizedError {
 struct FontPicker: View {
     @Binding var selection: String
     @State private var showsImporter = false
-    @State private var errorMessage: String?
+    @State private var errorMessage: UserFacingError?
     @State private var names: [String] = []
 
     var body: some View {
         List {
             Button("系统默认") { selection = "" }
             Button("导入 TTF / OTF 字体") { showsImporter = true }
-            if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
+            if let errorMessage { Text(errorMessage.displayText).foregroundStyle(.red) }
             ForEach(names, id: \.self) { name in
                 Button { selection = name } label: {
                     HStack {
@@ -65,7 +65,7 @@ struct FontPicker: View {
         .task { ReaderFonts.registerInstalled(); reload() }
         .fileImporter(isPresented: $showsImporter, allowedContentTypes: [.font]) { result in
             do { selection = try ReaderFonts.install(result.get()); errorMessage = nil; reload() }
-            catch { errorMessage = error.localizedDescription }
+            catch { errorMessage = error.presentation(operation: "导入字体", sourceFile: (try? result.get())?.lastPathComponent) }
         }
     }
 

@@ -9,7 +9,9 @@ final class TocViewModel {
     private(set) var chapters: [BookChapterRow] = []
     private(set) var cachedChapterIndices: Set<Int> = []
     private(set) var isLoading = false
-    private(set) var errorMessage: String?
+    private(set) var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
+    func dismissError() { userError = nil }
     var isReversed = false
     var displayedChapters: [BookChapterRow] { isReversed ? chapters.reversed() : chapters }
     var currentChapterIndex: Int? {
@@ -37,13 +39,16 @@ final class TocViewModel {
             chapters = try await chapterRepository.list(bookUrl: book.bookUrl ?? "")
             if chapters.isEmpty { await refresh() }
             refreshCacheStatus()
-        } catch { errorMessage = error.localizedDescription }
+        } catch {
+            if !error.isCancellation { AppLogStore.shared.append("Read directory: \(String(reflecting: error))") }
+            userError = error.presentation(operation: "读取目录", subject: book.name, actions: [.retry])
+        }
     }
 
     func refresh() async {
         guard !isLoading, let url = book.bookUrl, !url.isEmpty else { return }
         isLoading = true
-        errorMessage = nil
+        userError = nil
         defer { isLoading = false }
         do {
             var updated = book
@@ -59,7 +64,8 @@ final class TocViewModel {
             book = updated
             refreshCacheStatus()
         } catch {
-            if !Task.isCancelled { errorMessage = error.localizedDescription }
+            if !error.isCancellation { AppLogStore.shared.append("Refresh directory: \(String(reflecting: error))") }
+            if !Task.isCancelled { userError = error.presentation(operation: "刷新目录", subject: [book.name, source.bookSourceName].compactMap { $0 }.joined(separator: " · "), actions: [.retry]) }
         }
     }
 

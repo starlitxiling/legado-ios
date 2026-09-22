@@ -11,7 +11,7 @@ struct ReaderDictionaryView: View {
     @State private var selected = ""
     @State private var html = ""
     @State private var running = false
-    @State private var error: String?
+    @State private var error: UserFacingError?
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -23,7 +23,7 @@ struct ReaderDictionaryView: View {
                     }.pickerStyle(.menu).padding(8)
                 }
                 if running { ProgressView("正在查询").padding() }
-                if let error { Text(error).foregroundStyle(.red).padding() }
+                if let error { Text(error.displayText).foregroundStyle(.red).padding() }
                 if rules.isEmpty && !running { Text("没有启用的字典规则，请在我的页面添加或启用。").padding() }
                 ReaderDictionaryResult(html: html)
             }.legadoNavigationTitle(word)
@@ -32,7 +32,7 @@ struct ReaderDictionaryView: View {
                     do {
                         rules = try await DictRuleRepository(database: database).list().filter(\.enabled)
                         selected = rules.first?.name ?? ""
-                    } catch { self.error = error.localizedDescription }
+                    } catch { self.error = error.presentation(operation: "读取字典规则", subject: word) }
                 }
                 .task(id: selected) {
                     guard let rule = rules.first(where: { $0.name == selected }) else { return }
@@ -44,7 +44,7 @@ struct ReaderDictionaryView: View {
                         try Task.checkCancellation()
                         html = result; running = false
                     } catch is CancellationError { }
-                    catch { self.error = error.localizedDescription; running = false }
+                    catch { self.error = error.presentation(operation: "字典查询", subject: rule.name + " · " + word); running = false }
                 }
         }
     }

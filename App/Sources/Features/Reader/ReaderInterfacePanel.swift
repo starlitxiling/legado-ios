@@ -9,7 +9,7 @@ struct ReaderInterfacePanel: View {
     @State private var draft: ReaderSettings
     @State private var work: Task<Void, Never>?
     @State private var rendering: Task<Void, Never>?
-    @State private var error: String?
+    @State private var error: UserFacingError?
     @State private var customizing = false
     @State private var importing = false
     @State private var importingImage = false
@@ -95,9 +95,9 @@ struct ReaderInterfacePanel: View {
         .onChange(of: chineseConverterType) { _, _ in enqueue { render(draft) } }
         .alert("阅读样式", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("好", role: .cancel) { error = nil }
-        } message: { Text(error ?? "") }
+        } message: { Text(error?.displayText ?? "") }
         .fileImporter(isPresented: $importing, allowedContentTypes: importingImage ? [.image] : [.json, .zip]) { result in
-            enqueue {
+            enqueue(operation: importingImage ? "导入背景图片" : "导入阅读样式", sourceFile: (try? result.get())?.lastPathComponent) {
                 let url = try result.get()
                 let access = url.startAccessingSecurityScopedResource()
                 defer { if access { url.stopAccessingSecurityScopedResource() } }
@@ -120,7 +120,7 @@ struct ReaderInterfacePanel: View {
             }
         }
         .fileExporter(isPresented: $exporting, document: document, contentType: .zip, defaultFilename: "readConfig") { result in
-            if case .failure(let failure) = result { error = failure.localizedDescription }
+            if case .failure(let failure) = result { error = failure.presentation(operation: "导出阅读样式", sourceFile: "readConfig.zip") }
         }
     }
 
@@ -290,11 +290,11 @@ struct ReaderInterfacePanel: View {
         rendering?.cancel()
         rendering = Task { await apply(settings) }
     }
-    private func enqueue(_ action: @escaping @MainActor () async throws -> Void) {
+    private func enqueue(operation: String = "保存阅读样式", sourceFile: String? = nil, _ action: @escaping @MainActor () async throws -> Void) {
         let previous = work
         work = Task {
             await previous?.value
-            do { try await action() } catch { self.error = error.localizedDescription }
+            do { try await action() } catch { self.error = error.presentation(operation: operation, subject: draft.configuration.name, sourceFile: sourceFile) }
         }
     }
 }

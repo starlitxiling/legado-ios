@@ -5,21 +5,17 @@ struct TocView: View {
     @State private var model: TocViewModel
     private let onSelectChapter: (Int) -> Void
 
-    init(book: Book, source: BookSource, container: AppContainer,
+    init(book: Book, source: BookSource, container: AppContainer, client: (any HttpClient)? = nil,
          onSelectChapter: @escaping (Int) -> Void) {
         self.onSelectChapter = onSelectChapter
         _model = State(initialValue: TocViewModel(book: book, source: source, chapters: container.chapters,
-            bookshelf: container.bookshelf, client: container.httpClient, database: container.database))
+            bookshelf: container.bookshelf, client: client ?? container.httpClient, database: container.database))
     }
 
     var body: some View {
         ScrollViewReader { proxy in
             List {
                 if model.isLoading { ProgressView("正在加载目录") }
-                if let error = model.errorMessage {
-                    Text(error).foregroundStyle(.red)
-                    Button("重试") { Task { await model.refresh() } }
-                }
                 ForEach(model.displayedChapters, id: \.index) { chapter in
                     Button { onSelectChapter(chapter.index) } label: {
                         HStack {
@@ -53,6 +49,9 @@ struct TocView: View {
                 await model.load()
                 if let index = model.currentChapterIndex { proxy.scrollTo(index, anchor: .center) }
             }
+        }
+        .errorBanner(model.userError, dismiss: model.dismissError) { action in
+            if action == .retry { Task { await model.refresh() } }
         }
         .legadoNavigationTitle("目录")
     }

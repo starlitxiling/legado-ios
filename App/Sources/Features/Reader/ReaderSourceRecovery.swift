@@ -52,7 +52,9 @@ enum ReaderSourceRecovery {
                         try Task.checkCancellation()
                         return (ReaderRecoveredSource(book: candidate, chapters: chapters, index: chapter.index), nil)
                     } catch is CancellationError { return (nil, nil) }
-                    catch { return (nil, (source.bookSourceName ?? source.bookSourceUrl ?? "Source") + ": " + error.localizedDescription) }
+                    catch {
+                        return (nil, error.presentation(operation: "验证替代书源", subject: source.bookSourceName ?? source.bookSourceUrl)?.displayText)
+                    }
                 }
             }
             for _ in 0..<min(max(1, configuration.threadCount), sources.count) {

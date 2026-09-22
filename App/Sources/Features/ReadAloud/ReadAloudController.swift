@@ -9,7 +9,9 @@ final class ReadAloudController {
     let engine = ReadAloudEngine(speaker: SystemSpeaker())
     let preferences = ReadAloudPreferences()
     private(set) var sources: [HttpTTS] = []
-    private(set) var errorMessage: String?
+    private(set) var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
+    func dismissError() { userError = nil }
     private var httpSpeaker: HttpSpeaker?
     private let work = ReadAloudSessionTasks()
     private var prefetchedPosition: String?
@@ -27,7 +29,10 @@ final class ReadAloudController {
         detach()
         self.reader = reader
         do { sources = try await HttpTTSRepository(database: database).list() }
-        catch { errorMessage = error.localizedDescription }
+        catch { userError = error.presentation(operation: "读取朗读引擎", subject: reader.book?.name) }
+        engine.describeError = { [weak self] error in
+            error.presentation(operation: "朗读引擎", subject: self?.reader?.book?.name)?.displayText
+        }
         selectSource(preferences.sourceID)
         engine.progress = { [weak self, weak reader] chapter, range in
             guard let self, let reader else { return }
@@ -99,8 +104,8 @@ final class ReadAloudController {
                                     options: UserDefaults.standard.bool(forKey: "ignoreAudioFocus") ? [.mixWithOthers] : [])
             try session.setActive(true)
             engine.rate = preferences.rate; engine.volume = preferences.volume
-            engine.play(); errorMessage = nil
-        } catch { errorMessage = error.localizedDescription }
+            engine.play(); userError = nil
+        } catch { userError = error.presentation(operation: "启动朗读", subject: title, actions: [.retry]) }
     }
     func pause() { interruption.userPaused(); engine.pause() }
     func stop() { interruption.userPaused(); engine.stop() }

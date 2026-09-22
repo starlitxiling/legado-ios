@@ -10,7 +10,7 @@ struct ReaderMemoView: View {
     @State private var editing = false
     @State private var saving = false
     @State private var loaded = false
-    @State private var error: String?
+    @State private var error: UserFacingError?
     @State private var confirmsClear = false
     @Environment(\.dismiss) private var dismiss
 
@@ -46,14 +46,14 @@ struct ReaderMemoView: View {
             do {
                 memo = try await database.write { db in try BookMemo.fetchOne(db, key: bookURL) } ?? BookMemo()
                 memo.bookUrl = bookURL; loaded = true
-            } catch { self.error = error.localizedDescription }
+            } catch { self.error = error.presentation(operation: "读取备忘录", subject: bookURL) }
         }
         .confirmationDialog("清空备忘录？", isPresented: $confirmsClear) {
             Button("清空", role: .destructive) { Task { await save("") } }
         }
         .alert("备忘录操作失败", isPresented: Binding(get: { error != nil }, set: { if !$0 { error = nil } })) {
             Button("好") { error = nil }
-        } message: { Text(error ?? "") }
+        } message: { Text(error?.displayText ?? "") }
     }
     private func save(_ content: String) async {
         guard !saving else { return }
@@ -64,6 +64,6 @@ struct ReaderMemoView: View {
         do {
             memo = try await BookMemoRepository(database: database).upsert(value)
             editing = false
-        } catch { self.error = error.localizedDescription }
+        } catch { self.error = error.presentation(operation: "保存备忘录", subject: bookURL) }
     }
 }
