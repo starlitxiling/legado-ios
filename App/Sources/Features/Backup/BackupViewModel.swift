@@ -10,7 +10,9 @@ final class BackupViewModel {
     private(set) var files: [WebDavFile] = []
     private(set) var isBusy = false
     private(set) var report: BackupImportReport?
-    var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
+    private var serverAddress: String?
     private var source: WebDavBackupSource?
     private var uploader: WebDavBackupUploader?
     private var progressSync: BookProgressSync?
@@ -38,6 +40,7 @@ final class BackupViewModel {
     func configure(credentials: WebDavCredentials, httpClient: any HttpClient) throws {
         guard !isBusy else { return }
         preferences.reload()
+        serverAddress = credentials.baseURL.absoluteString
         let client = WebDavClient(baseURL: credentials.baseURL, username: credentials.username,
                                   password: credentials.password, httpClient: httpClient)
         _ = try client.url(path: "")
@@ -51,13 +54,13 @@ final class BackupViewModel {
     func listBackups() async {
         guard !isBusy else { return }
         isBusy = true
-        errorMessage = nil
+        userError = nil
         files = []
         defer { isBusy = false }
         do {
             guard let source else { throw WebDavError.invalidURL }
             files = try await source.listBackups()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "列出远端备份", subject: serverAddress) }
     }
 
     func checkNewBackup() async {
@@ -70,7 +73,7 @@ final class BackupViewModel {
 
     func restore(_ file: WebDavFile) async {
         guard !isBusy else { return }
-        await performRestore {
+        await performRestore(sourceName: file.displayName) {
             guard let source = self.source else { throw WebDavError.invalidURL }
             return try await source.download(file)
         }
@@ -86,7 +89,7 @@ final class BackupViewModel {
 
     private func performBackup(upload: Bool, now: Date, automatic: Bool) async {
         guard !isBusy else { return }
-        isBusy = true; errorMessage = nil; statusMessage = nil
+        isBusy = true; userError = nil; statusMessage = nil
         defer { isBusy = false }
         do {
             try await operationMutex.withLock { @MainActor in
@@ -96,7 +99,7 @@ final class BackupViewModel {
                 }
                 try await self.writeBackup(upload: automatic ? self.preferences.boolean("autoBackupWebDav") : upload, now: now)
             }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "生成或上传备份", subject: upload ? serverAddress : nil, sourceFile: exportedFile?.lastPathComponent) }
     }
 
     private func writeBackup(upload: Bool, now: Date) async throws {
@@ -129,7 +132,7 @@ final class BackupViewModel {
 
     func synchronizeProgress(now: Date = Date()) async {
         guard !isBusy, preferences.boolean("syncBookProgress"), let progressSync else { return }
-        isBusy = true; errorMessage = nil
+        isBusy = true; userError = nil
         defer { isBusy = false }
         do {
             let repository = BookshelfRepository(database: database)
@@ -145,12 +148,12 @@ final class BackupViewModel {
             }
             statusMessage = "阅读进度已同步"
             if changed { NotificationCenter.default.post(name: Self.restoredNotification, object: nil) }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "同步阅读进度", subject: serverAddress) }
     }
 
     func restoreLocalFile(_ url: URL) async {
         let maximumBytes = Self.maximumBytes
-        await performRestore {
+        await performRestore(sourceName: url.lastPathComponent) {
             try await Task.detached {
                 let accessed = url.startAccessingSecurityScopedResource()
                 defer { if accessed { url.stopAccessingSecurityScopedResource() } }
@@ -163,11 +166,11 @@ final class BackupViewModel {
         }
     }
 
-    private func performRestore(_ load: () async throws -> Data) async {
+    private func performRestore(sourceName: String? = nil, _ load: () async throws -> Data) async {
         guard !isBusy else { return }
         isBusy = true
         report = nil
-        errorMessage = nil
+        userError = nil
         defer {
             isBusy = false
             // 部分表可能已提交，包括取消或后续表失败的情形。
@@ -183,16 +186,18 @@ final class BackupViewModel {
                 self.preferences.reload()
                 let currentPreferences = self.preferences.currentPreferenceSnapshot()
                 let importer = BackupImporter(database: self.database, localDeviceID: self.localDeviceID,
-                    resourceDirectory: self.resourceDirectory, currentPreferences: currentPreferences)
+                    resourceDirectory: self.resourceDirectory, currentPreferences: currentPreferences, describeError: { error, file in
+                        error.presentation(operation: "恢复备份文件", sourceFile: file)?.displayText ?? "恢复已取消"
+                    })
                 self.report = try await importer.importArchive(archive, selection: self.preferences.backupSelection)
                 if self.report?.importedFiles.contains("themeConfig.json") == true, let themes = try await self.database.backupConfiguration(named: "themeConfig.json") {
                     do { try self.preferences.restoreThemes(themes) }
-                    catch { self.errorMessage = "主题列表恢复失败：" + error.localizedDescription }
+                    catch { self.userError = error.presentation(operation: "恢复主题列表", sourceFile: "themeConfig.json") }
                 }
                 if let restoredPreferences = self.report?.preferences { self.preferences.apply(restoredPreferences) }
                 if let videoPreferences = self.report?.videoPreferences { self.preferences.videoSnapshot = videoPreferences }
                 if self.report?.failures.isEmpty == true { self.preferences.defaults.set(Date().timeIntervalSince1970 * 1000, forKey: "Legado.lastRestore") }
             }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "恢复备份", sourceFile: sourceName) }
     }
 }

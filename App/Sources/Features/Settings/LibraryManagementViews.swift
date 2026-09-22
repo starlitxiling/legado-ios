@@ -5,7 +5,8 @@ struct LibraryHistoryView: View {
     let container: AppContainer
     let bookmarks: Bool
     @State private var items: [Item] = []
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     private struct Item: Identifiable {
         let id: String
         let name: String
@@ -53,14 +54,15 @@ struct LibraryHistoryView: View {
                          destination: destination($0.bookName, $0.resolvedAuthor ?? $0.author, $0.lastChapterIndex))
                 }
             }
-        } catch { self.error = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "加载阅读数据", subject: nil) }
     }
 }
 
 struct LibraryFilesView: View {
     let container: AppContainer
     @State private var books: [BookRow] = []
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     var body: some View {
         List {
             NavigationLink("导入本地书") { LocalImportView(database: container.database) }
@@ -81,6 +83,6 @@ struct LibraryFilesView: View {
     }
     private func load() async {
         do { books = try await container.bookshelf.all().filter { URL(string: $0.bookUrl)?.isFileURL == true } }
-        catch { self.error = error.localizedDescription }
+        catch { userError = error.presentation(operation: "加载本地书籍", subject: nil) }
     }
 }

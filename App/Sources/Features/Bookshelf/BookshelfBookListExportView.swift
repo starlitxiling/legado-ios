@@ -13,7 +13,8 @@ struct BookshelfBookListExportView: View {
     @Environment(\.dismiss) private var dismiss
     let books: [BookRow]
     @State private var data: Data?
-    @State private var errorMessage: String?
+    @State private var userError: UserFacingError?
+    private var errorMessage: String? { userError?.displayText }
 
     var body: some View {
         NavigationStack {
@@ -29,7 +30,7 @@ struct BookshelfBookListExportView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("关闭") { dismiss() } } }
             .task {
                 do { data = try BookshelfBookList.encode(books) }
-                catch { errorMessage = error.localizedDescription }
+                catch { userError = error.presentation(operation: "导出书单", subject: "书单 JSON") }
             }
         }
     }

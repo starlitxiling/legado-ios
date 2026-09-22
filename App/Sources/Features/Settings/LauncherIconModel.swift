@@ -35,6 +35,6 @@ final class LauncherIconModel {
             selected = client.currentName ?? "ic_launcher"
             save(selected)
             message = "应用图标已更新。"
-        } catch { message = error.localizedDescription }
+        } catch { message = error.presentation(operation: "更换应用图标", subject: value)?.displayText }
     }
 }

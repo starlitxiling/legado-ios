@@ -6,7 +6,8 @@ import LegadoCore
 struct BookshelfGalleryView: View {
     @State private var container: AppContainer?
     @State private var reading: (any BookshelfReading)?
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     private let preferences: AppPreferences
     private let theme: ThemeStore
 
@@ -39,7 +40,7 @@ struct BookshelfGalleryView: View {
                 }
                 container = fixture
             }
-            catch { self.error = error.localizedDescription }
+            catch { userError = error.presentation(operation: "准备书架示例", subject: nil) }
         }
     }
 

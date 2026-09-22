@@ -8,7 +8,8 @@ final class SubscriptionSettingsModel {
     private(set) var subscriptions: [RuleSub] = []
     private(set) var servers: [Server] = []
     private(set) var isBusy = false
-    var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
     var message: String?
     private let rules: RuleSubRepository
     private let serverRepository: ServerRepository
@@ -26,7 +27,7 @@ final class SubscriptionSettingsModel {
         do {
             subscriptions = try await rules.all().sorted { ($0.customOrder, $0.id) < ($1.customOrder, $1.id) }
             servers = try await serverRepository.all().sorted { ($0.sortNumber, $0.id) < ($1.sortNumber, $1.id) }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "加载订阅与服务器", subject: nil) }
     }
 
     func save(_ subscription: RuleSub, importing: Bool = false) async -> Bool {
@@ -43,10 +44,10 @@ final class SubscriptionSettingsModel {
             if value.id == 0 { value.id = max(now(), (existing.map(\.id).max() ?? 0) + 1) }
             if importing { try await rules.saveImported([value], at: now()) }
             else { try await rules.upsert(value) }
-            errorMessage = nil
+            userError = nil
             await load()
             return true
-        } catch { errorMessage = error.localizedDescription; return false }
+        } catch { userError = error.presentation(operation: "保存订阅", subject: subscription.name + " · " + subscription.url); return false }
     }
 
     func save(_ server: Server) async -> Bool {
@@ -61,20 +62,20 @@ final class SubscriptionSettingsModel {
                 value.id = max(now(), (existing.map(\.id).max() ?? 0) + 1)
             }
             try await serverRepository.upsert(value)
-            errorMessage = nil
+            userError = nil
             await load()
             return true
-        } catch { errorMessage = error.localizedDescription; return false }
+        } catch { userError = error.presentation(operation: "保存服务器", subject: server.name); return false }
     }
 
     func delete(_ subscription: RuleSub) async {
         do { try await rules.delete(subscription); await load() }
-        catch { errorMessage = error.localizedDescription }
+        catch { userError = error.presentation(operation: "删除订阅", subject: subscription.name) }
     }
 
     func delete(_ server: Server) async {
         do { try await serverRepository.delete(server); await load() }
-        catch { errorMessage = error.localizedDescription }
+        catch { userError = error.presentation(operation: "删除服务器", subject: server.name) }
     }
 
     func importText(_ text: String) async {
@@ -90,7 +91,7 @@ final class SubscriptionSettingsModel {
             } else { values = try importer.parseRuleSubs(text) }
             for value in values { if !(await save(value, importing: true)) { return } }
             message = "已导入 \(values.count) 条订阅"
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "导入订阅", subject: "订阅 JSON 或网址") }
     }
 
     func refresh(_ subscription: RuleSub) async {
@@ -100,9 +101,9 @@ final class SubscriptionSettingsModel {
         do {
             let count = try await rules.refresh(subscription, client: client, at: now())
             message = "已更新 \(count) 条规则"
-            errorMessage = nil
+            userError = nil
             await load()
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "更新订阅", subject: subscription.name + " · " + subscription.url) }
     }
 
     private func validURL(_ value: String) -> Bool {

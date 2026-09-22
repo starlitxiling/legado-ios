@@ -77,10 +77,10 @@ struct BookSourceSwitchView: View {
             do {
                 guard let row = try await container.bookSources.get(bookSourceUrl: origin) else { throw BookshelfEditError.missingBook }
                 let source = try DiscoveryStorage.source(row)
-                let state = try await container.sourceChecker.check(source: source, keyword: book?.name ?? "我的", timeout: 30)
+                let state = try await container.sourceChecker.check(source: source, keyword: book?.name ?? "我的", timeout: 30, describeError: { $0.presentation(operation: "校验书源", subject: origin)?.displayText ?? "校验已取消" })
                 guard checkIDs[origin] == id, !Task.isCancelled else { return }
                 states[origin] = state.succeeded ? "校验通过 · \(state.elapsedMilliseconds) ms" : state.steps.compactMap(\.error).joined(separator: "\n")
-            } catch { if !Task.isCancelled { states[origin] = error.localizedDescription } }
+            } catch { if !Task.isCancelled { states[origin] = error.presentation(operation: "校验书源", subject: origin)?.displayText } }
         }
     }
 }

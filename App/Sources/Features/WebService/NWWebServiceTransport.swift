@@ -34,7 +34,8 @@ final class NWWebServiceTransport: WebServiceTransport {
                 guard let self, let listener, self.listener === listener else { return }
                 switch value {
                 case .ready: state(.ready)
-                case .failed(let error): state(.failed(error.localizedDescription))
+                case .failed(let error):
+                    if let failure = error.presentation(operation: "监听 Web 服务端口") { state(.failed(failure.displayText)) }
                 default: break
                 }
             }

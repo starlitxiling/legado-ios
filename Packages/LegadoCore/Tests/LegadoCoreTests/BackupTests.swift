@@ -2,6 +2,15 @@ import XCTest
 @testable import LegadoCore
 
 final class BackupTests: XCTestCase {
+    func testImportFailureFormatterReceivesFileAndOriginalError() async throws {
+        let importer = BackupImporter(database: try .inMemory(), localDeviceID: "fixture", describeError: { error, file in
+            file + ": " + String((error as NSError).code)
+        })
+        let report = try await importer.importArchive(fixture("malformed-json.zip"))
+        XCTAssertEqual(report.failures["bookshelf.json"], "bookshelf.json: 3840")
+        XCTAssertEqual(report.importedCounts["bookmark.json"], 1)
+    }
+
     func testLargeStreamingDeflateConsumesBufferedOutput() throws {
         let data = try fixture("large-streaming.zip")
         XCTAssertEqual(Array(data[6..<8]), [0x08, 0x08])

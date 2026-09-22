@@ -17,7 +17,8 @@ final class SettingsViewModel {
     var password = ""
     private(set) var isTesting = false
     private(set) var message: String?
-    private(set) var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
     private let store: any KeychainStoring
     private let httpClient: any HttpClient
 
@@ -31,7 +32,7 @@ final class SettingsViewModel {
                 username = value.username
                 password = value.password
             }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "读取 WebDAV 账号", subject: nil) }
     }
 
     func credentials() throws -> WebDavCredentials {
@@ -44,30 +45,30 @@ final class SettingsViewModel {
 
     func save() {
         message = nil
-        errorMessage = nil
+        userError = nil
         do {
             let value = try credentials()
             let encoded = try JSONEncoder().encode(value)
             try store.write(String(decoding: encoded, as: UTF8.self), account: Self.credentialsAccount)
             message = "账号已保存到钥匙串"
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "保存 WebDAV 账号", subject: address) }
     }
 
     func clearCredentials() {
         message = nil
-        errorMessage = nil
+        userError = nil
         do {
             try store.delete(account: Self.credentialsAccount)
             address = ""; username = ""; password = ""
             message = "账号已删除"
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "删除 WebDAV 账号", subject: nil) }
     }
 
     func testConnection() async {
         guard !isTesting else { return }
         isTesting = true
         message = nil
-        errorMessage = nil
+        userError = nil
         defer { isTesting = false }
         do {
             let value = try credentials()
@@ -75,7 +76,7 @@ final class SettingsViewModel {
                                       password: value.password, httpClient: httpClient)
             _ = try await client.propfind(client.url(path: ""), depth: 0)
             message = "连接成功"
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "测试 WebDAV 连接", subject: address) }
     }
 
     static func localDeviceID(store: any KeychainStoring) throws -> String {

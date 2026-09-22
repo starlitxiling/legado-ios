@@ -2,6 +2,22 @@ import XCTest
 
 final class ErrorPresentationUITests: XCTestCase {
     @MainActor
+    func testDataErrorsIdentifyServerAndFileInChinese() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-data-failure-gallery"]
+        app.launch()
+        XCTAssertTrue(app.buttons["测试错误密码"].waitForExistence(timeout: 10))
+        app.buttons["测试错误密码"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "账号或密码", "auth.invalid")).firstMatch.waitForExistence(timeout: 5))
+        app.buttons["恢复损坏 JSON"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "数据格式不正确", "bookshelf.json")).firstMatch.waitForExistence(timeout: 5))
+        app.buttons["导入不支持文件"].tap()
+        XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@ AND label CONTAINS %@", "picture.png", "只支持本地")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["选择书籍或 ZIP / RAR / 7z 压缩包"].exists)
+    }
+
+    @MainActor
     func testOfflineReaderShowsBookChapterAndActions() {
         let app = launchReader(autoChange: false)
         app.buttons["断网正文"].tap()

@@ -51,7 +51,8 @@ struct BookCacheExportView: View {
     @State private var useReplace = true
     @State private var epub = false
     @State private var exportURL: URL?
-    @State private var errorMessage: String?
+    @State private var userError: UserFacingError?
+    private var errorMessage: String? { userError?.displayText }
     @State private var busy = false
 
     init(book: BookRow, model: DownloadCenterModel) {
@@ -74,11 +75,11 @@ struct BookCacheExportView: View {
                 Toggle("应用替换规则", isOn: $useReplace)
                 Toggle("EPUB 格式", isOn: $epub)
                 Button(busy ? "正在导出" : "生成导出文件") {
-                    busy = true; exportURL = nil; errorMessage = nil
+                    busy = true; exportURL = nil; userError = nil
                     Task {
                         defer { busy = false }
                         do { exportURL = try await model.export(book, range: (start - 1)...(end - 1), epub: epub, useReplace: useReplace) }
-                        catch { errorMessage = error.localizedDescription }
+                        catch { userError = error.presentation(operation: "导出书籍", subject: book.name) }
                     }
                 }.disabled(busy || !valid)
                 if let exportURL { ShareLink("分享导出文件", item: exportURL) }

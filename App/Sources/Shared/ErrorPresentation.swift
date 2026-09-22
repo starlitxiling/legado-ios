@@ -97,6 +97,8 @@ extension Error {
             switch CocoaError.Code(rawValue: error.code) {
             case .fileReadNoPermission, .fileWriteNoPermission: return "没有访问此文件的权限，请重新选择文件并授权访问。"
             case .fileReadNoSuchFile, .fileNoSuchFile: return "找不到文件，请确认文件存在后重新选择。"
+            case .propertyListReadCorrupt: return "数据格式不正确，请重新导出 JSON 文件后导入。"
+            case .fileWriteInvalidFileName: return "文件或目录名称无效，请在设置中使用单个有效的文件夹名称。"
             case .fileReadCorruptFile: return "文件已损坏或格式不正确，请重新获取完整文件。"
             case .fileWriteOutOfSpace: return "设备剩余空间不足，请释放空间后重试。"
             default: break

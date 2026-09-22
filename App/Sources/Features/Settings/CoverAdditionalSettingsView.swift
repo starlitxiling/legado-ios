@@ -18,7 +18,8 @@ import LegadoCore
 @MainActor struct ReadRecordCoversView: View {
     @Environment(AppContainer.self) private var container
     @State private var records: [ReadRecordRow] = []
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     var body: some View {
         List {
             if let error { Text(error) }
@@ -35,7 +36,7 @@ import LegadoCore
             }
         }.legadoNavigationTitle("阅读记录").task {
             do { records = try await container.readProgress.all().sorted { $0.lastRead > $1.lastRead } }
-            catch { self.error = error.localizedDescription }
+            catch { userError = error.presentation(operation: "加载阅读记录", subject: nil) }
         }
     }
     private func book(_ record: ReadRecordRow) -> Book {

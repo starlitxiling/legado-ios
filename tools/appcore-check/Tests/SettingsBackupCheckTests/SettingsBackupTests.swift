@@ -127,11 +127,44 @@ final class SettingsBackupTests: XCTestCase {
         XCTAssertEqual(requests.map(\.method), ["PROPFIND", "PROPFIND", "GET"])
     }
 
+    func testWebDavMissingPathAndNetworkHaveDifferentRecovery() async throws {
+        let replay = ReplayHttpClient()
+        let url = URL(string: "https://path.invalid/missing/")!
+        await replay.enqueue(url: url, method: "PROPFIND", response: .init(status: 404, finalURL: url))
+        let model = SettingsViewModel(store: MemoryKeychain(), httpClient: replay)
+        model.address = url.absoluteString
+        await model.testConnection()
+        XCTAssertTrue(model.errorMessage?.contains("路径或文件不存在") == true)
+        XCTAssertTrue(model.errorMessage?.contains("path.invalid/missing") == true)
+        let offline = SettingsViewModel(store: MemoryKeychain(), httpClient: OfflineSettingsClient())
+        offline.address = url.absoluteString
+        await offline.testConnection()
+        XCTAssertTrue(offline.errorMessage?.contains("网络连接不可用") == true)
+        XCTAssertFalse(offline.errorMessage?.contains("密码不正确") == true)
+    }
+
+    func testWebDavAuthenticationErrorIncludesServerAndRecovery() async throws {
+        let replay = ReplayHttpClient()
+        let url = URL(string: "https://auth.invalid/dav/")!
+        await replay.enqueue(url: url, method: "PROPFIND", response: .init(status: 401, finalURL: url))
+        let model = SettingsViewModel(store: MemoryKeychain(), httpClient: replay)
+        model.address = url.absoluteString
+        model.password = "never-display-this"
+        await model.testConnection()
+        let message = try XCTUnwrap(model.errorMessage)
+        XCTAssertTrue(message.contains("auth.invalid"), message)
+        XCTAssertTrue(message.contains("账号"), message)
+        XCTAssertTrue(message.contains("连接"), message)
+        XCTAssertFalse(message.contains(model.password))
+    }
+
     func testLocalPartialFailureAndInvalidArchive() async throws {
         let model = BackupViewModel(database: try .inMemory(), localDeviceID: "test-device", resourceDirectory: nil, preferences: isolatedPreferences())
         await model.restoreLocalFile(fixtureURL("malformed-json.zip"))
         XCTAssertEqual(model.report?.importedCounts["bookmark.json"], 1)
-        XCTAssertNotNil(model.report?.failures["bookshelf.json"])
+        let failure = try XCTUnwrap(model.report?.failures["bookshelf.json"])
+        XCTAssertTrue(failure.contains("bookshelf.json"), failure)
+        XCTAssertTrue(failure.contains("数据格式不正确"), failure)
         await model.restoreLocalData(Data("invalid".utf8))
         XCTAssertNotNil(model.errorMessage)
         XCTAssertNil(model.report)
@@ -203,4 +236,8 @@ private final class MemoryKeychain: KeychainStoring {
         values[account] = value
     }
     func delete(account: String) throws { values[account] = nil }
+}
+
+private struct OfflineSettingsClient: HttpClient {
+    func send(_ request: HttpRequest) async throws -> HttpResponse { throw URLError(.notConnectedToInternet) }
 }

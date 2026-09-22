@@ -3,6 +3,20 @@ import GRDB
 @testable import BookshelfAdvancedCheck
 
 final class ErrorPresentationTests: XCTestCase {
+    func testFilePermissionsAndBrokenJSONKeepFileContext() {
+        let permission = CocoaError(.fileReadNoPermission).presentation(operation: "导入书籍", sourceFile: "Book.epub")
+        XCTAssertTrue(permission?.message.contains("权限") == true)
+        XCTAssertTrue(permission?.message.contains("Book.epub") == true)
+        do {
+            _ = try JSONSerialization.jsonObject(with: Data("{invalid".utf8))
+            XCTFail("Expected invalid JSON")
+        } catch {
+            let message = error.presentation(operation: "恢复备份", sourceFile: "bookshelf.json")
+            XCTAssertTrue(message?.message.contains("数据格式不正确") == true)
+            XCTAssertTrue(message?.message.contains("bookshelf.json") == true)
+        }
+    }
+
     func testPresentationIncludesOperationObjectAndFile() {
         let value = URLError(.timedOut).presentation(operation: "导入书源", subject: "测试书源",
             sourceFile: "sources.json", actions: [.retry, .manageSources])

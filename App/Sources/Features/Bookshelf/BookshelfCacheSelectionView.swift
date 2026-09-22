@@ -6,7 +6,8 @@ struct BookshelfCacheSelectionView: View {
     let downloads: DownloadCenterModel
     let groupID: Int64
     @State private var books: [BookRow] = []
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -22,7 +23,7 @@ struct BookshelfCacheSelectionView: View {
             .toolbar { ToolbarItem(placement: .confirmationAction) { Button("关闭") { dismiss() } } }
             .task {
                 do { books = try await repository.list(groupID: groupID) }
-                catch { self.error = error.localizedDescription }
+                catch { userError = error.presentation(operation: "读取待缓存书籍", subject: nil) }
             }
         }
     }

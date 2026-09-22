@@ -69,7 +69,7 @@ struct LocalBookGalleryView: View {
             }
             self.container = container
             status = "10 formats passed"
-        } catch { status = error.localizedDescription }
+        } catch { if let failure = error.presentation(operation: "准备本地书示例") { status = failure.displayText } }
     }
 }
 #endif

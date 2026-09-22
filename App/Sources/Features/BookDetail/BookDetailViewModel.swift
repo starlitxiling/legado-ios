@@ -12,7 +12,8 @@ final class BookDetailViewModel {
     private(set) var isLoading = false
     private(set) var isSaving = false
     private(set) var isOnBookshelf = false
-    private(set) var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
 
     private let sources: BookSourceRepository
     private let bookshelf: BookshelfRepository
@@ -45,7 +46,7 @@ final class BookDetailViewModel {
         book = nil
         source = nil
         isOnBookshelf = false
-        errorMessage = nil
+        userError = nil
         defer { if request == generation { isLoading = false } }
         do {
             guard let row = try await sources.get(bookSourceUrl: result.origin ?? "") else {
@@ -80,7 +81,7 @@ final class BookDetailViewModel {
             source = selected
             isOnBookshelf = saved.map { $0.type & DiscoveryStorage.hiddenBook == 0 } ?? false
         } catch {
-            if request == generation, !Task.isCancelled { errorMessage = error.localizedDescription }
+            if request == generation, !Task.isCancelled { userError = error.presentation(operation: "加载书籍详情", subject: result.name) }
         }
     }
 
@@ -93,7 +94,7 @@ final class BookDetailViewModel {
             if let saved { book = try DiscoveryStorage.book(saved) }
             source = try sourceRow.map(DiscoveryStorage.source)
             isOnBookshelf = saved.map { $0.type & DiscoveryStorage.hiddenBook == 0 } ?? false
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "刷新书架状态", subject: book?.name) }
     }
 
     func selectResult(_ result: SearchBook) async {
@@ -107,7 +108,7 @@ final class BookDetailViewModel {
 
     func prepareForReading(database: AppDatabase) async -> Book? {
         guard let book, !isLoading, !isSaving else { return nil }
-        isSaving = true; errorMessage = nil
+        isSaving = true; userError = nil
         defer { isSaving = false }
         do {
             if let matching = try await DiscoveryStorage.matchingBook(book, in: bookshelf),
@@ -121,7 +122,7 @@ final class BookDetailViewModel {
             }
             await refreshShelfState()
             return self.book
-        } catch { errorMessage = error.localizedDescription; return nil }
+        } catch { userError = error.presentation(operation: "准备阅读", subject: book.name); return nil }
     }
 
     func setCanUpdate(_ enabled: Bool) async {
@@ -146,17 +147,17 @@ final class BookDetailViewModel {
                 }
             }
             await edit { $0.variable = value.isEmpty ? nil : value }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "保存书籍变量", subject: book?.name) }
     }
 
     func setGroups(_ mask: Int64) async { await edit { $0.group = mask } }
 
     func moveToTop() async {
         guard isOnBookshelf, !isSaving else { return }
-        isSaving = true; errorMessage = nil
+        isSaving = true; userError = nil
         defer { isSaving = false }
         do { book = try DiscoveryStorage.book(try await bookshelf.saveAtTop(try await storedBook())) }
-        catch { errorMessage = error.localizedDescription }
+        catch { userError = error.presentation(operation: "置顶书籍", subject: book?.name) }
     }
 
     func storedBook() async throws -> BookRow {
@@ -170,7 +171,7 @@ final class BookDetailViewModel {
 
     private func edit(_ change: (inout Book) -> Void) async {
         guard book != nil, !isSaving, !isLoading else { return }
-        isSaving = true; errorMessage = nil
+        isSaving = true; userError = nil
         defer { isSaving = false }
         do {
             let row = try await storedBook()
@@ -178,13 +179,13 @@ final class BookDetailViewModel {
             change(&updated)
             try await bookshelf.upsert(DiscoveryStorage.row(updated, defaults: row))
             book = updated
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "保存书籍设置", subject: book?.name) }
     }
 
     func toggleBookshelf() async {
         guard let book, !isLoading, !isSaving, let url = book.bookUrl, !url.isEmpty else { return }
         isSaving = true
-        errorMessage = nil
+        userError = nil
         defer { isSaving = false }
         do {
             let saved = try await bookshelf.get(bookUrl: url)
@@ -202,7 +203,7 @@ final class BookDetailViewModel {
             }
             self.book = try DiscoveryStorage.book(row)
             isOnBookshelf = !wasVisible
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "加入或移出书架", subject: book.name) }
     }
 }
 

@@ -13,7 +13,7 @@ struct UploadRuleSettingsView: View {
             Button("从 URL 导入") {
                 Task {
                     do { model.text = try await ManagementImport.download(model.address, client: ImportHttpClient()) }
-                    catch { model.message = error.localizedDescription }
+                    catch { model.message = error.presentation(operation: "下载上传规则", subject: model.address)?.displayText }
                 }
             }
             Button("从文件导入") { importing = true }
@@ -31,7 +31,7 @@ struct UploadRuleSettingsView: View {
                 let handle = try FileHandle(forReadingFrom: url)
                 defer { try? handle.close() }
                 model.text = try ManagementImport.text(handle.read(upToCount: ManagementImport.maximumBytes + 1) ?? Data())
-            } catch { model.message = error.localizedDescription }
+            } catch { model.message = error.presentation(operation: "导入上传规则文件", subject: (try? result.get())?.lastPathComponent)?.displayText }
         }
     }
 }

@@ -53,7 +53,7 @@ struct BackupConfigurationFields: View {
                 let bookmark = try url.bookmarkData(options: .minimalBookmark, includingResourceValuesForKeys: nil, relativeTo: nil)
                 preferences.defaults.set(bookmark, forKey: "Legado.backupBookmark")
                 preferences.set("backupUri", .string(url.absoluteString))
-            } catch { message = error.localizedDescription }
+            } catch { message = error.presentation(operation: "保存备份目录", subject: (try? result.get())?.lastPathComponent)?.displayText }
         }
     }
 }

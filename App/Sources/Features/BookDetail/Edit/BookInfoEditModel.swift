@@ -12,7 +12,8 @@ final class BookInfoEditModel {
     var tag: String
     var variable: String
     private(set) var isSaving = false
-    private(set) var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
     private let bookURL: String
     private let repository: BookshelfRepository
 
@@ -25,12 +26,12 @@ final class BookInfoEditModel {
 
     func save() async -> Bool {
         guard !isSaving else { return false }
-        isSaving = true; errorMessage = nil
+        isSaving = true; userError = nil
         defer { isSaving = false }
         do {
             if !variable.isEmpty {
                 guard let object = try JSONSerialization.jsonObject(with: Data(variable.utf8)) as? [String: String] else {
-                    errorMessage = "自定义字段必须是字符串键值组成的 JSON 对象。"; return false
+                    userError = UserFacingError(title: "保存书籍信息失败", message: name + "\n自定义字段必须是字符串键值组成的 JSON 对象。"); return false
                 }
                 _ = object
             }
@@ -38,6 +39,6 @@ final class BookInfoEditModel {
                 cover: cover.isEmpty ? nil : cover, intro: intro.isEmpty ? nil : intro,
                 tag: tag.isEmpty ? nil : tag, variable: variable.isEmpty ? nil : variable)
             return true
-        } catch { errorMessage = error.localizedDescription; return false }
+        } catch { userError = error.presentation(operation: "保存书籍信息", subject: name); return false }
     }
 }

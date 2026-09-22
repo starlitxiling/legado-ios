@@ -5,7 +5,8 @@ struct DetailTextEditor: View {
     let title: String
     let save: (String) async throws -> Void
     @State private var value: String
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     @State private var saving = false
     @Environment(\.dismiss) private var dismiss
 
@@ -23,7 +24,7 @@ struct DetailTextEditor: View {
                 Task {
                     defer { saving = false }
                     do { try await save(value); dismiss() }
-                    catch { self.error = error.localizedDescription }
+                    catch { userError = error.presentation(operation: "保存编辑内容", subject: title) }
                 }
             }.disabled(saving)
         }.legadoNavigationTitle(title)
@@ -34,7 +35,8 @@ struct SourceVariableEditor: View {
     let source: String
     let repository: SourceStateRepository
     @State private var value: String?
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
 
     var body: some View {
         Group {
@@ -48,7 +50,7 @@ struct SourceVariableEditor: View {
             else { ProgressView() }
         }.task {
             do { value = try await repository.load(source: source)["variable"] ?? "" }
-            catch { self.error = error.localizedDescription }
+            catch { userError = error.presentation(operation: "读取书源变量", subject: source) }
         }
     }
 }
@@ -57,7 +59,8 @@ struct BookDetailEditDestination: View {
     let model: BookDetailViewModel
     let repository: BookshelfRepository
     @State private var row: BookRow?
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
 
     var body: some View {
         Group {
@@ -66,7 +69,7 @@ struct BookDetailEditDestination: View {
             else { ProgressView() }
         }.task {
             do { row = try await model.storedBook() }
-            catch { self.error = error.localizedDescription }
+            catch { userError = error.presentation(operation: "打开书籍编辑", subject: model.book?.name) }
         }
     }
 }
@@ -76,7 +79,8 @@ struct BookDetailGroupView: View {
     let save: (Int64) async -> Void
     @State private var selected: Int64
     @State private var groups: [BookGroupRow] = []
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     @State private var saving = false
 
     init(repository: BookGroupRepository, selected: Int64, save: @escaping (Int64) async -> Void) {
@@ -95,7 +99,7 @@ struct BookDetailGroupView: View {
             Button("保存") { saving = true; Task { await save(selected); saving = false } }.disabled(saving)
         }.legadoNavigationTitle("设置分组").task {
             do { groups = try await repository.list().filter { $0.groupId > 0 } }
-            catch { self.error = error.localizedDescription }
+            catch { userError = error.presentation(operation: "读取书籍分组", subject: nil) }
         }
     }
 }
@@ -105,7 +109,8 @@ struct BookUpdateTaskEditor: View {
     let repository: AutoTaskRuleRepository
     @State private var task = AutoTaskRule()
     @State private var loaded = false
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     @State private var saving = false
     @Environment(\.dismiss) private var dismiss
 
@@ -122,7 +127,7 @@ struct BookUpdateTaskEditor: View {
                 Task {
                     defer { saving = false }
                     do { try await repository.upsert(task); dismiss() }
-                    catch { self.error = error.localizedDescription }
+                    catch { userError = error.presentation(operation: "保存更新任务", subject: task.name) }
                 }
             }.disabled(!loaded || saving || task.name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
         }.legadoNavigationTitle("更新任务").task {
@@ -134,7 +139,7 @@ struct BookUpdateTaskEditor: View {
                     task.customOrder = last == Int.max ? existing.count : last + 1
                 }
                 loaded = true
-            } catch { self.error = error.localizedDescription }
+            } catch { userError = error.presentation(operation: "读取更新任务", subject: book.name) }
         }
     }
 }
@@ -167,7 +172,7 @@ struct LocalBookUploadView: View {
                         let data = try await Task.detached { try Data(contentsOf: local, options: .mappedIfSafe) }.value
                         try await dav.put(data, to: folder.appendingPathComponent(name), overwrite: false)
                         message = "上传完成"
-                    } catch { message = error.localizedDescription }
+                    } catch { message = error.presentation(operation: "上传本地书", subject: book.name, sourceFile: name)?.displayText }
                 }
             }.disabled(uploading || name.isEmpty)
             if uploading { ProgressView() }

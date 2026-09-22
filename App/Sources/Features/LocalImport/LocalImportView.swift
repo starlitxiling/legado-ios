@@ -9,7 +9,8 @@ struct LocalImportView: View {
     @State private var showsDirectoryPicker = false
     @State private var scanner = LocalDirectoryScanner()
     @State private var onlineURL = ""
-    @State private var pickerError: String?
+    @State private var userError: UserFacingError?
+    private var pickerError: String? { userError?.displayText }
     @State private var importedInitialURLs = false
     private let initialURLs: [URL]
     private let database: AppDatabase
@@ -74,7 +75,7 @@ struct LocalImportView: View {
         .fileImporter(isPresented: $showsDirectoryPicker, allowedContentTypes: [.folder]) { result in
             switch result {
             case .success(let url): Task { await scanner.add(url) }
-            case .failure(let error): pickerError = error.localizedDescription
+            case .failure(let error): userError = error.presentation(operation: "选择扫描目录", subject: nil)
             }
         }
         .sheet(isPresented: $showsPicker) {

@@ -162,7 +162,7 @@ struct BookDetailView: View {
     private func reload() async {
         await model.refreshShelfState()
         do { groups = try await container.bookGroups.list() }
-        catch { message = error.localizedDescription }
+        catch { message = error.presentation(operation: "读取书籍分组", subject: title)?.displayText }
     }
 
     private func read(_ index: Int?) async {
@@ -191,7 +191,7 @@ private extension BookDetailView {
     @ToolbarContentBuilder var detailToolbar: some ToolbarContent {
         ToolbarItemGroup(placement: .topBarTrailing) {
             if model.source?.customButton == true {
-                Button { runAction { _ = try await callback("clickCustomButton") } } label: { Image(systemName: "star") }
+                Button { runAction("执行书源定制按钮") { _ = try await callback("clickCustomButton") } } label: { Image(systemName: "star") }
                     .accessibilityLabel("定制按钮").disabled(actionRunning)
             }
             Button { sheet = .edit } label: { Image(systemName: "pencil") }.accessibilityLabel("编辑")
@@ -210,14 +210,14 @@ private extension BookDetailView {
                 Button("置顶") { Task { await model.moveToTop() } }.disabled(!model.isOnBookshelf)
                 if model.source != nil { Button("设置源变量") { sheet = .sourceVariable } }
                 Button("设置书籍变量") { sheet = .bookVariable }
-                Button("拷贝书籍 URL") { runAction { if try await !callback("clickCopyBookUrl") { UIPasteboard.general.string = model.book?.bookUrl } } }
-                Button("拷贝目录 URL") { runAction { if try await !callback("clickCopyTocUrl") { UIPasteboard.general.string = model.book?.tocUrl } } }
+                Button("拷贝书籍 URL") { runAction("拷贝书籍网址") { if try await !callback("clickCopyBookUrl") { UIPasteboard.general.string = model.book?.bookUrl } } }
+                Button("拷贝目录 URL") { runAction("拷贝目录网址") { if try await !callback("clickCopyTocUrl") { UIPasteboard.general.string = model.book?.tocUrl } } }
                 if model.source != nil {
                     Toggle("允许更新", isOn: Binding(get: { model.book?.canUpdate ?? true }, set: { value in Task { await model.setCanUpdate(value) } }))
                 }
                 if let book = model.book, LocalBook.fileURL(book)?.pathExtension.lowercased() == "txt" {
                     Toggle("拆分超长章节", isOn: Binding(get: { model.book?.readConfig?.splitLongChapter ?? true }, set: { value in
-                        runAction {
+                        runAction("保存章节拆分设置") {
                             await model.setSplitLongChapter(value)
                             if let error = model.errorMessage { throw NSError(domain: "BookDetail", code: 1, userInfo: [NSLocalizedDescriptionKey: error]) }
                             guard let url = model.book?.bookUrl else { return }
@@ -227,7 +227,7 @@ private extension BookDetailView {
                 }
                 Toggle("删除提醒", isOn: Binding(get: { AppPreferences.shared.boolean("bookInfoDeleteAlert") },
                     set: { AppPreferences.shared.set("bookInfoDeleteAlert", .boolean($0)) }))
-                Button("清理缓存") { runAction { try await clearCache() } }
+                Button("清理缓存") { runAction("清理书籍缓存") { try await clearCache() } }
                 NavigationLink("日志") { AppLogView() }
             } label: { Image(systemName: "ellipsis") }.accessibilityLabel("更多")
         }
@@ -259,13 +259,14 @@ private extension BookDetailView {
         }
     }
 
-    func runAction(_ action: @escaping () async throws -> Void) {
+    func runAction(_ operation: String, _ action: @escaping () async throws -> Void) {
         guard !actionRunning else { return }
         actionRunning = true; message = nil
         Task {
             defer { actionRunning = false }
             do { try await action() }
-            catch { message = error.localizedDescription; AppLogStore.shared.append("Book detail: " + error.localizedDescription) }
+            catch { message = error.presentation(operation: operation, subject: title)?.displayText
+                AppLogStore.shared.append("Book detail: " + String(reflecting: error)) }
         }
     }
 

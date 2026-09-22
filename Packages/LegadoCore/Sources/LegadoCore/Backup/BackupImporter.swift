@@ -18,14 +18,16 @@ public struct BackupImporter {
     private let localDeviceID: String
     private let now: () -> Int64
     private let password: String?
+    private let describeError: (Error, String) -> String
     private let currentPreferences: [String: AndroidPreferenceValue]
 
     /// localDeviceID 由应用持久化身份提供，避免把旧备份的空设备 ID 当成远端设备。
-    public init(database: AppDatabase, localDeviceID: String, now: @escaping () -> Int64 = GsonDecoding.currentTimeMillis, password: String? = nil, currentPreferences: [String: AndroidPreferenceValue] = [:]) {
-        self.init(database: database, localDeviceID: localDeviceID, now: now, resourceDirectory: nil, password: password, currentPreferences: currentPreferences)
+    public init(database: AppDatabase, localDeviceID: String, now: @escaping () -> Int64 = GsonDecoding.currentTimeMillis, password: String? = nil, currentPreferences: [String: AndroidPreferenceValue] = [:], describeError: @escaping (Error, String) -> String = { error, _ in String(describing: error) }) {
+        self.init(database: database, localDeviceID: localDeviceID, now: now, resourceDirectory: nil, password: password, currentPreferences: currentPreferences, describeError: describeError)
     }
 
-    public init(database: AppDatabase, localDeviceID: String, now: @escaping () -> Int64 = GsonDecoding.currentTimeMillis, resourceDirectory: URL?, password: String? = nil, currentPreferences: [String: AndroidPreferenceValue] = [:]) {
+    public init(database: AppDatabase, localDeviceID: String, now: @escaping () -> Int64 = GsonDecoding.currentTimeMillis, resourceDirectory: URL?, password: String? = nil, currentPreferences: [String: AndroidPreferenceValue] = [:], describeError: @escaping (Error, String) -> String = { error, _ in String(describing: error) }) {
+        self.describeError = describeError
         self.currentPreferences = currentPreferences
         if let password { self.password = password }
         else if case let .string(value)? = currentPreferences["localPassword"] { self.password = value }
@@ -66,7 +68,8 @@ public struct BackupImporter {
                 try BackupFileManifest.validateSourceState(name, data: plain)
                 sourceState[name] = plain
             } catch {
-                report.failures[name] = String(describing: error)
+                try Task.checkCancellation()
+                report.failures[name] = describeError(error, name)
             }
         }
         guard report.failures.isEmpty else { return report }
@@ -193,11 +196,12 @@ public struct BackupImporter {
             } catch is CancellationError {
                 throw CancellationError()
             } catch {
+                try Task.checkCancellation()
                 if name == "highlightRule.json", error is HighlightRuleDecodingError {
                     report.skippedFiles.append(name)
-                    report.skippedReasons[name] = String(describing: error)
+                    report.skippedReasons[name] = describeError(error, name)
                 } else {
-                    report.failures[name] = String(describing: error)
+                    report.failures[name] = describeError(error, name)
                 }
             }
         }

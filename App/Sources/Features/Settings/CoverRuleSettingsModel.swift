@@ -13,7 +13,7 @@ final class CoverRuleSettingsModel {
         do {
             text = try await database.backupConfiguration(named: "coverRule.json")
                 .map { String(decoding: $0, as: UTF8.self) } ?? String(decoding: JSONEncoder().encode(CoverSearchRule.androidDefault), as: UTF8.self)
-        } catch { message = error.localizedDescription }
+        } catch { message = error.presentation(operation: "读取封面规则", subject: "coverRule.json")?.displayText }
     }
     func save() async {
         do {
@@ -27,6 +27,6 @@ final class CoverRuleSettingsModel {
                 try db.execute(sql: "INSERT OR REPLACE INTO backup_files (name, data) VALUES ('coverRule.json', ?)", arguments: [data])
             }
             message = "封面规则已保存"
-        } catch { message = error.localizedDescription }
+        } catch { message = error.presentation(operation: "保存封面规则", subject: "coverRule.json")?.displayText }
     }
 }

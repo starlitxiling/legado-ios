@@ -59,7 +59,7 @@ struct OtherSettingsView: View {
                 Button("清理无效书籍缓存") {
                     Task {
                         do { message = "已清理 \(try await container.downloads.clearInvalidCache()) 项无效缓存" }
-                        catch { message = error.localizedDescription }
+                        catch { message = error.presentation(operation: "清理无效书籍缓存", subject: nil)?.displayText }
                     }
                 }
                 Button("清理网络缓存") { URLCache.shared.removeAllCachedResponses(); message = "网络缓存已清理" }
@@ -69,7 +69,7 @@ struct OtherSettingsView: View {
                 Button("压缩数据库") {
                     Task {
                         do { try await container.database.vacuum(); message = "数据库已压缩" }
-                        catch { message = error.localizedDescription }
+                        catch { message = error.presentation(operation: "压缩数据库", subject: nil)?.displayText }
                     }
                 }
 
@@ -83,7 +83,7 @@ struct OtherSettingsView: View {
         .legadoNavigationTitle("其它设置")
         .task {
             do { sources = try await container.bookSources.all().map { try DiscoveryStorage.source($0) } }
-            catch { message = error.localizedDescription }
+            catch { message = error.presentation(operation: "加载书源设置", subject: nil)?.displayText }
         }
     }
 }

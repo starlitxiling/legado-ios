@@ -74,4 +74,54 @@ struct ReaderFailureGallery: View {
 private struct ReaderOfflineClient: HttpClient {
     func send(_ request: HttpRequest) async throws -> HttpResponse { throw URLError(.notConnectedToInternet) }
 }
+
+struct DataFailureGallery: View {
+    @State private var settings = SettingsViewModel(store: DataFailureStore(), httpClient: AuthenticationFailureClient())
+    @State private var database: AppDatabase?
+    @State private var backup: BackupViewModel?
+    @State private var error: UserFacingError?
+    private let directory = URL.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+
+    var body: some View {
+        NavigationStack {
+            List {
+                Button("测试错误密码") {
+                    Task { settings.address = "https://auth.invalid/dav/"; await settings.testConnection() }
+                }
+                if let error = settings.errorMessage { Text(error) }
+                Button("恢复损坏 JSON") {
+                    Task { await backup?.restoreLocalData(Data(base64Encoded: "UEsDBBQAAAAAAOB7Nl1R9+3yCAAAAAgAAAAOAAAAYm9va3NoZWxmLmpzb257aW52YWxpZFBLAQIUAxQAAAAAAOB7Nl1R9+3yCAAAAAgAAAAOAAAAAAAAAAAAAACAAQAAAABib29rc2hlbGYuanNvblBLBQYAAAAAAQABADwAAAA0AAAAAAA=")!) }
+                }.disabled(backup == nil)
+                if let report = backup?.report { RestoreResultView(report: report) }
+                if let database {
+                    NavigationLink("导入不支持文件") {
+                        LocalImportView(database: database, initialURLs: [directory.appendingPathComponent("picture.png")])
+                    }
+                }
+            }.navigationTitle("数据错误验收")
+        }.errorBanner(error, dismiss: { error = nil })
+            .task {
+                guard database == nil else { return }
+                do {
+                    let database = try AppDatabase.inMemory()
+                    try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+                    try Data("invalid".utf8).write(to: directory.appendingPathComponent("picture.png"))
+                    let defaults = UserDefaults(suiteName: "DataFailureGallery")!
+                    defaults.removePersistentDomain(forName: "DataFailureGallery")
+                    backup = BackupViewModel(database: database, localDeviceID: "fixture", resourceDirectory: nil,
+                                             preferences: BackupPreferences(defaults: defaults))
+                    self.database = database
+                } catch { self.error = error.presentation(operation: "准备数据错误验收") }
+            }
+    }
+}
+
+private struct AuthenticationFailureClient: HttpClient {
+    func send(_ request: HttpRequest) async throws -> HttpResponse { .init(status: 401, finalURL: request.url) }
+}
+private struct DataFailureStore: KeychainStoring {
+    func read(account: String) throws -> String? { nil }
+    func write(_ value: String, account: String) throws {}
+    func delete(account: String) throws {}
+}
 #endif

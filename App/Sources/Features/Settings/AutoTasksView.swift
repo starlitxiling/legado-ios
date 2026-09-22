@@ -6,7 +6,8 @@ struct AutoTasksView: View {
     @State private var rules: [AutoTaskRule] = []
     private struct EditRequest: Identifiable { let id = UUID(); let rule: AutoTaskRule }
     @State private var editing: EditRequest?
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     var body: some View {
         List {
             Text("使用五段 Cron 表达式。前台每分钟检查；后台运行时间由 iOS 决定。").font(.footnote).foregroundStyle(.secondary)
@@ -23,7 +24,7 @@ struct AutoTasksView: View {
                     }.buttonStyle(.borderless)
                 }.swipeActions { Button("删除", role: .destructive) { Task {
                     do { try await AutoTaskRuleRepository(database: container.database).delete(rule); await load() }
-                    catch { self.error = error.localizedDescription }
+                    catch { userError = error.presentation(operation: "删除定时任务", subject: rule.name) }
                 } } }
             }
             if let error = error ?? container.autoTasks.errorMessage { Text(error).foregroundStyle(.red) }
@@ -40,11 +41,11 @@ struct AutoTasksView: View {
     }
     private func load() async {
         do { rules = try await AutoTaskRuleRepository(database: container.database).all().sorted { $0.customOrder < $1.customOrder } }
-        catch { self.error = error.localizedDescription }
+        catch { userError = error.presentation(operation: "加载定时任务", subject: nil) }
     }
     private func save(_ rule: AutoTaskRule) async {
         do { try await AutoTaskRuleRepository(database: container.database).upsert(rule); await load() }
-        catch { self.error = error.localizedDescription }
+        catch { userError = error.presentation(operation: "保存定时任务", subject: rule.name) }
     }
 }
 
@@ -52,7 +53,8 @@ private struct AutoTaskEditor: View {
     @State var rule: AutoTaskRule
     let save: (AutoTaskRule) async throws -> Void
     @Environment(\.dismiss) private var dismiss
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     var body: some View {
         NavigationStack {
             Form {
@@ -72,9 +74,9 @@ private struct AutoTaskEditor: View {
                             guard !rule.name.isEmpty, !rule.script.isEmpty else { throw JsEngineError.exception("名称和脚本不能为空") }
                             Task {
                                 do { try await save(rule); dismiss() }
-                                catch { self.error = error.localizedDescription }
+                                catch { userError = error.presentation(operation: "保存定时任务", subject: rule.name) }
                             }
-                        } catch { self.error = error.localizedDescription }
+                        } catch { userError = error.presentation(operation: "校验定时任务", subject: rule.name) }
                     } }
                 }
         }

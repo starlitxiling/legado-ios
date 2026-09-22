@@ -9,10 +9,12 @@ final class LocalImportViewModel {
     private(set) var isImporting = false
     private(set) var isDownloading = false
     private(set) var importedCount = 0
-    private(set) var errors: [String] = []
+    private(set) var failures: [UserFacingError] = []
+    var errors: [String] { failures.map(\.displayText) }
     private(set) var conflictingURLs: [URL] = []
     private(set) var rules: [TxtTocRule] = []
-    private(set) var ruleError: String?
+    private(set) var ruleFailure: UserFacingError?
+    var ruleError: String? { ruleFailure?.displayText }
     private let database: AppDatabase
     private let configuredBooksDirectory: URL?
     private var booksDirectory: URL {
@@ -24,7 +26,7 @@ final class LocalImportViewModel {
     nonisolated static func storageDirectory(folder: String, documents: URL = .documentsDirectory) throws -> URL {
         let name = folder.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !name.isEmpty, name != ".", name != "..", !name.contains("/"), !name.contains("\\"), !name.contains("\0") else {
-            throw CocoaError(.fileWriteInvalidFileName, userInfo: [NSLocalizedDescriptionKey: "Invalid books folder; choose one folder name in Settings"])
+            throw CocoaError(.fileWriteInvalidFileName, userInfo: [NSLocalizedDescriptionKey: "书籍目录名称无效，请在设置中填写单个文件夹名称"])
         }
         return documents.appendingPathComponent(name, isDirectory: true)
     }
@@ -45,7 +47,7 @@ final class LocalImportViewModel {
 
     func importFiles(_ urls: [URL], keepBoth: Bool = false, archiveSelection: Set<String>? = nil) async {
         guard !isImporting else { return }
-        isImporting = true; importedCount = 0; errors = []
+        isImporting = true; importedCount = 0; failures = []
         conflictingURLs.removeAll { urls.contains($0) }
         for url in urls { archiveConflicts[url] = nil }
         defer { isImporting = false }
@@ -61,7 +63,7 @@ final class LocalImportViewModel {
                         LocalBook.fileExtensions.contains(($0.name as NSString).pathExtension.lowercased()) &&
                             (archiveSelection == nil || archiveSelection!.contains($0.name))
                     }
-                    guard !entries.isEmpty else { throw BookArchiveError.invalid("No supported books in archive") }
+                    guard !entries.isEmpty else { throw BookArchiveError.invalid("压缩包中没有支持的书籍文件") }
                     for entry in entries {
                         try Task.checkCancellation()
                         await importEntry(url, scoped: scoped, archive: archive, entry: entry, keepBoth: keepBoth)
@@ -70,8 +72,8 @@ final class LocalImportViewModel {
                     await importEntry(url, scoped: scoped, keepBoth: keepBoth)
                 }
             } catch {
-                if error is CancellationError { break }
-                errors.append("\(url.lastPathComponent)：\(error.localizedDescription)")
+                if error.isCancellation { break }
+                report(error, operation: "导入书籍", file: url.lastPathComponent)
             }
         }
     }
@@ -80,7 +82,7 @@ final class LocalImportViewModel {
                              entry: BookArchiveEntry? = nil, keepBoth: Bool) async {
         let booksDirectory: URL
         do { booksDirectory = try self.booksDirectory }
-        catch { errors.append(error.localizedDescription); return }
+        catch { report(error, operation: "打开书籍存储目录", file: url.lastPathComponent); return }
         let name = entry.map { ($0.name as NSString).lastPathComponent } ?? url.lastPathComponent
         let source = url.standardizedFileURL.absoluteString + (entry.map { "!" + $0.name } ?? "")
         let identity = SHA256.hash(data: Data(source.utf8)).map { String(format: "%02x", $0) }.joined()
@@ -147,18 +149,18 @@ final class LocalImportViewModel {
                     if let previousCover { try previousCover.write(to: coverURL, options: .atomic) }
                     else { try FileManager.default.removeItem(at: coverURL) }
                 }
-            } catch { errors.append("恢复原文件失败：\(error.localizedDescription)") }
+            } catch { report(error, operation: "恢复原文件", file: name) }
             if case LocalBookError.identityConflict = error {
                 if !conflictingURLs.contains(url) { conflictingURLs.append(url) }
                 if let entry { archiveConflicts[url, default: []].insert(entry.name) }
             }
-            if !(error is CancellationError) { errors.append("\(name)：\(error.localizedDescription)") }
+            report(error, operation: "导入书籍", file: name)
         }
     }
 
     func importOnline(_ text: String, client: any HttpClient = URLSessionHttpClient()) async {
         guard !isImporting, !isDownloading else { return }
-        isDownloading = true; errors = []
+        isDownloading = true; failures = []
         defer { isDownloading = false }
         do {
             guard let url = URL(string: text.trimmingCharacters(in: .whitespacesAndNewlines)),
@@ -169,7 +171,7 @@ final class LocalImportViewModel {
                 response = try await limited.send(HttpRequest(url: url), maximumResponseBytes: limit)
             } else { response = try await client.send(HttpRequest(url: url)) }
             guard (200..<300).contains(response.status) else {
-                throw URLError(.badServerResponse, userInfo: [NSLocalizedDescriptionKey: "HTTP \(response.status)"])
+                throw WebBookError.httpStatus(response.status, url.absoluteString)
             }
             guard response.body.count <= limit else { throw WebDavError.responseTooLarge }
             let name = Self.downloadedFilename(response)
@@ -183,7 +185,7 @@ final class LocalImportViewModel {
             let file = folder.appendingPathComponent(name)
             try response.body.write(to: file, options: .atomic)
             await importFiles([file])
-        } catch { errors.append("下载导入失败：" + error.localizedDescription) }
+        } catch { report(error, operation: "下载并导入书籍", file: text) }
     }
 
     nonisolated static func downloadedFilename(_ response: HttpResponse) -> String {
@@ -204,13 +206,19 @@ final class LocalImportViewModel {
         return response.finalURL.lastPathComponent
     }
 
+    private func report(_ error: Error, operation: String, file: String) {
+        guard let failure = error.presentation(operation: operation, sourceFile: file) else { return }
+        AppLogStore.shared.append(operation + ": " + String(reflecting: error))
+        failures.append(failure)
+    }
+
     func loadRules() async {
-        do { rules = try await TxtTocRuleRepository(database: database).list(); ruleError = nil }
-        catch { ruleError = error.localizedDescription }
+        do { rules = try await TxtTocRuleRepository(database: database).list(); ruleFailure = nil }
+        catch { ruleFailure = error.presentation(operation: "加载 TXT 目录规则") }
     }
 
     func saveRule(_ rule: TxtTocRule) async {
         do { try await TxtTocRuleRepository(database: database).save(rule); await loadRules() }
-        catch { ruleError = error.localizedDescription }
+        catch { ruleFailure = error.presentation(operation: "保存 TXT 目录规则", subject: rule.name) }
     }
 }

@@ -51,7 +51,7 @@ struct BackupLifecycleModifier: ViewModifier {
                     restoredStartupProgress = true
                     await backup.synchronizeProgress()
                 }
-            } catch { model?.errorMessage = error.localizedDescription }
+            } catch { model?.userError = error.presentation(operation: "执行自动备份与同步") }
         }
     }
 }

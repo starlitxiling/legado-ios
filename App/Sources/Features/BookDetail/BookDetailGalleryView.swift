@@ -5,7 +5,8 @@ import LegadoCore
 struct BookDetailGalleryView: View {
     @State private var container: AppContainer?
     @State private var book: BookRow?
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     private let theme = ThemeStore(preferences: AppPreferences(defaults: UserDefaults(suiteName: "Legado.DetailGallery")!))
 
     var body: some View {
@@ -57,7 +58,7 @@ struct BookDetailGalleryView: View {
                 try data.write(to: cover, options: .atomic); book.coverUrl = cover.absoluteString
                 try await container.bookshelf.upsert(book)
                 self.book = book; self.container = container
-            } catch { self.error = error.localizedDescription }
+            } catch { userError = error.presentation(operation: "准备书籍详情示例", subject: nil) }
         }
     }
 }

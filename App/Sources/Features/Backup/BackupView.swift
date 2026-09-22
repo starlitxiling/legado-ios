@@ -7,7 +7,7 @@ struct BackupView: View {
     let container: AppContainer
     @Bindable var settings: SettingsViewModel
     @Binding var model: BackupViewModel?
-    @State private var setupError: String?
+    @State private var setupError: UserFacingError?
     @State private var selectingFile = false
     @State private var selectedBackup: WebDavFile?
 
@@ -38,7 +38,7 @@ struct BackupView: View {
                             do {
                                 try model.configure(credentials: settings.credentials(), httpClient: container.httpClient)
                                 await model.createBackup(upload: true)
-                            } catch { model.errorMessage = error.localizedDescription }
+                            } catch { model.userError = error.presentation(operation: "配置远端备份", subject: settings.address) }
                         }
                     }
                     Button("生成本地备份") { Task { await model.createBackup(upload: false) } }
@@ -48,7 +48,7 @@ struct BackupView: View {
                             do {
                                 try model.configure(credentials: settings.credentials(), httpClient: container.httpClient)
                                 await model.synchronizeProgress()
-                            } catch { model.errorMessage = error.localizedDescription }
+                            } catch { model.userError = error.presentation(operation: "配置进度同步", subject: settings.address) }
                         }
                     }
                     if let message = model.statusMessage { Text(message).foregroundStyle(.secondary) }
@@ -57,7 +57,7 @@ struct BackupView: View {
                             do {
                                 try model.configure(credentials: settings.credentials(), httpClient: container.httpClient)
                                 await model.listBackups()
-                            } catch { model.errorMessage = error.localizedDescription }
+                            } catch { model.userError = error.presentation(operation: "配置备份目录", subject: settings.address) }
                         }
                     }
                     Button("从本地 ZIP 恢复") { selectingFile = true }
@@ -76,7 +76,7 @@ struct BackupView: View {
                 }
                 if let report = model.report { RestoreResultView(report: report) }
             } else if let setupError {
-                Text(setupError).foregroundStyle(.red)
+                Text(setupError.displayText).foregroundStyle(.red)
                 Button("重试") { prepare() }
             } else { ProgressView() }
         }
@@ -105,7 +105,7 @@ struct BackupView: View {
             let deviceID = try SettingsViewModel.localDeviceID(store: KeychainStore())
             model = BackupViewModel(database: container.database, localDeviceID: deviceID)
             setupError = nil
-        } catch { setupError = error.localizedDescription }
+        } catch { setupError = error.presentation(operation: "准备备份服务") }
     }
 }
 

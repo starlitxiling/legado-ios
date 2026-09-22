@@ -4,6 +4,25 @@ import LegadoCore
 
 @MainActor
 final class LocalImportEntryTests: XCTestCase {
+    func testUnsupportedAndDamagedImportIdentifyFileAndOperation() async throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let model = LocalImportViewModel(database: try .inMemory(), booksDirectory: root.appendingPathComponent("Books"))
+        for name in ["picture.png", "damaged.epub"] {
+            let url = root.appendingPathComponent(name)
+            try Data("invalid".utf8).write(to: url)
+            await model.importFiles([url])
+            let message = try XCTUnwrap(model.errors.first)
+            XCTAssertTrue(message.contains(name), message)
+            XCTAssertTrue(message.contains("导入"), message)
+            XCTAssertFalse(message.contains("couldn't"), message)
+        }
+        await model.importFiles([root.appendingPathComponent("missing.txt")])
+        XCTAssertTrue(model.errors.first?.contains("找不到文件") == true)
+        XCTAssertEqual(model.importedCount, 0)
+    }
+
     func testDirectoryBookmarkSurvivesReloadAndScanningSkipsLinks() async throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let nested = root.appendingPathComponent("nested")

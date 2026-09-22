@@ -14,7 +14,8 @@ final class LocalDirectoryScanner {
     private(set) var directories: [LocalScanDirectory] = []
     private(set) var files: [URL] = []
     private(set) var isScanning = false
-    private(set) var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
     private var currentDirectory: UUID?
     private let defaults: UserDefaults
     private let key = "Legado.localImportDirectories"
@@ -23,7 +24,7 @@ final class LocalDirectoryScanner {
         self.defaults = defaults
         if let data = defaults.data(forKey: key) {
             do { directories = try JSONDecoder().decode([LocalScanDirectory].self, from: data) }
-            catch { errorMessage = "读取扫描目录失败：" + error.localizedDescription }
+            catch { userError = error.presentation(operation: "读取扫描目录设置", subject: nil) }
         }
     }
 
@@ -44,18 +45,18 @@ final class LocalDirectoryScanner {
             directories.append(directory)
             try persist()
             await scan(directory.id)
-        } catch { errorMessage = "保存扫描目录失败：" + error.localizedDescription }
+        } catch { userError = error.presentation(operation: "保存扫描目录", subject: url.lastPathComponent) }
     }
 
     func remove(_ id: UUID) {
         directories.removeAll { $0.id == id }
         if currentDirectory == id { files = []; currentDirectory = nil }
-        do { try persist() } catch { errorMessage = error.localizedDescription }
+        do { try persist() } catch { userError = error.presentation(operation: "移除扫描目录", subject: id.uuidString) }
     }
 
     func scan(_ id: UUID) async {
         guard !isScanning else { return }
-        isScanning = true; errorMessage = nil; files = []; currentDirectory = id
+        isScanning = true; userError = nil; files = []; currentDirectory = id
         defer { isScanning = false }
         do {
             let url = try resolve(id)
@@ -63,7 +64,7 @@ final class LocalDirectoryScanner {
             defer { if scoped { url.stopAccessingSecurityScopedResource() } }
             let scanning = Task.detached(priority: .userInitiated) { try Self.enumerate(url) }
             files = try await withTaskCancellationHandler { try await scanning.value } onCancel: { scanning.cancel() }
-        } catch { errorMessage = "扫描目录失败：" + error.localizedDescription }
+        } catch { userError = error.presentation(operation: "扫描书籍目录", subject: directories.first { $0.id == id }?.name) }
     }
 
     func importScanned(using model: LocalImportViewModel) async {
@@ -73,7 +74,7 @@ final class LocalDirectoryScanner {
             let scoped = directory.startAccessingSecurityScopedResource()
             defer { if scoped { directory.stopAccessingSecurityScopedResource() } }
             await model.importFiles(files)
-        } catch { errorMessage = "打开扫描目录失败：" + error.localizedDescription }
+        } catch { userError = error.presentation(operation: "打开扫描目录", subject: directories.first { $0.id == id }?.name) }
     }
 
     private func resolve(_ id: UUID) throws -> URL {

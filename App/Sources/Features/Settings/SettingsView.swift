@@ -28,7 +28,7 @@ struct SettingsView: View {
                     preferences.set("autoTaskService", .boolean(enabled))
                     if enabled { Task {
                         do { _ = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert,.sound,.badge]); await container.autoTasks.runDue() }
-                        catch { container.autoTasks.errorMessage = error.localizedDescription }
+                        catch { container.autoTasks.userError = error.presentation(operation: "申请定时任务通知权限") }
                     } }
                 })) { row("运行定时任务", "后台时间由 iOS 调度", "play.rectangle") }
                 NavigationLink { TxtTocRulesView(database: container.database) } label: { row("TXT 目录规则", "本地书籍目录识别", "list.bullet") }

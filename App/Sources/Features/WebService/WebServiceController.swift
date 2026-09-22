@@ -41,7 +41,7 @@ final class WebServiceController {
     func resetToken() {
         let value = UUID().uuidString.replacingOccurrences(of: "-", with: "") + UUID().uuidString.replacingOccurrences(of: "-", with: "")
         do { try saveToken(value); token.set(value); accessToken = value }
-        catch { message = error.localizedDescription }
+        catch { message = error.presentation(operation: "重置 Web 服务令牌", subject: nil)?.displayText }
     }
 
     func observe(background: Notification.Name, foreground: Notification.Name) {
@@ -78,7 +78,7 @@ final class WebServiceController {
                 }
             }
             savePort(Int(port))
-        } catch { stop(); message = error.localizedDescription }
+        } catch { stop(); message = error.presentation(operation: "启动 Web 服务", subject: String(port))?.displayText }
     }
 
     func stop() {

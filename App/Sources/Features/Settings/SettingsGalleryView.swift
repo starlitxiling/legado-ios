@@ -4,7 +4,8 @@ import LegadoCore
 
 struct SettingsGalleryView: View {
     @State private var container: AppContainer?
-    @State private var error: String?
+    @State private var userError: UserFacingError?
+    private var error: String? { userError?.displayText }
     var body: some View {
         Group {
             if let container {
@@ -19,7 +20,7 @@ struct SettingsGalleryView: View {
                 var rule = AutoTaskRule(); rule.name = "示例任务"; rule.cron = "*/5 * * * *"; rule.script = "'Task completed'"; rule.enable = false
                 try await AutoTaskRuleRepository(database: container.database).upsert(rule)
                 self.container = container
-            } catch { self.error = error.localizedDescription }
+            } catch { userError = error.presentation(operation: "准备设置示例", subject: nil) }
         }
     }
 }

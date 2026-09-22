@@ -18,7 +18,7 @@ final class BookshelfBackgroundRefresh {
         let request = BGAppRefreshTaskRequest(identifier: Self.identifier)
         request.earliestBeginDate = Date(timeIntervalSinceNow: 30 * 60)
         do { try BGTaskScheduler.shared.submit(request); errorMessage = nil }
-        catch { errorMessage = error.localizedDescription }
+        catch { errorMessage = error.presentation(operation: "安排后台书架刷新", subject: nil)?.displayText }
     }
 
     func handle(_ task: BGAppRefreshTask) {

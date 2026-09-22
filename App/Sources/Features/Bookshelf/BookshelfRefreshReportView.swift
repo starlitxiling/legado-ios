@@ -5,7 +5,8 @@ struct BookshelfRefreshReportView: View {
     let report: BookshelfRefresh.Report
     let container: AppContainer
     @State private var books: [String: BookRow] = [:]
-    @State private var errorMessage: String?
+    @State private var userError: UserFacingError?
+    private var errorMessage: String? { userError?.displayText }
 
     var body: some View {
         List {
@@ -32,7 +33,7 @@ struct BookshelfRefreshReportView: View {
         .legadoNavigationTitle("更新结果")
         .task {
             do { books = Dictionary(uniqueKeysWithValues: try await container.bookshelf.all().map { ($0.bookUrl, $0) }) }
-            catch { errorMessage = error.localizedDescription }
+            catch { userError = error.presentation(operation: "读取目录更新结果", subject: nil) }
         }
     }
 

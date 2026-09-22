@@ -19,7 +19,8 @@ enum BookshelfDownloadsError: LocalizedError {
 final class DownloadCenterModel {
     private(set) var progress: [CacheBook.Progress] = []
     private(set) var bookNames: [String: String] = [:]
-    private(set) var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
     private(set) var isRefreshing = false
     private(set) var refreshingBookURLs = Set<String>()
     private(set) var refreshReport: BookshelfRefresh.Report?
@@ -52,7 +53,7 @@ final class DownloadCenterModel {
     }
 
     func download(_ rows: [BookRow], range: ClosedRange<Int>? = nil) async {
-        errorMessage = nil
+        userError = nil
         for row in rows {
             bookNames[row.bookUrl] = row.name
             do {
@@ -87,28 +88,28 @@ final class DownloadCenterModel {
                             directory: directory, client: client, cookies: cookies)
                     }
                 }
-            } catch { errorMessage = "\(row.name)：\(error.localizedDescription)" }
+            } catch { userError = error.presentation(operation: "缓存书籍", subject: row.name) }
         }
         progress = await queue.snapshot()
     }
 
     func refresh(_ rows: [BookRow]? = nil, onlyUpdateRead: Bool = false) async {
         guard !isRefreshing else { return }
-        isRefreshing = true; errorMessage = nil
+        isRefreshing = true; userError = nil
         defer { isRefreshing = false; refreshingBookURLs = [] }
         do {
             refreshReport = try await BookshelfRefreshService.refresh(database: database, client: client, rows: rows, onlyUpdateRead: onlyUpdateRead,
                 onPrepared: { [weak self] urls in await self?.setRefreshing(urls) },
                 onCompleted: { [weak self] url in await self?.finishedRefreshing(url) })
         }
-        catch { errorMessage = error.localizedDescription }
+        catch { userError = error.presentation(operation: "更新书架目录") }
     }
 
     private func setRefreshing(_ urls: [String]) { refreshingBookURLs = Set(urls) }
     private func finishedRefreshing(_ url: String) { refreshingBookURLs.remove(url) }
 
     func export(_ row: BookRow, range: ClosedRange<Int>, epub: Bool, useReplace: Bool) async throws -> URL {
-        errorMessage = nil
+        userError = nil
         let book = try DiscoveryStorage.book(row)
         let stored = try await ChapterRepository(database: database).list(bookUrl: row.bookUrl)
         guard range.lowerBound >= 0, range.upperBound < stored.count else { throw BookshelfDownloadsError.invalidRange }
@@ -144,7 +145,7 @@ final class DownloadCenterModel {
             } catch {
                 try Task.checkCancellation()
                 if error is CancellationError || (error as? URLError)?.code == .cancelled { throw error }
-                errorMessage = "封面加载失败，将无封面导出：\(error.localizedDescription)"
+                userError = error.presentation(operation: "加载导出封面", subject: row.name + "（将继续导出无封面书籍）")
             }
         }
         let data = try epub ? exporter.epub(range: range, useReplace: useReplace, cover: cover)

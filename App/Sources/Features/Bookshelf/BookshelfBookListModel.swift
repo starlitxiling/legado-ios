@@ -99,7 +99,7 @@ final class BookshelfBookListModel {
                             return (index, nil)
                         } catch {
                             if error is CancellationError || (error as? URLError)?.code == .cancelled { throw error }
-                            return (index, error.localizedDescription)
+                            return (index, error.presentation(operation: "导入书单书籍", subject: entry.name + " · " + entry.author)?.displayText)
                         }
                     }
                 }
@@ -114,7 +114,7 @@ final class BookshelfBookListModel {
             }
         } catch {
             if !Task.isCancelled && !(error is CancellationError) && (error as? URLError)?.code != .cancelled {
-                failures = [error.localizedDescription]
+                failures = error.presentation(operation: "导入书单") .map { [$0.displayText] } ?? []
             }
         }
     }

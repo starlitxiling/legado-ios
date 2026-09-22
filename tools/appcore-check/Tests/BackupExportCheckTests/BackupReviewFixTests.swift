@@ -102,7 +102,7 @@ final class BackupReviewFixTests: XCTestCase {
         waiting.cancel()
         await waiting.value
         XCTAssertNil(second.exportedFile)
-        XCTAssertNotNil(second.errorMessage)
+        XCTAssertNil(second.errorMessage)
         await client.releaseUpload()
         await held.value
         await second.createBackup(upload: false, now: date)

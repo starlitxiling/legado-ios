@@ -84,7 +84,7 @@ import CoreImage
 
     private func saveTheme(night: Bool) {
         do { try themeStore.save(name: themeName, night: night); message = "主题已保存" }
-        catch { message = error.localizedDescription }
+        catch { message = error.presentation(operation: "保存主题", subject: themeName)?.displayText }
     }
 
     private func colors(night: Bool) -> some View {

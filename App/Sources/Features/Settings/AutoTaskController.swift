@@ -6,7 +6,8 @@ import LegadoCore
 final class AutoTaskController {
     private(set) var isRunning = false
     private var checkingSchedule = false
-    var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
     private let database: AppDatabase
     private let client: any HttpClient
     private let secrets: any SourceSecretStore
@@ -18,14 +19,14 @@ final class AutoTaskController {
 
     func run(_ rule: AutoTaskRule) async {
         guard !isRunning else { return }
-        isRunning = true; errorMessage = nil
+        isRunning = true; userError = nil
         defer { isRunning = false }
         do {
             let result = try await AutoTaskRunner.run(rule, database: database, client: client, secrets: secrets) { action in
                 try await self.handle(action, taskName: rule.name)
             }
-            errorMessage = result.lastError
-        } catch { if !Task.isCancelled { errorMessage = error.localizedDescription } }
+            userError = result.lastError.map { UserFacingError(title: "执行定时任务失败", message: rule.name + "\n" + $0) }
+        } catch { if !Task.isCancelled { userError = error.presentation(operation: "执行定时任务", subject: rule.name) } }
     }
 
     func runDue() async {
@@ -36,7 +37,7 @@ final class AutoTaskController {
             for rule in try await AutoTaskRuleRepository(database: database).all() where CronSchedule.isDue(rule, at: Date()) {
                 try Task.checkCancellation(); await run(rule)
             }
-        } catch { if !Task.isCancelled { errorMessage = error.localizedDescription } }
+        } catch { if !Task.isCancelled { userError = error.presentation(operation: "检查定时任务", subject: nil) } }
     }
 
     private func handle(_ action: [String: Any], taskName: String) async throws -> String {
@@ -52,7 +53,7 @@ final class AutoTaskController {
             let matches = try await repository.all().filter { $0.name == name && $0.author == (action["bookAuthor"] as? String ?? "") }
             if matches.count == 1 { selected = matches[0] }
         }
-        guard let current = selected else { throw JsEngineError.exception("refreshToc book was not found") }
+        guard let current = selected else { throw JsEngineError.exception("找不到待更新目录的书籍") }
         if action["respectCanUpdate"] as? Bool == true && !current.canUpdate { return current.name + ": updates disabled" }
         var book = try DiscoveryStorage.book(current)
         let previous = book
@@ -61,11 +62,11 @@ final class AutoTaskController {
         var source: BookSource?
         if LocalBook.isLocal(book) { chapters = try LocalBook.chapterList(book: &book) }
         else {
-            guard let row = try await BookSourceRepository(database: database).get(bookSourceUrl: current.origin) else { throw JsEngineError.exception("refreshToc source was not found") }
+            guard let row = try await BookSourceRepository(database: database).get(bookSourceUrl: current.origin) else { throw JsEngineError.exception("找不到书籍对应的书源") }
             source = try DiscoveryStorage.source(row)
             chapters = try await WebBook(source: source!, client: client).chapterList(book: &book, runPreUpdate: true)
         }
-        guard !chapters.isEmpty else { throw JsEngineError.exception("refreshToc returned no chapters") }
+        guard !chapters.isEmpty else { throw JsEngineError.exception("更新后目录为空") }
         _ = try await SourceChangeTransaction.save(book: book, previous: previous,
             chapters: chapters.map { try DiscoveryStorage.row($0, defaults: BookChapterRow()) }, database: database)
         let oldURLs = Set(old.map(\.url)), new = chapters.filter { !oldURLs.contains($0.url ?? "") && !$0.isVolume }

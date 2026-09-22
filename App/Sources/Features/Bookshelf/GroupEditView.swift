@@ -7,7 +7,8 @@ struct GroupEditView: View {
     @State private var expanded = Set<Int64>()
     @State private var groups: [BookGroupRow] = []
     @State private var name = ""
-    @State private var errorMessage: String?
+    @State private var userError: UserFacingError?
+    private var errorMessage: String? { userError?.displayText }
 
     var body: some View {
         ScrollViewReader { scroll in
@@ -15,7 +16,7 @@ struct GroupEditView: View {
                 Section("新建分组") {
                     TextField("分组名称", text: $name)
                     Button("添加") {
-                        Task { await perform { _ = try await repository.createGroup(name: name); name = "" } }
+                        Task { await perform("新建分组") { _ = try await repository.createGroup(name: name); name = "" } }
                     }.disabled(name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
                 Section("分组设置") {
@@ -38,16 +39,16 @@ struct GroupEditView: View {
                                 Text("综合排序").tag(4)
                                 Text("作者").tag(5)
                             }
-                            Button("保存设置") { let value = group; Task { await perform { try await repository.update(value) } } }
+                            Button("保存设置") { let value = group; Task { await perform("保存分组设置") { try await repository.update(value) } } }
                             if group.groupId > 0 {
-                                Button("删除分组", role: .destructive) { let id = group.groupId; Task { await perform { try await repository.removeCustomGroup(id) } } }
+                                Button("删除分组", role: .destructive) { let id = group.groupId; Task { await perform("删除分组") { try await repository.removeCustomGroup(id) } } }
                             }
                         }.id(group.groupId)
                     }
                     .onMove { offsets, destination in
                         groups.move(fromOffsets: offsets, toOffset: destination)
                         let ids = groups.map(\.groupId)
-                        Task { await perform { try await repository.reorder(ids) } }
+                        Task { await perform("调整分组顺序") { try await repository.reorder(ids) } }
                     }
                 }
                 if let errorMessage { Text(errorMessage).foregroundStyle(.red) }
@@ -55,15 +56,15 @@ struct GroupEditView: View {
             .legadoNavigationTitle("编辑分组")
             .toolbar { EditButton() }
             .task {
-                await perform { try await repository.ensureBuiltinGroups() }
+                await perform("加载分组") { try await repository.ensureBuiltinGroups() }
                 if let initialGroupID { expanded.insert(initialGroupID); scroll.scrollTo(initialGroupID, anchor: .top) }
             }
         }
     }
 
     @MainActor
-    private func perform(_ action: () async throws -> Void) async {
-        do { try await action(); groups = try await repository.list(); errorMessage = nil }
-        catch { errorMessage = error.localizedDescription }
+    private func perform(_ operation: String, _ action: () async throws -> Void) async {
+        do { try await action(); groups = try await repository.list(); userError = nil }
+        catch { userError = error.presentation(operation: operation, subject: name.isEmpty ? nil : name) }
     }
 }

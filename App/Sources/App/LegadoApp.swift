@@ -62,7 +62,8 @@ struct AppStartupView: View {
 
     @ViewBuilder private var displayedContent: some View {
         #if DEBUG
-        if ProcessInfo.processInfo.arguments.contains("-reader-failure-gallery") { ReaderFailureGallery() }
+        if ProcessInfo.processInfo.arguments.contains("-data-failure-gallery") { DataFailureGallery() }
+        else if ProcessInfo.processInfo.arguments.contains("-reader-failure-gallery") { ReaderFailureGallery() }
         else if ProcessInfo.processInfo.arguments.contains("-error-gallery") { ErrorPresentationGallery() }
         else if ProcessInfo.processInfo.arguments.contains("-settings-gallery") { SettingsGalleryView() }
         else if ProcessInfo.processInfo.arguments.contains("-source-gallery") { SourceGalleryView() }
@@ -106,7 +107,8 @@ final class LegadoAppDelegate: NSObject, UIApplicationDelegate, ObservableObject
     typealias BackgroundRegistration = (@escaping (BGTask) -> Void) -> Bool
 
     @Published private(set) var container: AppContainer?
-    @Published private(set) var startupError: String?
+    @Published private(set) var startupFailure: UserFacingError?
+    var startupError: String? { startupFailure?.displayText }
     private let makeContainer: () throws -> AppContainer
     private let registerBackgroundTask: BackgroundRegistration
     private var didRegisterBackgroundTask = false
@@ -168,10 +170,10 @@ final class LegadoAppDelegate: NSObject, UIApplicationDelegate, ObservableObject
             NSLog("Application database opened")
             container = opened
             if backgroundTaskRegistered { opened.backgroundRefresh.schedule() }
-            startupError = nil
+            startupFailure = nil
         } catch {
             NSLog("Application database failed to open: %@", error.localizedDescription)
-            startupError = error.localizedDescription
+            startupFailure = error.presentation(operation: "打开应用数据库")
         }
     }
 }

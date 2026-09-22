@@ -7,7 +7,8 @@ struct RemoteBooksView: View {
     let groupID: Int64
     @State private var servers: [Server] = []
     @State private var model: RemoteBooksModel?
-    @State private var errorMessage: String?
+    @State private var userError: UserFacingError?
+    private var errorMessage: String? { userError?.displayText }
     @State private var task: Task<Void, Never>?
 
     var body: some View {
@@ -49,7 +50,7 @@ struct RemoteBooksView: View {
         }
         .task {
             do { servers = try await ServerRepository(database: database).all().filter { $0.type == "WEBDAV" }.sorted { $0.sortNumber < $1.sortNumber } }
-            catch { errorMessage = error.localizedDescription }
+            catch { userError = error.presentation(operation: "读取 WebDAV 服务器", subject: nil) }
         }
         .onDisappear { task?.cancel() }
     }
@@ -68,8 +69,8 @@ struct RemoteBooksView: View {
                 root = try dav.url(path: AppPreferences.shared.string("webDavDir") + "/books/")
             }
             let selected = RemoteBooksModel(database: database, endpoint: .init(client: dav, root: root, serverID: server?.id))
-            model = selected; errorMessage = nil
+            model = selected; userError = nil
             task = Task { await selected.load() }
-        } catch { errorMessage = error.localizedDescription }
+        } catch { userError = error.presentation(operation: "打开远端书籍目录", subject: server?.name) }
     }
 }

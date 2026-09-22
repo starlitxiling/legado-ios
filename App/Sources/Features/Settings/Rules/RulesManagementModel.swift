@@ -11,7 +11,8 @@ final class RulesManagementModel {
     var txtDraft = TxtTocRule(id: 0, name: "", rule: "")
     var dictDraft = DictRule()
     var jsonText = ""
-    var errorMessage: String?
+    var userError: UserFacingError?
+    var errorMessage: String? { userError?.displayText }
     private(set) var isBusy = false
     private let txtRepository: TxtTocRuleRepository
     private let dictRepository: DictRuleRepository
@@ -24,7 +25,7 @@ final class RulesManagementModel {
     }
 
     func load() async {
-        await perform {
+        await perform("加载目录与字典规则") {
             self.txtRules = try await self.txtRepository.list()
             self.dictRules = try await self.dictRepository.list()
         }
@@ -35,15 +36,15 @@ final class RulesManagementModel {
         var id = now
         while occupied.contains(id) && id < Int64.max { id += 1 }
         txtDraft = TxtTocRule(id: id, name: "", rule: "")
-        dictDraft = DictRule(); originalName = nil; errorMessage = nil
+        dictDraft = DictRule(); originalName = nil; userError = nil
     }
 
-    func edit(_ rule: DictRule) { dictDraft = rule; originalName = rule.name; errorMessage = nil }
-    func edit(_ rule: TxtTocRule) { txtDraft = rule; errorMessage = nil }
+    func edit(_ rule: DictRule) { dictDraft = rule; originalName = rule.name; userError = nil }
+    func edit(_ rule: TxtTocRule) { txtDraft = rule; userError = nil }
 
     func saveDraft() async -> Bool {
         guard !isBusy else { return false }
-        await perform {
+        return await perform("保存规则") {
             if self.kind == .txt {
                 guard !self.txtDraft.name.isEmpty, !self.txtDraft.rule.isEmpty else { throw SourceEditError.invalidValue("名称和规则") }
                 try await self.txtRepository.save(self.txtDraft)
@@ -53,11 +54,10 @@ final class RulesManagementModel {
                 self.dictRules = try await self.dictRepository.list()
             }
         }
-        return errorMessage == nil
     }
 
     func setEnabled(_ rule: TxtTocRule, enabled: Bool) async {
-        await perform {
+        await perform("启停目录规则") {
             var value = rule; value.enable = enabled
             try await self.txtRepository.save(value)
             self.txtRules = try await self.txtRepository.list()
@@ -65,7 +65,7 @@ final class RulesManagementModel {
     }
 
     func setEnabled(_ rule: DictRule, enabled: Bool) async {
-        await perform {
+        await perform("启停字典规则") {
             var value = rule; value.enabled = enabled
             try await self.dictRepository.save(value)
             self.dictRules = try await self.dictRepository.list()
@@ -73,16 +73,16 @@ final class RulesManagementModel {
     }
 
     func delete(_ rule: TxtTocRule) async {
-        await perform { try await self.txtRepository.delete(id: rule.id); self.txtRules = try await self.txtRepository.list() }
+        await perform("删除目录规则") { try await self.txtRepository.delete(id: rule.id); self.txtRules = try await self.txtRepository.list() }
     }
 
     func delete(_ rule: DictRule) async {
-        await perform { try await self.dictRepository.delete(name: rule.name); self.dictRules = try await self.dictRepository.list() }
+        await perform("删除字典规则") { try await self.dictRepository.delete(name: rule.name); self.dictRules = try await self.dictRepository.list() }
     }
 
     func importJSON(now: Int64) async -> Bool {
         guard !isBusy else { return false }
-        await perform {
+        return await perform("导入规则 JSON") {
             let raw = try JSONSerialization.jsonObject(with: Data(self.jsonText.utf8))
             guard let objects = (raw as? [[String: Any]]) ?? (raw as? [String: Any]).map({ [$0] }) else {
                 throw SourceEditError.invalidJSON
@@ -115,14 +115,14 @@ final class RulesManagementModel {
                 self.dictRules = try await self.dictRepository.list()
             }
         }
-        return errorMessage == nil
     }
 
-    private func perform(_ operation: () async throws -> Void) async {
-        guard !isBusy else { return }
-        isBusy = true; errorMessage = nil
+    @discardableResult
+    private func perform(_ title: String, _ operation: () async throws -> Void) async -> Bool {
+        guard !isBusy else { return false }
+        isBusy = true; userError = nil
         defer { isBusy = false }
-        do { try await operation() }
-        catch { errorMessage = error.localizedDescription }
+        do { try await operation(); return true }
+        catch { userError = error.presentation(operation: title, subject: kind == .txt ? "TXT 目录规则" : "字典规则"); return false }
     }
 }

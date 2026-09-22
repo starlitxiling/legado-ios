@@ -7,7 +7,8 @@ struct BookshelfBookListView: View {
     @State private var model: BookshelfBookListModel
     @State private var task: Task<Void, Never>?
     @State private var choosingFile = false
-    @State private var fileError: String?
+    @State private var userError: UserFacingError?
+    private var fileError: String? { userError?.displayText }
     let groupID: Int64
 
     init(database: AppDatabase, client: any HttpClient, groupID: Int64) {
@@ -48,8 +49,8 @@ struct BookshelfBookListView: View {
                     defer { try? handle.close() }
                     let data = try handle.read(upToCount: BookshelfBookList.maximumBytes + 1) ?? Data()
                     _ = try BookshelfBookList.decode(data)
-                    model.input = String(decoding: data, as: UTF8.self); fileError = nil
-                } catch { fileError = error.localizedDescription }
+                    model.input = String(decoding: data, as: UTF8.self); userError = nil
+                } catch { userError = error.presentation(operation: "读取书单文件", subject: (try? result.get())?.lastPathComponent) }
             }
         }.onDisappear { task?.cancel() }
     }

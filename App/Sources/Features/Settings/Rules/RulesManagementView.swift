@@ -47,7 +47,7 @@ struct RulesManagementView: View {
             Button("新建", systemImage: "plus") {
                 model.newRule(now: Int64(Date().timeIntervalSince1970 * 1000)); showEditor = true
             }
-            Button("导入 JSON") { model.jsonText = ""; model.errorMessage = nil; showImport = true }
+            Button("导入 JSON") { model.jsonText = ""; model.userError = nil; showImport = true }
         }
         .disabled(model.isBusy)
         .task { await model.load() }

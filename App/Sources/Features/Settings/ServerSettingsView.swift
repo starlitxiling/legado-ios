@@ -34,7 +34,8 @@ private struct ServerEditor: View {
     @State private var url = ""
     @State private var username = ""
     @State private var password = ""
-    @State private var errorMessage: String?
+    @State private var userError: UserFacingError?
+    private var errorMessage: String? { userError?.displayText }
 
     var body: some View {
         NavigationStack {
@@ -52,7 +53,7 @@ private struct ServerEditor: View {
                     if let config = try value.webDavConfig() {
                         url = config.url; username = config.username; password = config.password
                     }
-                } catch { errorMessage = error.localizedDescription }
+                } catch { userError = error.presentation(operation: "读取服务器配置", subject: value.name) }
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("取消") { dismiss() } }
@@ -62,7 +63,7 @@ private struct ServerEditor: View {
                             do {
                                 try value.setWebDavConfig(.init(url: url, username: username, password: password))
                                 if await model.save(value) { dismiss() }
-                            } catch { errorMessage = error.localizedDescription }
+                            } catch { userError = error.presentation(operation: "保存服务器配置", subject: value.name) }
                         }
                     }
                 }

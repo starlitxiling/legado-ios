@@ -31,7 +31,7 @@ final class AddBookURLModel {
                 completed += 1
             } catch is CancellationError { return }
             catch let error as URLError where error.code == .cancelled { return }
-            catch { failures.append("第 \(index + 1) 行：" + error.localizedDescription) }
+            catch { if let failure = error.presentation(operation: "添加书籍网址", subject: "第 \(index + 1) 行 · \(url)") { failures.append(failure.displayText) } }
         }
     }
 

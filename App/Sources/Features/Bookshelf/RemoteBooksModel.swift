@@ -52,7 +52,7 @@ final class RemoteBooksModel {
             else if directories.last != target { directories.append(target) }
         } catch {
             if request == generation, !Task.isCancelled {
-                errorMessage = error.localizedDescription
+                errorMessage = error.presentation(operation: "读取远端书籍目录", subject: target.absoluteString)?.displayText
                 AppLogStore.shared.append("Remote listing: " + error.localizedDescription)
             }
         }
@@ -120,7 +120,7 @@ final class RemoteBooksModel {
             imported.insert(file.url)
         } catch {
             if !Task.isCancelled && !(error is CancellationError) && (error as? URLError)?.code != .cancelled {
-                errorMessage = file.displayName + "：" + error.localizedDescription
+                errorMessage = error.presentation(operation: "导入远端书籍", sourceFile: file.displayName)?.displayText
                 AppLogStore.shared.append("Remote import: " + error.localizedDescription)
             }
         }
@@ -180,7 +180,7 @@ final class RemoteBooksModel {
                 if let pendingDirectory { try? FileManager.default.removeItem(at: pendingDirectory) }
                 if let pendingCover { try? FileManager.default.removeItem(at: pendingCover) }
                 if error is CancellationError || Task.isCancelled { break }
-                failures.append(entry.name + "：" + error.localizedDescription)
+                if let failure = error.presentation(operation: "导入压缩包书籍", sourceFile: entry.name) { failures.append(failure.displayText) }
             }
         }
         if !failures.isEmpty { errorMessage = failures.joined(separator: "\n") }
