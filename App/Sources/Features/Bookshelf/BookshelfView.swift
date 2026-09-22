@@ -355,8 +355,15 @@ struct BookshelfView: View {
                 .font(.system(size: 13)).foregroundStyle(themeColors.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16)
         }
-        if preferences.boolean("showWaitUpCount"), container.downloads.isRefreshing {
-            Text("等待更新 \(container.downloads.refreshingBookURLs.count) 本").font(.system(size: 13))
+        if container.downloads.isRefreshing {
+            HStack {
+                if preferences.boolean("showWaitUpCount") {
+                    ProgressView(value: Double(container.downloads.refreshCompleted), total: Double(max(1, container.downloads.refreshTotal)))
+                    Text("已处理 \(container.downloads.refreshCompleted) / \(container.downloads.refreshTotal) 本").font(.caption)
+                }
+                Button(container.downloads.isStoppingRefresh ? "正在停止" : "停止") { container.downloads.stopRefresh() }
+                    .disabled(container.downloads.isStoppingRefresh).accessibilityIdentifier("bookshelf.stopRefresh")
+            }.padding(.horizontal, 16).padding(.vertical, 6)
         }
     }
 

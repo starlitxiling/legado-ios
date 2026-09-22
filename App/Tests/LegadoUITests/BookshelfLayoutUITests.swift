@@ -2,6 +2,25 @@ import XCTest
 
 final class BookshelfLayoutUITests: XCTestCase {
     @MainActor
+    func testChapterRefreshShowsProgressAndCanStopAndRestart() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery", "-slow-bookshelf-refresh"]
+        app.launch()
+        XCTAssertTrue(app.buttons["bookshelf.menu"].waitForExistence(timeout: 15))
+        for _ in 0..<2 {
+            app.buttons["bookshelf.menu"].tap(); app.buttons["更新目录"].tap()
+            let stop = app.buttons["bookshelf.stopRefresh"]
+            XCTAssertTrue(stop.waitForExistence(timeout: 5))
+            XCTAssertTrue(app.staticTexts["已处理 0 / 18 本"].waitForExistence(timeout: 5))
+            stop.tap()
+            XCTAssertTrue(stop.waitForNonExistence(timeout: 5))
+            XCTAssertFalse(app.staticTexts["bookshelf.actionError"].exists)
+            XCTAssertFalse(app.buttons["bookshelf.refreshReport"].exists)
+        }
+    }
+
+    @MainActor
     func testContextMenuAndBoundedFastIndex() {
         continueAfterFailure = false
         let app = XCUIApplication()

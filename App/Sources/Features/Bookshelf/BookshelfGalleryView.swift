@@ -46,7 +46,15 @@ struct BookshelfGalleryView: View {
     }
 
     @MainActor private func fixture() async throws -> AppContainer {
-        let container = try AppContainer.inMemory()
+        let slowRefresh = ProcessInfo.processInfo.arguments.contains("-slow-bookshelf-refresh")
+        let container = try AppContainer(database: .inMemory(),
+            httpClient: BoundedURLSessionHttpClient(protocolClasses: slowRefresh ? [GalleryRefreshProtocol.self] : []),
+            sourceSecrets: MemorySourceSecretStore())
+        if slowRefresh {
+            var source = BookSourceRow(); source.bookSourceUrl = "https://fixture.test"
+            source.ruleToc = #"{"chapterList":"tag.a","chapterName":"text","chapterUrl":"href"}"#
+            try await container.bookSources.insert(source)
+        }
         try await container.bookGroups.ensureBuiltinGroups()
         var group = BookGroupRow(); group.groupId = 1; group.groupName = "Sample Group"
         try await container.bookGroups.insert(group)
@@ -69,7 +77,8 @@ struct BookshelfGalleryView: View {
             try data.write(to: file, options: .atomic)
             }
             var book = BookRow(); book.bookUrl = "fixture:book:" + String(index); book.name = title
-            book.author = "Sample Author"; book.origin = "fixture:source"; book.originName = "Fixture"
+            book.author = "Sample Author"; book.origin = slowRefresh ? "https://fixture.test" : "fixture:source"; book.originName = "Fixture"
+            if slowRefresh { book.tocUrl = "https://fixture.test/toc/" + String(index) }
             book.coverUrl = file.absoluteString; book.group = index < 9 ? 1 : 0; book.type = 8
             book.totalChapterNum = 100; book.durChapterIndex = index * 5; book.durChapterPos = index == 0 ? 0 : 12
             book.durChapterTitle = "Chapter " + String(index * 5 + 1); book.latestChapterTitle = "Chapter 100"
@@ -94,5 +103,11 @@ private final class CancellingGalleryBookshelf: BookshelfReading {
         }
         return try await base.list(groupID: groupID, sort: sort)
     }
+}
+private final class GalleryRefreshProtocol: URLProtocol, @unchecked Sendable {
+    override class func canInit(with request: URLRequest) -> Bool { true }
+    override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
+    override func startLoading() {}
+    override func stopLoading() {}
 }
 #endif

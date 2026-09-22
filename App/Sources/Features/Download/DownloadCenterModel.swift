@@ -22,6 +22,10 @@ final class DownloadCenterModel {
     var userError: UserFacingError?
     var errorMessage: String? { userError?.displayText }
     private(set) var isRefreshing = false
+    private(set) var isStoppingRefresh = false
+    private(set) var refreshTotal = 0
+    private(set) var refreshCompleted = 0
+    @ObservationIgnored private var refreshTask: Task<BookshelfRefresh.Report, Error>?
     private(set) var refreshingBookURLs = Set<String>()
     private(set) var refreshReport: BookshelfRefresh.Report?
     let queue: CacheBook
@@ -95,18 +99,34 @@ final class DownloadCenterModel {
 
     func refresh(_ rows: [BookRow]? = nil, onlyUpdateRead: Bool = false) async {
         guard !isRefreshing else { return }
-        isRefreshing = true; userError = nil
-        defer { isRefreshing = false; refreshingBookURLs = [] }
-        do {
-            refreshReport = try await BookshelfRefreshService.refresh(database: database, client: client, rows: rows, onlyUpdateRead: onlyUpdateRead,
+        isRefreshing = true; isStoppingRefresh = false; userError = nil
+        refreshReport = nil; refreshTotal = 0; refreshCompleted = 0
+        defer { isRefreshing = false; isStoppingRefresh = false; refreshingBookURLs = []; refreshTask = nil }
+        let database = database, client = client
+        let task = Task {
+            try Task.checkCancellation()
+            return try await BookshelfRefreshService.refresh(database: database, client: client, rows: rows, onlyUpdateRead: onlyUpdateRead,
                 onPrepared: { [weak self] urls in await self?.setRefreshing(urls) },
                 onCompleted: { [weak self] url in await self?.finishedRefreshing(url) })
         }
-        catch { userError = error.presentation(operation: "更新书架目录") }
+        refreshTask = task
+        do {
+            refreshReport = try await withTaskCancellationHandler { try await task.value } onCancel: { task.cancel() }
+        } catch { userError = error.presentation(operation: "更新书架目录") }
     }
 
-    private func setRefreshing(_ urls: [String]) { refreshingBookURLs = Set(urls) }
-    private func finishedRefreshing(_ url: String) { refreshingBookURLs.remove(url) }
+    func stopRefresh() {
+        guard isRefreshing else { return }
+        isStoppingRefresh = true
+        refreshTask?.cancel()
+    }
+
+    private func setRefreshing(_ urls: [String]) {
+        refreshingBookURLs = Set(urls); refreshTotal = refreshingBookURLs.count
+    }
+    private func finishedRefreshing(_ url: String) {
+        if refreshingBookURLs.remove(url) != nil { refreshCompleted += 1 }
+    }
 
     func export(_ row: BookRow, range: ClosedRange<Int>, epub: Bool, useReplace: Bool) async throws -> URL {
         userError = nil

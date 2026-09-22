@@ -4,6 +4,35 @@ import LegadoCore
 @testable import ReaderCheck
 
 final class ReaderTests: XCTestCase {
+    @MainActor
+    func testPageProgressCoalescesAndExplicitSaveAndCloseFlushLatestPosition() async throws {
+        let database = try AppDatabase.inMemory()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var row = BookRow(); row.bookUrl = "https://progress.test/book"; row.name = "Progress"
+        try await BookshelfRepository(database: database).insert(row)
+        var chapter = BookChapterRow(); chapter.bookUrl = row.bookUrl; chapter.url = "chapter"; chapter.title = "Chapter"
+        try await ChapterRepository(database: database).insert(chapter)
+        try BookHelp.save(String(repeating: "A paragraph for testing progress persistence.\n", count: 300), directory: directory,
+            book: ReaderEntityBridge.decode(Book.self, row: row), chapter: ReaderEntityBridge.decode(BookChapter.self, row: chapter))
+        let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: directory,
+            preDownloadCount: { 0 }, waitForProgressSave: { try await Task.sleep(for: .seconds(3600)) })
+        await model.load(bookURL: row.bookUrl)
+        XCTAssertGreaterThan(try XCTUnwrap(model.pagination?.pages.count), 4)
+        for page in 1...3 { await model.selectPage(page) }
+        let before = try await BookshelfRepository(database: database).get(bookUrl: row.bookUrl)
+        XCTAssertEqual(before?.durChapterPos, 0)
+        await model.saveProgress()
+        let saved = try await BookshelfRepository(database: database).get(bookUrl: row.bookUrl)
+        XCTAssertEqual(saved?.durChapterPos, model.characterOffset)
+        XCTAssertGreaterThan(saved?.durChapterPos ?? 0, 0)
+        await model.selectPage(4)
+        await model.close()
+        let closed = try await BookshelfRepository(database: database).get(bookUrl: row.bookUrl)
+        XCTAssertEqual(closed?.durChapterPos, model.characterOffset)
+        XCTAssertGreaterThan(closed?.durChapterPos ?? 0, saved?.durChapterPos ?? 0)
+    }
+
     func testHighlightRulesChangeFontsBeforePaginationAndMergeDecorations() throws {
         var first = HighlightRule(); first.id = 1; first.pattern = "Token"; first.applyToTitle = true
         first.style = #"{"fill":-256,"fontSize":40,"bold":true}"#
@@ -324,6 +353,7 @@ final class ReaderTests: XCTestCase {
         await model.selectPage(2)
         let anchor = model.characterOffset
         XCTAssertGreaterThan(anchor, 0)
+        await model.saveProgress()
         let restored = ReaderViewModel(database: database, client: client, cacheDirectory: directory, now: { 5678 })
         await restored.load(bookURL: book.bookUrl)
         XCTAssertEqual(restored.characterOffset, anchor)

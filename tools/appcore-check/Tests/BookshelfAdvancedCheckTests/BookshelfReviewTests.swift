@@ -31,6 +31,34 @@ final class BookshelfReviewTests: XCTestCase {
         XCTAssertTrue(model.refreshingBookURLs.isEmpty)
     }
 
+    func testStoppingRefreshCancelsRequestWithoutFailureAndAllowsRestart() async throws {
+        let database = try AppDatabase.inMemory()
+        var source = BookSourceRow(); source.bookSourceUrl = "https://refresh.test"
+        source.ruleToc = #"{"chapterList":"tag.a","chapterName":"text","chapterUrl":"href"}"#
+        try await BookSourceRepository(database: database).insert(source)
+        var row = BookRow(); row.bookUrl = "https://refresh.test/book"; row.tocUrl = "https://refresh.test/toc"
+        row.origin = source.bookSourceUrl; row.name = "Book"
+        try await BookshelfRepository(database: database).insert(row)
+        let started = expectation(description: "request started")
+        let client = StoppingRefreshClient(started: { started.fulfill() })
+        let model = DownloadCenterModel(database: database, client: client)
+        let refresh = Task { await model.refresh([row]) }
+        await fulfillment(of: [started], timeout: 5)
+        XCTAssertTrue(model.isRefreshing)
+        XCTAssertEqual(model.refreshTotal, 1)
+        XCTAssertEqual(model.refreshCompleted, 0)
+        model.stopRefresh()
+        await refresh.value
+        XCTAssertFalse(model.isRefreshing)
+        XCTAssertTrue(model.refreshingBookURLs.isEmpty)
+        XCTAssertNil(model.errorMessage)
+        XCTAssertEqual(model.refreshReport?.cancelled, true)
+        XCTAssertEqual(model.refreshReport?.failures.count, 0)
+        await model.refresh([])
+        XCTAssertEqual(model.refreshTotal, 0)
+        XCTAssertEqual(model.refreshReport?.cancelled, false)
+    }
+
     private let png = Data(base64Encoded: "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+jRZkAAAAASUVORK5CYII=")!
 
     func testPreUpdateMigratesBookURLAndPersistsRefreshedToc() async throws {
@@ -224,5 +252,14 @@ final class BookshelfReviewTests: XCTestCase {
         XCTAssertNotNil(try zip.readEntry("OEBPS/Text/chapter_0.html"))
         XCTAssertNil(try zip.readEntry("OEBPS/Images/cover.png"))
         XCTAssertNotNil(model.errorMessage, "封面失败必须留有可见错误")
+    }
+}
+
+private struct StoppingRefreshClient: HttpClient {
+    let started: @Sendable () -> Void
+    func send(_ request: HttpRequest) async throws -> HttpResponse {
+        started()
+        try await Task.sleep(for: .seconds(3600))
+        throw CancellationError()
     }
 }

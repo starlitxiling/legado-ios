@@ -14,7 +14,7 @@ extension AppPreferences {
         for key in "showUnread coverShowName coverShowAuthor coverShowNameN coverShowAuthorN coverTitleAdaptive welcomeShowText welcomeShowIcon welcomeShowTextDark welcomeShowIconDark replaceEnableDefault autoClearExpired showAddToShelfAlert bookInfoDeleteAlert showMangaUi jsSourceApiTokenRequired".split(separator: " ") {
             values[String(key)] = .boolean(true)
         }
-        for key in "showLastUpdateTime showWaitUpCount showBookshelfFastScroller showBookshelfRecentReading showBookshelfStats importReplaceSource transparentNavBar transparentNavBarNight coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome useDefaultCover showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore".split(separator: " ") {
+        for key in "showLastUpdateTime showBookshelfFastScroller showBookshelfRecentReading showBookshelfStats importReplaceSource transparentNavBar transparentNavBarNight coverHorizontal coverKeepPunctuation coverCustomFontSize customWelcome useDefaultCover showDiscoveryFastScroller antiAlias readAloudByMediaButton ignoreAudioFocus recordLog recordHttpLog webDavBookAutoRestore".split(separator: " ") {
             values[String(key)] = .boolean(false)
         }
         for key in "backgroundImage backgroundImageNight welcomeImagePath welcomeImagePathDark coverFont userAgent customHosts jsSourceApiToken backupUri localPassword defaultCover defaultCoverDark readRecordCover readRecordCoverDark durThemeName durThemeNameNight".split(separator: " ") {
@@ -23,6 +23,7 @@ extension AppPreferences {
         let numbers: [String: Int32] = ["bookGroupStyle": 0, "bookshelfLayout": 0, "bookshelfMargin": 12, "showBooknameLayout": 0, "chineseConverterType": 0, "fontScale": 0, "backgroundImageBlurring": 0, "backgroundImageNightBlurring": 0,
             "coverTitleLargeSize": 100, "coverTitleSmallSize": 100, "coverAuthorLargeSize": 100, "coverAuthorSmallSize": 100,
             "welcomeShowTime": 500, "bitmapCacheSize": 50, "imageRetainNum": 0, "sourceEditMaxLine": .max]
+        values["showWaitUpCount"] = .boolean(true)
         for (key, value) in numbers { values[key] = .int(value) }
         for (key, value): (String, UInt32) in ["colorPrimary": 0xFF795548, "colorAccent": 0xFFE53935,
             "colorBackground": 0xFFF5F5F5, "colorBottomBackground": 0xFFEEEEEE,

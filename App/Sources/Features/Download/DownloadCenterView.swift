@@ -6,6 +6,13 @@ struct DownloadCenterView: View {
 
     var body: some View {
         List {
+            if model.isRefreshing {
+                Section("更新目录") {
+                    ProgressView(value: Double(model.refreshCompleted), total: Double(max(1, model.refreshTotal)))
+                    Text("已处理 \(model.refreshCompleted) / \(model.refreshTotal) 本")
+                    Button(model.isStoppingRefresh ? "正在停止" : "停止") { model.stopRefresh() }.disabled(model.isStoppingRefresh)
+                }
+            }
             if model.progress.isEmpty { Text("暂无下载任务") }
             ForEach(Array(Set(model.progress.map(\.bookURL))).sorted(), id: \.self) { url in
                 let items = model.progress.filter { $0.bookURL == url }

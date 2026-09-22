@@ -51,7 +51,7 @@ final class ReaderViewModel {
         guard characterOffset != position else { return }
         characterOffset = position
         pageIndex = pagination.pageIndex(at: position)
-        Task { await saveProgress() }
+        scheduleProgressSave()
     }
 
     func clearReadAloudHighlight() { readAloudRange = nil }
@@ -95,6 +95,8 @@ final class ReaderViewModel {
     private var synchronizingWebDav = false
     private var webDavWaiters: [CheckedContinuation<Void, Never>] = []
     private var saveTask: Task<Void, Never>?
+    @ObservationIgnored private var progressSaveTask: Task<Void, Never>?
+    private let waitForProgressSave: @Sendable () async throws -> Void
     private var failedRequest: ChapterRequest?
     private var loadDestination: ReaderDestination?
 
@@ -105,6 +107,8 @@ final class ReaderViewModel {
          layoutDidStart: @escaping @Sendable () -> Void = {},
          waitForLayoutDebounce: @escaping @Sendable () async throws -> Void = {
              try await Task.sleep(nanoseconds: 80_000_000)
+         }, waitForProgressSave: @escaping @Sendable () async throws -> Void = {
+             try await Task.sleep(for: .milliseconds(250))
          }) {
         self.database = database; self.client = client
         self.cacheDirectory = cacheDirectory; self.adaptSpecialStyle = adaptSpecialStyle
@@ -114,6 +118,7 @@ final class ReaderViewModel {
         self.settings = settings.normalized; self.now = now
         self.layoutDidStart = layoutDidStart
         self.waitForLayoutDebounce = waitForLayoutDebounce
+        self.waitForProgressSave = waitForProgressSave
     }
 
     var chapterPosition: Int { chapters.firstIndex(where: { $0.index == chapterIndex }) ?? 0 }
@@ -137,6 +142,8 @@ final class ReaderViewModel {
         closedWebDav = false
         pendingWebDavProgress = nil
         let token = beginRequest()
+        await saveProgress()
+        guard generation == token, !Task.isCancelled else { return }
         loadDestination = ReaderDestination(bookURL: bookURL, chapterIndex: requestedIndex)
         failedRequest = nil
         isLoading = true; userError = nil; isPlaceholder = false
@@ -331,7 +338,10 @@ final class ReaderViewModel {
                     guard token == generation else { return }
                     if pendingRulesRefresh {
                         pendingRulesRefresh = false
-                        await reflow()
+                        let latestRules = try await ReplaceRuleRepository(database: database).list()
+                        guard token == generation else { return }
+                        if latestRules != input.rules { await reflow() }
+                        else { prefetchNextChapter() }
                     } else { prefetchNextChapter() }
                     return
                 } catch is CancellationError {
@@ -404,7 +414,7 @@ final class ReaderViewModel {
         lastTurnForward = index >= pageIndex
         pageIndex = index
         characterOffset = pagination.firstCharacterOffset(on: index)
-        await saveProgress()
+        scheduleProgressSave()
     }
 
     func nextChapter() async {
@@ -467,7 +477,19 @@ final class ReaderViewModel {
         }
     }
 
+    private func scheduleProgressSave() {
+        progressSaveTask?.cancel()
+        let wait = waitForProgressSave
+        progressSaveTask = Task { [weak self] in
+            do { try await wait(); try Task.checkCancellation() }
+            catch { return }
+            self?.progressSaveTask = nil
+            await self?.saveProgress()
+        }
+    }
+
     func saveProgress() async {
+        progressSaveTask?.cancel(); progressSaveTask = nil
         guard let book, pagination != nil, !isPlaceholder else { return }
         let index = chapterIndex, offset = characterOffset, title = chapterTitle, time = now()
         let previous = saveTask
