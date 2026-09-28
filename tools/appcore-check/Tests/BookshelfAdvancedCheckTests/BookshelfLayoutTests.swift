@@ -18,15 +18,14 @@ final class BookshelfLayoutTests: XCTestCase {
     func testCancellationPresentationRecognizesBridgedAndWrappedErrors() {
         let cancelled = CancellationError() as NSError
         let errors: [Error] = [CancellationError(), cancelled,
-            NSError(domain: cancelled.domain, code: cancelled.code), URLError(.cancelled),
-            NSError(domain: NSURLErrorDomain, code: URLError.cancelled.rawValue),
+            NSError(domain: cancelled.domain, code: cancelled.code),
             DatabaseError(resultCode: .SQLITE_INTERRUPT),
             NSError(domain: "Storage", code: 1, userInfo: [NSUnderlyingErrorKey: cancelled])]
         for error in errors {
             XCTAssertTrue(error.isCancellation, String(describing: error))
             XCTAssertNil(error.presentableMessage)
         }
-        for error: Error in [URLError(.timedOut), DatabaseError(resultCode: .SQLITE_ABORT),
+        for error: Error in [URLError(.cancelled), URLError(.timedOut), DatabaseError(resultCode: .SQLITE_ABORT),
                             DatabaseError(resultCode: .SQLITE_CORRUPT), CocoaError(.fileReadCorruptFile)] {
             XCTAssertFalse(error.isCancellation)
             XCTAssertNotNil(error.presentableMessage)

@@ -34,11 +34,11 @@ struct ReaderMenuView: View {
                         }
                     }
                 }.frame(maxWidth: .infinity, alignment: .leading)
-                Button("书源") { show("source") }.font(.system(size: 12)).padding(.horizontal, 8).padding(.vertical, 5)
+                Button("书源") { model.cancelSourceRecovery(); show("source") }.font(.system(size: 12)).padding(.horizontal, 8).padding(.vertical, 5)
                     .background(Color.accentColor.opacity(0.12), in: Capsule())
                 if model.readerSource?.customButton == true { Button("定制按钮", systemImage: "bolt") { show("custom") }.labelStyle(.iconOnly) }
                 Menu {
-                    Button("换源") { show("source") }
+                    Button("换源") { model.cancelSourceRecovery(); show("source") }
                     Button("刷新") { Task { await model.refreshContent() } }
                     Button("离线缓存") { show("cache") }
                     Divider()

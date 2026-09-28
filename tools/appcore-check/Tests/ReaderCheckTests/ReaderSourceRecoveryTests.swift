@@ -4,6 +4,29 @@ import LegadoCore
 
 @MainActor
 final class ReaderSourceRecoveryTests: XCTestCase {
+    func testExistingSourceServerFailureDoesNotStartRecovery() async throws {
+        let database = try AppDatabase.inMemory()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var book = BookRow(); book.bookUrl = "https://old.test/book"; book.origin = "https://old.test"
+        try await BookshelfRepository(database: database).insert(book)
+        var chapter = BookChapterRow(); chapter.bookUrl = book.bookUrl; chapter.url = "https://old.test/chapter"; chapter.title = "Chapter"
+        try await ChapterRepository(database: database).replaceAll(bookUrl: book.bookUrl, chapters: [chapter])
+        var source = BookSourceRow(); source.bookSourceUrl = book.origin; source.ruleContent = #"{"content":"tag.p"}"#
+        try await BookSourceRepository(database: database).insert(source)
+        let client = ReplayHttpClient()
+        let url = URL(string: chapter.url)!
+        await client.enqueue(url: url, response: .init(status: 503, body: Data(), finalURL: url))
+        let model = ReaderViewModel(database: database, client: client, cacheDirectory: root, preDownloadCount: { 0 })
+        model.autoChangeSource = { true }
+        await model.load(bookURL: book.bookUrl)
+        XCTAssertNil(model.sourceRecoveryTask)
+        XCTAssertNil(model.recoveringMessage)
+        XCTAssertTrue(model.userError?.actions.contains(.changeSource) == true)
+        XCTAssertEqual(model.book?.origin, book.origin)
+        await model.close()
+    }
+
     func testRecoveryDeadlineReturnsEvenWhenClientIgnoresCancellation() async throws {
         let client = RecoveryRequestGate()
         var source = BookSource(); source.bookSourceUrl = "https://slow.test"

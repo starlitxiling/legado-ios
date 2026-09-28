@@ -24,7 +24,7 @@ final class ErrorPresentationTests: XCTestCase {
         XCTAssertTrue(value?.message.contains("测试书源") == true)
         XCTAssertTrue(value?.message.contains("sources.json") == true)
         XCTAssertEqual(value?.actions, [.retry, .manageSources])
-        XCTAssertNil(URLError(.cancelled).presentation(operation: "加载"))
+        XCTAssertNotNil(URLError(.cancelled).presentation(operation: "加载"))
         let database = DatabaseError(resultCode: .SQLITE_CORRUPT).presentation(operation: "保存进度", subject: "Book")
         XCTAssertEqual(database?.title, "保存进度失败")
     }
@@ -92,7 +92,7 @@ final class ErrorPresentationTests: XCTestCase {
             (.cannotFindHost, "服务器"), (.secureConnectionFailed, "安全连接"), (.serverCertificateUntrusted, "证书")] {
             XCTAssertTrue(URLError(code).presentableMessage?.contains(text) == true)
         }
-        XCTAssertNil(URLError(.cancelled).presentableMessage)
+        XCTAssertNotNil(URLError(.cancelled).presentableMessage)
         XCTAssertNil(CancellationError().presentableMessage)
     }
 

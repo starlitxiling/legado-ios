@@ -89,22 +89,33 @@ final class HTTPSessionDelegate: NSObject, URLSessionDataDelegate, @unchecked Se
         let pending = Array(transfers.values)
         transfers.removeAll()
         lock.unlock()
-        for transfer in pending { transfer.finish(.failure(error ?? URLError(.cancelled))) }
+        for transfer in pending { transfer.finish(.failure(error ?? URLError(.networkConnectionLost))) }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge,
                     completionHandler: @escaping (URLSession.AuthChallengeDisposition, URLCredential?) -> Void) {
         let space = challenge.protectionSpace
         if space.authenticationMethod == NSURLAuthenticationMethodServerTrust,
-           let tlsHost, let trust = space.serverTrust {
+           let tlsHost {
+            guard let trust = space.serverTrust else {
+                transfer(task)?.finish(.failure(URLError(.serverCertificateUntrusted)))
+                completionHandler(.cancelAuthenticationChallenge, nil)
+                return
+            }
             SecTrustSetPolicies(trust, SecPolicyCreateSSL(true, tlsHost as CFString))
             if SecTrustEvaluateWithError(trust, nil) { completionHandler(.useCredential, URLCredential(trust: trust)) }
-            else { completionHandler(.cancelAuthenticationChallenge, nil) }
+            else {
+                transfer(task)?.finish(.failure(URLError(.serverCertificateUntrusted)))
+                completionHandler(.cancelAuthenticationChallenge, nil)
+            }
         } else if space.isProxy(), let proxy, space.host.caseInsensitiveCompare(proxy.host) == .orderedSame,
                   space.port == proxy.port, let user = proxy.username, let password = proxy.password {
             if challenge.previousFailureCount == 0 {
                 completionHandler(.useCredential, URLCredential(user: user, password: password, persistence: .forSession))
-            } else { completionHandler(.cancelAuthenticationChallenge, nil) }
+            } else {
+                transfer(task)?.finish(.failure(URLError(.userAuthenticationRequired)))
+                completionHandler(.cancelAuthenticationChallenge, nil)
+            }
         } else { completionHandler(.performDefaultHandling, nil) }
     }
 }

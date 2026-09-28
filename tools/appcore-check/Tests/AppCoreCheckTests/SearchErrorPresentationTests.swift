@@ -40,5 +40,8 @@ final class SearchErrorPresentationTests: XCTestCase {
 
 private struct FailedSearchClient: HttpClient {
     let code: URLError.Code
-    func send(_ request: HttpRequest) async throws -> HttpResponse { throw URLError(code) }
+    func send(_ request: HttpRequest) async throws -> HttpResponse {
+        if code == .cancelled { throw CancellationError() }
+        throw URLError(code)
+    }
 }

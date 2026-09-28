@@ -208,8 +208,8 @@ final class ReaderViewModel {
             if generation == token { observeReplaceRules() }
         } catch {
             guard generation == token, !Task.isCancelled else { return }
-            report(error, operation: "打开书籍", actions: [.retry, .manageSources, .back]); isLoading = false
-            if !error.isCancellation { startSourceRecovery(bookURL: bookURL, index: requestedIndex, token: token) }
+            report(error, operation: "打开书籍", actions: [.retry, .changeSource, .manageSources, .back]); isLoading = false
+            if !error.isCancellation { await startSourceRecovery(bookURL: bookURL, index: requestedIndex, token: token) }
         }
     }
 
@@ -235,8 +235,17 @@ final class ReaderViewModel {
         sourceRecoveryTask?.cancel(); sourceRecoveryTask = nil; recoveringMessage = nil
     }
 
-    private func startSourceRecovery(bookURL: String, index: Int?, token: UUID) {
+    private func startSourceRecovery(bookURL: String, index: Int?, token: UUID) async {
         guard autoChangeSource(), sourceRecoveryTask == nil, token == generation else { return }
+        do {
+            guard let row = try await BookshelfRepository(database: database).get(bookUrl: bookURL),
+                  !LocalBook.isLocal(try ReaderEntityBridge.decode(Book.self, row: row)),
+                  try await BookSourceRepository(database: database).get(bookSourceUrl: row.origin) == nil,
+                  token == generation, !Task.isCancelled else { return }
+        } catch {
+            report(error, operation: "查找书源", actions: [.changeSource, .manageSources])
+            return
+        }
         let recovery = UUID(); recoveryGeneration = recovery
         recoveringMessage = "正在自动换源…"
         sourceRecoveryTask = Task { [weak self] in
@@ -353,7 +362,7 @@ final class ReaderViewModel {
             report(error, operation: "正文加载", chapter: chapters.first { $0.index == request.index }?.title, actions: [.retry, .changeSource, .manageSources, .back]); isLoading = false
             if (error as? ReaderError) == .missingSource { await showMissingSource(request, token: token) }
             if !error.isCancellation, (error as? ReaderError) != .chapterLocked {
-                startSourceRecovery(bookURL: entity.bookUrl ?? "", index: request.index, token: token)
+                await startSourceRecovery(bookURL: entity.bookUrl ?? "", index: request.index, token: token)
             }
         }
     }
