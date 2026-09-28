@@ -45,7 +45,7 @@
 
 ## 下一步与未决问题
 
-R1 的 13 个单元均已实现；菜单回归的 JSON 启动参数已修正（354d1f54a，定点 UI 1/0），失败全量保留为 r1-second-final-*。系统文件选择器与主题切换补测通过，真机状态栏图标像素和内存峰值尚待人工验收。完整回归必须在最后提交后执行，日志和计数汇总到 [r1-final-summary.md](../../.build/round6/r1-final-summary.md)。下一步按 R1-REPORT.md 真机清单人工验收；本次没有安装手机，也没有生成含 R1 的 Release 包。旧 `dist/Legado-1.0-794cc4077.ipa` 不包含这些返修。覆盖安装须沿用 `com.starlitxiling.legado.ios` 并使用有效描述文件，不改项目包标识。用户禁止子代理，未 push，未写真实 WebDAV。
+R1 的 13 个单元均已实现；菜单回归的 JSON 启动参数已修正（354d1f54a，定点 UI 1/0），失败全量保留为 r1-second-final-*。系统文件选择器与主题切换补测通过，真机状态栏图标像素和内存峰值尚待人工验收。完整回归必须在最后提交后执行，日志和计数汇总到 [r1-final-summary.md](../../.build/round6/r1-final-summary.md)。文件夹长按回归已补齐可点击及菜单等待（9fcc927c6，定点 UI 1/0），中止日志保留为 r1-third-interrupted-*。下一步按 R1-REPORT.md 真机清单人工验收；本次没有安装手机，也没有生成含 R1 的 Release 包。旧 `dist/Legado-1.0-794cc4077.ipa` 不包含这些返修。覆盖安装须沿用 `com.starlitxiling.legado.ios` 并使用有效描述文件，不改项目包标识。用户禁止子代理，未 push，未写真实 WebDAV。
 
 - A1 规格修正：#FF63C37D 的 Android 有符号 ARGB 整数是 -10239107，计划写成 -10534531 为算术错误；实现及断言使用实际位值。
 
