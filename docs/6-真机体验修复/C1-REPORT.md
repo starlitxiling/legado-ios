@@ -16,3 +16,11 @@ rtk proxy zsh -c 'CLANG_MODULE_CACHE_PATH="$PWD/.build/clang-cache" xcodebuild -
 ```
 
 末尾 `Executed 354 tests, with 0 failures`、`Executed 1 test, with 0 failures`、`TEST SUCCEEDED`。模拟器 ID 可替换为本机设备，重新执行时使用新的结果目录。实际 iPhone 滚动手感仍由用户验收。
+
+## 2026-09-28 最终复审修正
+
+空书架引导按书籍总量判断，覆盖有内置分组的空文件夹模式。置顶时将当前独立排序分组切换为手动排序，防止分组名称排序覆盖全局排序。UI fixture 使用独立名称排序；最终 c1-review-green 2/0，验证第二本置顶后实际顺序、移出确认只删除该书、空文件夹模式两项导入入口。
+
+c1-review-red2 复现空文件夹缺入口；置顶测试最初被横向分组按钮不可点击阻断，改走已验证的文件夹导航后验证实际置顶行为。未将测试控件定位失败当作业务红灯。
+
+运行命令沿用本文 xcodebuild 模板，结果/日志名 c1-review-green，过滤 `BookshelfLayoutUITests/testPinOverridesGroupSortAndRemovalKeepsOtherBooks` 与 `BookshelfLayoutUITests/testEmptyFolderShelfShowsImportActions`。末尾 `Executed 2 tests, with 0 failures`、`TEST SUCCEEDED`。

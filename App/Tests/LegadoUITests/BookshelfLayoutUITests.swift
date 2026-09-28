@@ -2,6 +2,45 @@ import XCTest
 
 final class BookshelfLayoutUITests: XCTestCase {
     @MainActor
+    func testPinOverridesGroupSortAndRemovalKeepsOtherBooks() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery"]
+        app.launch()
+        openLayout(app)
+        app.buttons["bookshelf.groupStyle"].tap(); app.buttons["文件夹"].tap(); app.buttons["确定"].tap()
+        let group = app.buttons["bookshelf.folder.1"]
+        XCTAssertTrue(group.waitForExistence(timeout: 5))
+        for _ in 0..<8 {
+            if group.isHittable && group.frame.maxY < app.frame.maxY - 40 { break }
+            app.scrollViews["bookshelf.contents"].swipeUp()
+        }
+        group.tap()
+        let first = app.buttons["bookshelf.book.fixture:book:0"]
+        let second = app.buttons["bookshelf.book.fixture:book:1"]
+        XCTAssertTrue(second.waitForExistence(timeout: 5))
+        XCTAssertGreaterThan(second.frame.minY, first.frame.minY)
+        second.press(forDuration: 0.8); app.buttons["置顶"].tap()
+        XCTAssertLessThan(second.frame.minY, first.frame.minY)
+        second.press(forDuration: 0.8); app.buttons["移出书架"].tap()
+        app.buttons["移出「Sample Book 02」"].tap()
+        XCTAssertTrue(second.waitForNonExistence(timeout: 5))
+        XCTAssertTrue(first.exists)
+    }
+
+    @MainActor
+    func testEmptyFolderShelfShowsImportActions() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery", "-empty-bookshelf-gallery"]
+        app.launch()
+        openLayout(app)
+        app.buttons["bookshelf.groupStyle"].tap(); app.buttons["文件夹"].tap(); app.buttons["确定"].tap()
+        XCTAssertTrue(app.buttons["导入书源"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["添加本地书"].exists)
+    }
+
+    @MainActor
     func testBookshelfRowsGrowWithAccessibilityTextSize() {
         continueAfterFailure = false
         let app = XCUIApplication()
