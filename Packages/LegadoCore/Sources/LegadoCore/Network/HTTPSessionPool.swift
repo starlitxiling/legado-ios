@@ -89,7 +89,10 @@ final class HTTPSessionDelegate: NSObject, URLSessionDataDelegate, @unchecked Se
         let pending = Array(transfers.values)
         transfers.removeAll()
         lock.unlock()
-        for transfer in pending { transfer.finish(.failure(error ?? URLError(.networkConnectionLost))) }
+        let failure: Error
+        if error == nil || (error as? URLError)?.code == .cancelled { failure = URLError(.networkConnectionLost) }
+        else { failure = error! }
+        for transfer in pending { transfer.finish(.failure(failure)) }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didReceive challenge: URLAuthenticationChallenge,

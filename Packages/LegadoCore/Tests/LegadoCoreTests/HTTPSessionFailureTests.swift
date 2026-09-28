@@ -10,7 +10,11 @@ final class HTTPSessionFailureTests: XCTestCase {
         try await assertFailure(certificate: false, expected: .networkConnectionLost)
     }
 
-    private func assertFailure(certificate: Bool, expected: URLError.Code) async throws {
+    func testInvalidatedCancelledSessionDoesNotProduceCancellation() async throws {
+        try await assertFailure(certificate: false, expected: .networkConnectionLost, invalidationError: URLError(.cancelled))
+    }
+
+    private func assertFailure(certificate: Bool, expected: URLError.Code, invalidationError: Error? = nil) async throws {
         let started = expectation(description: "Transfer registered")
         SilentProtocol.started = started
         let configuration = URLSessionConfiguration.ephemeral
@@ -32,7 +36,7 @@ final class HTTPSessionFailureTests: XCTestCase {
                 XCTAssertEqual(disposition, .cancelAuthenticationChallenge)
             }
         } else {
-            delegate.urlSession(session, didBecomeInvalidWithError: nil)
+            delegate.urlSession(session, didBecomeInvalidWithError: invalidationError)
         }
         do { _ = try await result.value; XCTFail("Expected transfer failure") }
         catch { XCTAssertEqual((error as? URLError)?.code, expected) }
