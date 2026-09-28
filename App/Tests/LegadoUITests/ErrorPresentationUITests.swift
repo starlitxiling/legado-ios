@@ -19,7 +19,7 @@ final class ErrorPresentationUITests: XCTestCase {
 
     @MainActor
     func testOfflineReaderShowsBookChapterAndActions() {
-        let app = launchReader(autoChange: false)
+        let app = launchReader(autoChange: true)
         app.buttons["断网正文"].tap()
         XCTAssertTrue(app.staticTexts["正文加载失败"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "第一章 断网")).firstMatch.exists)
@@ -30,8 +30,8 @@ final class ErrorPresentationUITests: XCTestCase {
     }
 
     @MainActor
-    func testFailedSourceRecoveryExplainsCandidateAndKeepsReturn() {
-        let app = launchReader(autoChange: true)
+    func testMissingSourceRecoveryExplainsCandidateAndKeepsReturn() {
+        let app = launchReader(autoChange: true, missingSource: true)
         app.buttons["断网正文"].tap()
         XCTAssertTrue(app.staticTexts["自动换源失败"].waitForExistence(timeout: 10))
         XCTAssertTrue(app.staticTexts.containing(NSPredicate(format: "label CONTAINS %@", "候选书源")).firstMatch.exists)
@@ -52,11 +52,12 @@ final class ErrorPresentationUITests: XCTestCase {
     }
 
     @MainActor
-    private func launchReader(autoChange: Bool) -> XCUIApplication {
+    private func launchReader(autoChange: Bool, missingSource: Bool = false) -> XCUIApplication {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-reader-failure-gallery", "-autoChangeSource", autoChange ? "YES" : "NO",
             "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO"]
+        if missingSource { app.launchArguments.append("-reader-missing-source") }
         app.launch()
         XCTAssertTrue(app.buttons["断网正文"].waitForExistence(timeout: 10))
         return app

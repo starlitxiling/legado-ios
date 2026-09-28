@@ -61,7 +61,9 @@ struct ReaderFailureGallery: View {
                     var source = BookSource(); source.bookSourceUrl = book.origin; source.bookSourceName = "断网书源"
                     source.ruleContent = ContentRule(); source.ruleContent?.content = "body@text"
                     source.ruleToc = TocRule(); source.ruleToc?.chapterList = "a"
-                    try await container.bookSources.insert(DiscoveryStorage.row(source, defaults: BookSourceRow()))
+                    if !ProcessInfo.processInfo.arguments.contains("-reader-missing-source") {
+                        try await container.bookSources.insert(DiscoveryStorage.row(source, defaults: BookSourceRow()))
+                    }
                     var candidate = source; candidate.bookSourceUrl = "https://candidate-offline.test"; candidate.bookSourceName = "候选书源"
                     candidate.searchUrl = "https://candidate-offline.test/search"
                     try await container.bookSources.insert(DiscoveryStorage.row(candidate, defaults: BookSourceRow()))
