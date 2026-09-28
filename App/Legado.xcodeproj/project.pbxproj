@@ -72,6 +72,7 @@
 		4842CACE34A69C810C820C33 /* LegadoCore in Frameworks */ = {isa = PBXBuildFile; productRef = 2B8D1732AA38FE3C656E2B4E /* LegadoCore */; };
 		4A5CDBDE1960912049ECAC27 /* ReaderChapterCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 366D60FB81B1F0FC7CEED2A6 /* ReaderChapterCache.swift */; };
 		4AD4E6C03729B6FC2B55509E /* BookDetailViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 017079B694A2178DE75CCD9C /* BookDetailViewModel.swift */; };
+		4C1F2A00569BF568600B343F /* ReaderProgressBackgroundTaskTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1EE4FAD0B3A0B1A3F349B4D /* ReaderProgressBackgroundTaskTests.swift */; };
 		4DE98ECB93846ABF82CBD760 /* RemoteBooksView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 425DA53280F711555DD33FEA /* RemoteBooksView.swift */; };
 		4E4F98CECD8C6395485AC463 /* ReaderStatusBarBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0555115CF549C38ED020156 /* ReaderStatusBarBridge.swift */; };
 		4EA04228A2A64500B4FC19CC /* CoverNetworkStatus.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C1BB685EEFB3143AA3C5F89 /* CoverNetworkStatus.swift */; };
@@ -514,6 +515,7 @@
 		EEE669BDA30DE46D974E62EB /* LocalDirectoryScanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalDirectoryScanner.swift; sourceTree = "<group>"; };
 		EF420124BA36354241C1EDDE /* ScrollPageContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScrollPageContainer.swift; sourceTree = "<group>"; };
 		F029F5D38BB93A3C81C9AFE8 /* HeadlessWebView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HeadlessWebView.swift; sourceTree = "<group>"; };
+		F1EE4FAD0B3A0B1A3F349B4D /* ReaderProgressBackgroundTaskTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderProgressBackgroundTaskTests.swift; sourceTree = "<group>"; };
 		F2DE06354EFB2F83A31F9115 /* CheckSourceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CheckSourceView.swift; sourceTree = "<group>"; };
 		F3350B7173A65705D7E0D6F0 /* RestoreResultView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestoreResultView.swift; sourceTree = "<group>"; };
 		F683FB20D9BC40BE8E34AA8C /* LauncherIconSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LauncherIconSettingsView.swift; sourceTree = "<group>"; };
@@ -838,6 +840,7 @@
 				82A1DD950CA037760684AB64 /* ComponentIconTests.swift */,
 				D9FEFBF08FC95E4685444BFB /* MainTabObserverTests.swift */,
 				FFF708EE725437C50F8F90AE /* ReaderBackgroundImageTests.swift */,
+				F1EE4FAD0B3A0B1A3F349B4D /* ReaderProgressBackgroundTaskTests.swift */,
 				4F804F2FE240D7F24CA0F751 /* ReaderScrollContainerTests.swift */,
 				181B26DBE59160BB8C5388D0 /* ReaderStatusAppearanceTests.swift */,
 				0D6C00C28C2894CA2B4A6B95 /* SourceRegressionTests.swift */,
@@ -1301,6 +1304,7 @@
 				6A7B8FCCD9F20B98225B871C /* ComponentIconTests.swift in Sources */,
 				CA5A68DB5D2B856F8CD8CE43 /* MainTabObserverTests.swift in Sources */,
 				9FB3BCCC25A54BFBA1CAFB93 /* ReaderBackgroundImageTests.swift in Sources */,
+				4C1F2A00569BF568600B343F /* ReaderProgressBackgroundTaskTests.swift in Sources */,
 				B06B68530EACC46BC54C4035 /* ReaderScrollContainerTests.swift in Sources */,
 				7818DCCA7B913150EAB43A20 /* ReaderStatusAppearanceTests.swift in Sources */,
 				7E8792D1486514D04BA97F86 /* SourceRegressionTests.swift in Sources */,

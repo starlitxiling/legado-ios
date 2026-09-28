@@ -81,15 +81,23 @@ final class ReaderDeviceController {
 final class ReaderProgressBackgroundTask {
     private var identifier: UIBackgroundTaskIdentifier = .invalid
 
-    init() {
-        identifier = UIApplication.shared.beginBackgroundTask(withName: "Reader progress") { [weak self] in
-            Task { @MainActor in self?.end() }
+    private let endTask: @MainActor (UIBackgroundTaskIdentifier) -> Void
+
+    init(begin: @MainActor (@escaping @Sendable () -> Void) -> UIBackgroundTaskIdentifier = {
+        UIApplication.shared.beginBackgroundTask(withName: "Reader progress", expirationHandler: $0)
+    }, end: @escaping @MainActor (UIBackgroundTaskIdentifier) -> Void = {
+        UIApplication.shared.endBackgroundTask($0)
+    }) {
+        endTask = end
+        identifier = begin { [weak self] in
+            MainActor.assumeIsolated { self?.end() }
         }
     }
 
     func end() {
         guard identifier != .invalid else { return }
-        UIApplication.shared.endBackgroundTask(identifier)
+        let ending = identifier
         identifier = .invalid
+        endTask(ending)
     }
 }
