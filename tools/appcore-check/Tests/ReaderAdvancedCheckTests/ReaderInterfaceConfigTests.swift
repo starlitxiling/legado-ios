@@ -37,6 +37,32 @@ final class ReaderInterfaceConfigTests: XCTestCase {
     }
 
     @MainActor
+    func testBrokenStyleBackupsDeduplicateOnlyIdenticalContents() async throws {
+        let database = try AppDatabase.inMemory()
+        let suite = "R2.G4." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        for name in ["readConfig.json", "shareReadConfig.json"] {
+            let first = Data("broken first".utf8)
+            let second = Data("broken second".utf8)
+            try await database.write { db in
+                try db.execute(sql: "INSERT INTO backup_files(name, data) VALUES (?, ?)", arguments: [name, first])
+            }
+            for _ in 0..<2 { try await ReaderStyleStore(database: database, defaults: defaults).load() }
+            let pattern = (name as NSString).deletingPathExtension + ".broken-%"
+            let firstBackups = try await database.write { db in try Data.fetchAll(db, sql: "SELECT data FROM backup_files WHERE name LIKE ?", arguments: [pattern]) }
+            XCTAssertEqual(firstBackups, [first])
+            try await database.write { db in
+                try db.execute(sql: "UPDATE backup_files SET data = ? WHERE name = ?", arguments: [second, name])
+            }
+            try await ReaderStyleStore(database: database, defaults: defaults).load()
+            let allBackups = try await database.write { db in try Data.fetchAll(db, sql: "SELECT data FROM backup_files WHERE name LIKE ?", arguments: [pattern]) }
+            XCTAssertEqual(allBackups.count, 2)
+            XCTAssertEqual(Set(allBackups), Set([first, second]))
+        }
+    }
+
+    @MainActor
     func testFallbackPreservesOriginalBytesBeforeSelectionAndEditing() async throws {
         for raw in [Data("{".utf8), Data(#"[{"textSize":22},{"textSize":"bad"}]"#.utf8)] {
             let database = try AppDatabase.inMemory()

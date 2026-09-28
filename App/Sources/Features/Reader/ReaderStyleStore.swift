@@ -199,7 +199,10 @@ final class ReaderStyleStore {
             let stem = (name as NSString).deletingPathExtension
             let backupName = stem + ".broken-" + String(Int64(Date().timeIntervalSince1970 * 1000)) + "-" + UUID().uuidString + ".json"
             try await database.write { db in
-                try db.execute(sql: "INSERT INTO backup_files(name, data) VALUES (?, ?)", arguments: [backupName, data])
+                try db.execute(sql: """
+                    INSERT INTO backup_files(name, data) SELECT ?, ?
+                    WHERE NOT EXISTS (SELECT 1 FROM backup_files WHERE name LIKE ? AND data = ?)
+                    """, arguments: [backupName, data, stem + ".broken-%.json", data])
             }
             pendingOriginals.removeValue(forKey: name)
         }
