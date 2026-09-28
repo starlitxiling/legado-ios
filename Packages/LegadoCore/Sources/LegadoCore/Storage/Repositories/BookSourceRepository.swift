@@ -32,6 +32,10 @@ extension Repository where Record == BookSourceRow {
     }
 
     public func get(bookSourceUrl: String) async throws -> BookSourceRow? {
+        try await database.writer.read { db in try BookSourceRow.fetchOne(db, key: bookSourceUrl) }
+    }
+
+    public func resolveForBookOrigin(_ bookSourceUrl: String) async throws -> BookSourceRow? {
         try await database.writer.read { db in
             if let exact = try BookSourceRow.fetchOne(db, key: bookSourceUrl) { return exact }
             let urls = try String.fetchAll(db, sql: "SELECT bookSourceUrl FROM book_sources")

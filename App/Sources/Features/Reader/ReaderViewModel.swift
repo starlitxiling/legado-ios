@@ -159,15 +159,17 @@ final class ReaderViewModel {
                 }
             }
             var entity = try ReaderEntityBridge.decode(Book.self, row: book)
-            let sourceRow = try await BookSourceRepository(database: database).get(bookSourceUrl: book.origin)
+            let sourceRow = LocalBook.isLocal(entity) ? nil : try await BookSourceRepository(database: database).resolveForBookOrigin(book.origin)
             if !LocalBook.isLocal(entity), let sourceRow, book.origin != sourceRow.bookSourceUrl {
                 let original = book
                 try await database.write { db in
-                    try db.execute(sql: "UPDATE books SET origin = ? WHERE bookUrl = ? AND origin = ?",
-                        arguments: [sourceRow.bookSourceUrl, original.bookUrl, original.origin])
+                    try db.execute(sql: "UPDATE books SET origin = ?, originName = ? WHERE bookUrl = ? AND origin = ?",
+                        arguments: [sourceRow.bookSourceUrl, sourceRow.bookSourceName, original.bookUrl, original.origin])
                 }
                 book.origin = sourceRow.bookSourceUrl
+                book.originName = sourceRow.bookSourceName
                 entity.origin = sourceRow.bookSourceUrl
+                entity.originName = sourceRow.bookSourceName
             }
             let source = try sourceRow.map { try ReaderEntityBridge.decode(BookSource.self, row: $0) }
             let repository = ChapterRepository(database: database)
@@ -250,7 +252,7 @@ final class ReaderViewModel {
         do {
             guard let row = try await BookshelfRepository(database: database).get(bookUrl: bookURL),
                   !LocalBook.isLocal(try ReaderEntityBridge.decode(Book.self, row: row)),
-                  try await BookSourceRepository(database: database).get(bookSourceUrl: row.origin) == nil,
+                  try await BookSourceRepository(database: database).resolveForBookOrigin(row.origin) == nil,
                   token == generation, !Task.isCancelled else { return }
         } catch {
             report(error, operation: "查找书源", actions: [.changeSource, .manageSources])
@@ -735,7 +737,7 @@ final class ReaderViewModel {
         guard let book, !LocalBook.isLocal(entity ?? Book()) else { return }
         let token = generation
         do {
-            guard let row = try await BookSourceRepository(database: database).get(bookSourceUrl: book.origin) else { throw ReaderError.missingSource }
+            guard let row = try await BookSourceRepository(database: database).resolveForBookOrigin(book.origin) else { throw ReaderError.missingSource }
             guard token == generation else { return }
             source = try ReaderEntityBridge.decode(BookSource.self, row: row)
         } catch { report(error, operation: "重新加载书源", actions: [.manageSources]) }

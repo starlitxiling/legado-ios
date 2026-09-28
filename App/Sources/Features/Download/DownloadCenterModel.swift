@@ -69,7 +69,7 @@ final class DownloadCenterModel {
                 let source: BookSource
                 if LocalBook.isLocal(book) { source = BookSource() }
                 else {
-                    guard let sourceRow = try await BookSourceRepository(database: database).get(bookSourceUrl: row.origin) else { throw BookshelfDownloadsError.missingSource }
+                    guard let sourceRow = try await BookSourceRepository(database: database).resolveForBookOrigin(row.origin) else { throw BookshelfDownloadsError.missingSource }
                     source = try DiscoveryStorage.source(sourceRow)
                 }
                 let client = client, directory = directory, threadCount = threadCount, adaptSpecialStyle = adaptSpecialStyle
@@ -200,7 +200,7 @@ enum BookshelfRefreshService {
         return await BookshelfRefresh.run(bookURLs: eligible.map(\.bookUrl)) { url in
             do {
                 guard let current = try await repository.get(bookUrl: url) else { throw BookshelfEditError.missingBook }
-                guard let sourceRow = try await BookSourceRepository(database: database).get(bookSourceUrl: current.origin) else { throw BookshelfRefresh.UpdateError.missingSource }
+                guard let sourceRow = try await BookSourceRepository(database: database).resolveForBookOrigin(current.origin) else { throw BookshelfRefresh.UpdateError.missingSource }
                 let previousBook = try DiscoveryStorage.book(current)
                 var book = previousBook
                 let countWords = UserDefaults.standard.object(forKey: "tocCountWords") as? Bool ?? false

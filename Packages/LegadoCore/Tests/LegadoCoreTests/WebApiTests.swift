@@ -2,6 +2,20 @@ import XCTest
 @testable import LegadoCore
 
 final class WebApiTests: XCTestCase {
+    func testDeletingMissingSourceDoesNotDeleteNormalizedNeighbor() async throws {
+        let database = try AppDatabase.inMemory()
+        let sources = BookSourceRepository(database: database)
+        var source = BookSourceRow(); source.bookSourceUrl = "https://source.test/"
+        try await sources.insert(source)
+        let missing = try await sources.get(bookSourceUrl: "https://source.test")
+        XCTAssertNil(missing)
+        let result = try await call(WebApi(database: database), "/deleteBookSources",
+            body: #"[{"bookSourceUrl":"https://source.test"}]"#)
+        XCTAssertEqual(result["isSuccess"] as? Bool, true)
+        let retained = try await sources.get(bookSourceUrl: source.bookSourceUrl)
+        XCTAssertEqual(retained?.bookSourceUrl, source.bookSourceUrl)
+    }
+
     func testHTTPParsingAndFraming() throws {
         let prefix = "POST /saveBook?url=a%2Bb&x=hello+world&x=two HTTP/1.1\r\nHost: localhost\r\nContent-Length: 6\r\n\r\n"
         XCTAssertNil(try WebHttpRequest.parse(Data((prefix + "你").utf8)))

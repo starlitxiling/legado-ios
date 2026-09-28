@@ -5,21 +5,22 @@ import LegadoCore
 @MainActor
 final class ReaderSourceRecoveryTests: XCTestCase {
     func testNormalizedOriginIsSavedOnlyForUniqueMatch() async throws {
-        for suffix in ["/", " ", "#yc1101b", "/#yc1101b"] {
+        for suffix in ["/", " ", "#yc1101b", "/#yc1101b", ""] {
             let database = try AppDatabase.inMemory()
             let repository = BookSourceRepository(database: database)
-            var source = BookSourceRow(); source.bookSourceUrl = "https://example.test/path"
+            var source = BookSourceRow(); source.bookSourceUrl = "https://example.test/path" + (suffix.isEmpty ? "/" : ""); source.bookSourceName = "Resolved source"
             try await repository.insert(source)
-            var book = BookRow(); book.bookUrl = "fixture:book"; book.origin = " HTTPS://EXAMPLE.TEST/path" + suffix
+            var book = BookRow(); book.bookUrl = "fixture:book"; book.origin = suffix.isEmpty ? "https://example.test/path" : " HTTPS://EXAMPLE.TEST/path" + suffix
             try await BookshelfRepository(database: database).insert(book)
             let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
             defer { try? FileManager.default.removeItem(at: root) }
             let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: root, preDownloadCount: { 0 })
             await model.load(bookURL: book.bookUrl)
             let saved = try await BookshelfRepository(database: database).get(bookUrl: book.bookUrl)
-            let matched = try await repository.get(bookSourceUrl: book.origin)
+            let matched = try await repository.resolveForBookOrigin(book.origin)
             XCTAssertEqual(matched?.bookSourceUrl, source.bookSourceUrl)
             XCTAssertEqual(saved?.origin, source.bookSourceUrl)
+            XCTAssertEqual(saved?.originName, source.bookSourceName)
             await model.close()
         }
         let database = try AppDatabase.inMemory()
@@ -27,9 +28,9 @@ final class ReaderSourceRecoveryTests: XCTestCase {
         for url in ["https://example.test", "https://example.test/"] {
             var source = BookSourceRow(); source.bookSourceUrl = url; try await repository.insert(source)
         }
-        let ambiguous = try await repository.get(bookSourceUrl: "https://example.test#fragment")
+        let ambiguous = try await repository.resolveForBookOrigin("https://example.test#fragment")
         XCTAssertNil(ambiguous)
-        let exact = try await repository.get(bookSourceUrl: "https://example.test/")
+        let exact = try await repository.resolveForBookOrigin("https://example.test/")
         XCTAssertEqual(exact?.bookSourceUrl, "https://example.test/")
     }
 

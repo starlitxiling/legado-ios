@@ -49,7 +49,7 @@ final class BookDetailViewModel {
         userError = nil
         defer { if request == generation { isLoading = false } }
         do {
-            guard let row = try await sources.get(bookSourceUrl: result.origin ?? "") else {
+            guard let row = try await sources.resolveForBookOrigin(result.origin ?? "") else {
                 throw WebBookError.missingRule("书源不存在")
             }
             let selected = try DiscoveryStorage.source(row)
@@ -89,7 +89,7 @@ final class BookDetailViewModel {
         guard let url = book?.bookUrl else { return }
         do {
             let saved = try await bookshelf.get(bookUrl: url)
-            let sourceRow = try await sources.get(bookSourceUrl: book?.origin ?? "")
+            let sourceRow = try await sources.resolveForBookOrigin(book?.origin ?? "")
             guard book?.bookUrl == url else { return }
             if let saved { book = try DiscoveryStorage.book(saved) }
             source = try sourceRow.map(DiscoveryStorage.source)

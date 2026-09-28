@@ -62,7 +62,7 @@ final class AutoTaskController {
         var source: BookSource?
         if LocalBook.isLocal(book) { chapters = try LocalBook.chapterList(book: &book) }
         else {
-            guard let row = try await BookSourceRepository(database: database).get(bookSourceUrl: current.origin) else { throw JsEngineError.exception("找不到书籍对应的书源") }
+            guard let row = try await BookSourceRepository(database: database).resolveForBookOrigin(current.origin) else { throw JsEngineError.exception("找不到书籍对应的书源") }
             source = try DiscoveryStorage.source(row)
             chapters = try await WebBook(source: source!, client: client).chapterList(book: &book, runPreUpdate: true)
         }

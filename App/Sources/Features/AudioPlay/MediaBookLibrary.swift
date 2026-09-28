@@ -29,7 +29,7 @@ final class MediaBookLibrary {
         isLoading = true; userError = nil
         defer { isLoading = false }
         do {
-            guard let row = try await BookSourceRepository(database: database).get(bookSourceUrl: book.origin ?? "") else {
+            guard let row = try await BookSourceRepository(database: database).resolveForBookOrigin(book.origin ?? "") else {
                 throw WebBookError.missingRule("书源不存在")
             }
             let source = try DiscoveryStorage.source(row)
