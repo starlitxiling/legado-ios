@@ -1,3 +1,4 @@
+import Foundation
 import GRDB
 
 public typealias BookshelfRepository = Repository<BookRow>
@@ -30,6 +31,7 @@ extension Repository where Record == BookRow {
             }
             var saved = book
             saved.order = minimum - 1
+            saved.durChapterTime = Int64(Date().timeIntervalSince1970 * 1000)
             if try BookRow.fetchOne(db, key: saved.bookUrl) != nil { try saved.update(db) }
             else { try saved.insert(db, onConflict: .replace) }
             return saved

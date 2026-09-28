@@ -2,6 +2,22 @@ import XCTest
 @testable import LegadoCore
 
 final class BookshelfCacheParityTests: XCTestCase {
+    func testPinUpdatesReadTimeWithoutChangingGroupSort() async throws {
+        let db = try AppDatabase.inMemory()
+        var group = BookGroupRow(); group.groupId = 1; group.bookSort = 0
+        try await BookGroupRepository(database: db).insert(group)
+        let repository = BookshelfRepository(database: db)
+        var first = BookRow(); first.bookUrl = "first"; first.name = "First"; first.group = 1; first.durChapterTime = 1000
+        var second = first; second.bookUrl = "second"; second.name = "Second"; second.durChapterTime = 1
+        try await repository.upsert([first, second])
+        let saved = try await repository.saveAtTop(second)
+        XCTAssertGreaterThan(saved.durChapterTime, first.durChapterTime)
+        let sorted = try await repository.list(groupID: 1, sort: .lastRead)
+        XCTAssertEqual(sorted.first?.bookUrl, second.bookUrl)
+        let storedGroup = try await BookGroupRepository(database: db).get(groupID: 1)
+        XCTAssertEqual(storedGroup?.bookSort, 0)
+    }
+
     func testRefreshFailuresRetainBookAndCause() async {
         let report = await BookshelfRefresh.run(bookURLs: ["missing", "timeout", "parse"]) { url in
             switch url {

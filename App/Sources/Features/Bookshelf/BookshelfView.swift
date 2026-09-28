@@ -399,15 +399,9 @@ struct BookshelfView: View {
         }
         .contextMenu {
             Button("置顶") {
-                let groupID = model.selectedGroupID
                 Task { await perform {
                     if let current = try await container.bookshelf.get(bookUrl: book.bookUrl) {
                         _ = try await container.bookshelf.saveAtTop(current)
-                        if var group = try await container.bookGroups.get(groupID: groupID), group.bookSort >= 0 {
-                            group.bookSort = BookshelfSort.manual.rawValue
-                            try await container.bookGroups.update(group)
-                        }
-                        preferences.set("bookshelfSort", .int(3))
                     }
                 } }
             }

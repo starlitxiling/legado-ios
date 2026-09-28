@@ -2,7 +2,7 @@ import XCTest
 
 final class BookshelfLayoutUITests: XCTestCase {
     @MainActor
-    func testPinOverridesGroupSortAndRemovalKeepsOtherBooks() {
+    func testPinPreservesReadTimeSortAndRemovalKeepsOtherBooks() {
         continueAfterFailure = false
         let app = XCUIApplication()
         app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery"]
@@ -20,12 +20,23 @@ final class BookshelfLayoutUITests: XCTestCase {
         let second = app.buttons["bookshelf.book.fixture:book:1"]
         XCTAssertTrue(second.waitForExistence(timeout: 5))
         XCTAssertGreaterThan(second.frame.minY, first.frame.minY)
-        second.press(forDuration: 0.8); app.buttons["置顶"].tap()
-        XCTAssertLessThan(second.frame.minY, first.frame.minY)
+        second.press(forDuration: 0.8)
+        let pin = app.buttons["置顶"]
+        XCTAssertTrue(pin.waitForExistence(timeout: 5))
+        pin.tap()
+        XCTAssertTrue(pin.waitForNonExistence(timeout: 5))
+        let moved = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+            second.exists && first.exists && second.frame.minY < first.frame.minY
+        }, object: nil)
+        XCTAssertEqual(XCTWaiter.wait(for: [moved], timeout: 5), .completed)
         second.press(forDuration: 0.8); app.buttons["移出书架"].tap()
         app.buttons["移出「Sample Book 02」"].tap()
         XCTAssertTrue(second.waitForNonExistence(timeout: 5))
         XCTAssertTrue(first.exists)
+        openLayout(app)
+        let sort = app.buttons["bookshelf.sort"]
+        for _ in 0..<6 where !sort.isHittable { app.swipeUp() }
+        XCTAssertTrue(sort.label.contains("按阅读时间") || (sort.value as? String)?.contains("按阅读时间") == true)
     }
 
     @MainActor

@@ -34,7 +34,7 @@ struct BookshelfLayoutSettingsView: View {
                     ForEach(Array(["按阅读时间", "按更新时间", "按书名", "手动排序", "综合排序", "按作者"].enumerated()), id: \.offset) {
                         Text($0.element).tag($0.offset)
                     }
-                }
+                }.accessibilityIdentifier("bookshelf.sort")
                 VStack(alignment: .leading) {
                     Text("书架边距：\(preferences.integer("bookshelfMargin"))")
                     Slider(value: Binding(get: { Double(preferences.integer("bookshelfMargin")) }, set: {

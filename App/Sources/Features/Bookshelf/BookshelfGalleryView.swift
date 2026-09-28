@@ -56,7 +56,7 @@ struct BookshelfGalleryView: View {
             try await container.bookSources.insert(source)
         }
         try await container.bookGroups.ensureBuiltinGroups()
-        var group = BookGroupRow(); group.groupId = 1; group.groupName = "Sample Group"; group.bookSort = 2
+        var group = BookGroupRow(); group.groupId = 1; group.groupName = "Sample Group"; group.bookSort = 0
         try await container.bookGroups.insert(group)
         if ProcessInfo.processInfo.arguments.contains("-empty-bookshelf-gallery") { return container }
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("bookshelf-gallery", isDirectory: true)
