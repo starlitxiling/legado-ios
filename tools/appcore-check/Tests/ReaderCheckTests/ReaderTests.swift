@@ -5,6 +5,37 @@ import LegadoCore
 
 final class ReaderTests: XCTestCase {
     @MainActor
+    func testBackgroundTransitionDoesNotInterruptQueuedProgressSave() async throws {
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        let database = try AppDatabase.file(at: directory.appendingPathComponent("progress.sqlite").path)
+        defer { database.resume() }
+        var row = BookRow(); row.bookUrl = "https://progress.test/book"; row.name = "Progress"
+        try await BookshelfRepository(database: database).insert(row)
+        var chapter = BookChapterRow(); chapter.bookUrl = row.bookUrl; chapter.url = "chapter"; chapter.title = "Chapter"
+        try await ChapterRepository(database: database).insert(chapter)
+        try BookHelp.save(String(repeating: "A paragraph for testing progress persistence.\n", count: 300), directory: directory,
+            book: ReaderEntityBridge.decode(Book.self, row: row), chapter: ReaderEntityBridge.decode(BookChapter.self, row: chapter))
+        let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: directory, preDownloadCount: { 0 })
+        await model.load(bookURL: row.bookUrl)
+        await model.selectPage(3)
+        let expected = model.characterOffset
+        let lifecycle = DatabaseLifecycleCoordinator(suspend: { database.suspend() }, resume: { database.resume() })
+        model.protectProgressWrite = { lifecycle.beginProgressWrite() }
+        let saving = model.saveProgressForBackground()
+        lifecycle.didEnterBackground()
+        XCTAssertFalse(lifecycle.isSuspended)
+        await saving.value
+        XCTAssertTrue(lifecycle.isSuspended)
+        database.resume()
+        let saved = try await BookshelfRepository(database: database).get(bookUrl: row.bookUrl)
+        XCTAssertEqual(saved?.durChapterPos, expected)
+        await model.close()
+    }
+
+
+    @MainActor
     func testPageProgressCoalescesAndExplicitSaveAndCloseFlushLatestPosition() async throws {
         let database = try AppDatabase.inMemory()
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

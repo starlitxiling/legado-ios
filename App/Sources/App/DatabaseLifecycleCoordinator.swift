@@ -8,6 +8,8 @@ final class DatabaseLifecycleCoordinator: NSObject {
     private let resumeDatabase: () -> Void
     private let lock = NSRecursiveLock()
     private var suspended = false
+    private var backgroundRequested = false
+    private var writes = Set<UUID>()
     private var observers: [NSObjectProtocol] = []
 
     var isSuspended: Bool {
@@ -42,7 +44,27 @@ final class DatabaseLifecycleCoordinator: NSObject {
     func didEnterBackground() {
         lock.lock()
         defer { lock.unlock() }
-        guard !suspended else { return }
+        backgroundRequested = true
+        suspendIfIdle()
+    }
+
+    func beginProgressWrite() -> () -> Void {
+        lock.lock()
+        let id = UUID()
+        writes.insert(id)
+        if suspended { resumeDatabase(); suspended = false }
+        lock.unlock()
+        return { [weak self] in
+            guard let self else { return }
+            self.lock.lock()
+            defer { self.lock.unlock() }
+            self.writes.remove(id)
+            self.suspendIfIdle()
+        }
+    }
+
+    private func suspendIfIdle() {
+        guard backgroundRequested, writes.isEmpty, !suspended else { return }
         suspendDatabase()
         suspended = true
     }
@@ -50,6 +72,7 @@ final class DatabaseLifecycleCoordinator: NSObject {
     private func willEnterForeground() {
         lock.lock()
         defer { lock.unlock() }
+        backgroundRequested = false
         guard suspended else { return }
         resumeDatabase()
         suspended = false

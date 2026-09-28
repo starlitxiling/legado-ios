@@ -247,6 +247,11 @@ struct ReaderView: View {
         .sheet(isPresented: $showsHighlights) { highlightsPanel }
         .sheet(isPresented: $showsReviews) { ReaderReviewView(model: model) }
         .task(id: destination) {
+            model.protectProgressWrite = { [lifecycle = container.databaseLifecycle] in
+                let background = ReaderProgressBackgroundTask()
+                let finish = lifecycle.beginProgressWrite()
+                return { finish(); background.end() }
+            }
             ReaderFonts.registerInstalled()
             device.begin(behavior); keyboardFocused = true
             UIDevice.current.isBatteryMonitoringEnabled = true
@@ -287,7 +292,7 @@ struct ReaderView: View {
             if let event = notification.object as? String { Task { await model.refreshFromScript(event) } }
         }
         .onChange(of: scenePhase) { _, phase in
-            if phase != .active { autoRead.stop(); Task { await model.saveProgress() } }
+            if phase != .active { autoRead.stop(); _ = model.saveProgressForBackground() }
         }
         .onChange(of: model.chapterIndex) { _, chapter in
             Task { await model.refreshHighlights() }

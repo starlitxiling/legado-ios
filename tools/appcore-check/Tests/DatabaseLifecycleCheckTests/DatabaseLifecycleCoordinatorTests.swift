@@ -3,6 +3,28 @@ import XCTest
 @testable import DatabaseLifecycleCheck
 
 final class DatabaseLifecycleCoordinatorTests: XCTestCase {
+    func testBackgroundWaitsForAllWritesAndForegroundCancelsPendingSuspension() {
+        let center = NotificationCenter()
+        var suspended = 0
+        let coordinator = DatabaseLifecycleCoordinator(notificationCenter: center, suspend: { suspended += 1 }, resume: {})
+        let background = Notification.Name("test.background"), foreground = Notification.Name("test.foreground")
+        coordinator.observe(background: background, foreground: foreground)
+        let first = coordinator.beginProgressWrite(), second = coordinator.beginProgressWrite()
+        center.post(name: background, object: nil)
+        XCTAssertEqual(suspended, 0)
+        first(); first()
+        XCTAssertEqual(suspended, 0)
+        second()
+        XCTAssertEqual(suspended, 1)
+        center.post(name: foreground, object: nil)
+        let finish = coordinator.beginProgressWrite()
+        center.post(name: background, object: nil)
+        center.post(name: foreground, object: nil)
+        finish()
+        XCTAssertEqual(suspended, 1)
+        XCTAssertFalse(coordinator.isSuspended)
+    }
+
     func testResumesSynchronouslyBeforeRefreshAndDeduplicatesTransitions() {
         let center = NotificationCenter()
         let background = Notification.Name("test.background")

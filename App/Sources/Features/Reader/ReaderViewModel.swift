@@ -95,7 +95,8 @@ final class ReaderViewModel {
     private var synchronizingWebDav = false
     private var webDavWaiters: [CheckedContinuation<Void, Never>] = []
     private var saveTask: Task<Void, Never>?
-    @ObservationIgnored private var progressSaveTask: Task<Void, Never>?
+    @ObservationIgnored private(set) var progressSaveTask: Task<Void, Never>?
+    @ObservationIgnored var protectProgressWrite: () -> (() -> Void) = { {} }
     private let waitForProgressSave: @Sendable () async throws -> Void
     private var failedRequest: ChapterRequest?
     private var loadDestination: ReaderDestination?
@@ -506,7 +507,17 @@ final class ReaderViewModel {
         }
     }
 
+    func saveProgressForBackground() -> Task<Void, Never> {
+        let finish = protectProgressWrite()
+        return Task { [weak self] in
+            defer { finish() }
+            await self?.saveProgress()
+        }
+    }
+
     func saveProgress() async {
+        let finish = protectProgressWrite()
+        defer { finish() }
         progressSaveTask?.cancel(); progressSaveTask = nil
         guard let book, pagination != nil, !isPlaceholder else { return }
         let index = chapterIndex, offset = characterOffset, title = chapterTitle, time = now()
