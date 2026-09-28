@@ -20,15 +20,15 @@ struct SearchResultRow: View {
                 }
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 5) {
-                    Text(book.name ?? "未命名书籍").font(.system(size: 16)).lineLimit(1).foregroundStyle(colors.textPrimary)
-                    Text(String(sourceCount)).font(.system(size: 10)).padding(.horizontal, 4).padding(.vertical, 1)
+                    Text(book.name ?? "未命名书籍").font(.body).lineLimit(1).foregroundStyle(colors.textPrimary)
+                    Text(String(sourceCount)).font(.caption2).padding(.horizontal, 4).padding(.vertical, 1)
                         .background(colors.accent.opacity(0.12), in: Capsule()).foregroundStyle(colors.accent)
                         .accessibilityLabel("\(sourceCount) 个来源")
                 }
-                Text(book.author ?? "未知作者").font(.system(size: 12)).lineLimit(1)
+                Text(book.author ?? "未知作者").font(.caption).lineLimit(1)
                 if let kind = book.kind, !kind.isEmpty { LabelsBar(labels: kind.components(separatedBy: CharacterSet(charactersIn: ",，\n")).filter { !$0.isEmpty }) }
-                if let chapter = book.latestChapterTitle, !chapter.isEmpty { Text("最新：" + chapter).font(.system(size: 12)).lineLimit(1) }
-                if let intro = book.intro, !intro.isEmpty { Text(intro).font(.system(size: 12)).lineLimit(3) }
+                if let chapter = book.latestChapterTitle, !chapter.isEmpty { Text("最新：" + chapter).font(.caption).lineLimit(1) }
+                if let intro = book.intro, !intro.isEmpty { Text(intro).font(.caption).lineLimit(3) }
             }.frame(maxWidth: .infinity, alignment: .leading).foregroundStyle(colors.textSecondary)
         }.padding(8).contentShape(Rectangle())
     }

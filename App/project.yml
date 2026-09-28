@@ -39,6 +39,7 @@ targets:
         CFBundleDevelopmentRegion: zh-Hans
         CFBundleLocalizations: [zh-Hans, en]
         CFBundleDisplayName: 阅读
+        NSLocalNetworkUsageDescription: 开启 Web 服务后，允许同一局域网的设备访问书架和导入书籍。
         NSCameraUsageDescription: 扫描书源二维码以导入书源
         CFBundleURLTypes:
           - CFBundleURLName: Legado Import

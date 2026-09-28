@@ -2,6 +2,24 @@ import XCTest
 
 final class BookshelfLayoutUITests: XCTestCase {
     @MainActor
+    func testBookshelfRowsGrowWithAccessibilityTextSize() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryL"]
+        app.launch()
+        let book = app.buttons["bookshelf.book.fixture:book:0"]
+        XCTAssertTrue(book.waitForExistence(timeout: 15))
+        let normalHeight = book.frame.height
+        app.terminate()
+        app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(book.waitForExistence(timeout: 15))
+        XCTAssertGreaterThan(book.frame.height, normalHeight * 1.3)
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "c3-bookshelf-accessibility"; attachment.lifetime = .keepAlways; add(attachment)
+    }
+
+    @MainActor
     func testChapterRefreshShowsProgressAndCanStopAndRestart() {
         continueAfterFailure = false
         let app = XCUIApplication()

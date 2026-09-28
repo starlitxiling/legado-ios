@@ -43,7 +43,7 @@ struct SourcesView: View {
             if showsStatus {
                 Picker("校验状态", selection: $model.statusFilter) {
                     ForEach(SourceStatusFilter.allCases) { Text($0.rawValue).tag($0) }
-                }.pickerStyle(.segmented).padding(.horizontal, 12).frame(height: 48)
+                }.pickerStyle(.segmented).padding(.horizontal, 12).frame(minHeight: 48)
             }
             List {
                 if let error = model.errorMessage, importEntry == nil {
@@ -191,10 +191,10 @@ struct SourcesView: View {
             }
             VStack(alignment: .leading, spacing: 4) {
                 HStack(spacing: 4) {
-                    Text(source.bookSourceName.isEmpty ? "未命名书源" : source.bookSourceName).font(.system(size: 16)).lineLimit(1)
-                    if !(source.mainJs ?? "").isEmpty { Text("JS").font(.system(size: 10)).foregroundStyle(colors.accent) }
+                    Text(source.bookSourceName.isEmpty ? "未命名书源" : source.bookSourceName).font(.body).lineLimit(2)
+                    if !(source.mainJs ?? "").isEmpty { Text("JS").font(.caption2).foregroundStyle(colors.accent) }
                 }
-                Text("书架使用 \(model.metadata[source.bookSourceUrl]?.usageCount ?? 0)").font(.system(size: 12)).foregroundStyle(colors.textSecondary)
+                Text("书架使用 \(model.metadata[source.bookSourceUrl]?.usageCount ?? 0)").font(.caption).foregroundStyle(colors.textSecondary)
             }.frame(maxWidth: .infinity, alignment: .leading)
             Toggle("启用 " + source.bookSourceName, isOn: Binding(get: { source.enabled }, set: { enabled in Task { await model.setEnabled(source, enabled: enabled) } }))
                 .labelsHidden().scaleEffect(0.8).fixedSize()

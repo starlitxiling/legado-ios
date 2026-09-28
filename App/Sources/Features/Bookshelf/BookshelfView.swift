@@ -55,11 +55,11 @@ struct BookshelfView: View {
                 if !folderStyle { groupTabs }
                 if selecting { selectionActions }
                 shelfHeader
-                if let actionError { Text(actionError).foregroundStyle(themeColors.error).font(.system(size: 13)).accessibilityIdentifier("bookshelf.actionError") }
+                if let actionError { Text(actionError).foregroundStyle(themeColors.error).font(.footnote).accessibilityIdentifier("bookshelf.actionError") }
                 if let report = container.downloads.refreshReport, !report.failures.isEmpty {
                     Button("已更新 \(report.updated.count) 本，\(report.failures.count) 本失败") { showingRefreshReport = true }
                         .accessibilityIdentifier("bookshelf.refreshReport")
-                        .font(.system(size: 13)).foregroundStyle(themeColors.textSecondary)
+                        .font(.footnote).foregroundStyle(themeColors.textSecondary)
                 }
                 if model.isLoading && model.books.isEmpty && !folderRoot {
                     LoadingView()
@@ -323,7 +323,7 @@ struct BookshelfView: View {
         ScrollView(.horizontal, showsIndicators: false) {
             HStack(spacing: 20) {
                 ForEach(model.groups, id: \.groupId) { group in
-                    Text(group.groupName).font(.system(size: 14))
+                    Text(group.groupName).font(.subheadline)
                         .foregroundStyle(group.groupId == model.selectedGroupID ? themeColors.accent : themeColors.textSecondary)
                         .padding(.vertical, 12)
                         .overlay(alignment: .bottom) {
@@ -347,12 +347,12 @@ struct BookshelfView: View {
     @ViewBuilder private var shelfHeader: some View {
         if preferences.boolean("showBookshelfRecentReading"), let recent = model.recentBook {
             Button { open(recent) } label: {
-                Label("最近阅读：" + recent.name, systemImage: "clock.arrow.circlepath").font(.system(size: 13)).lineLimit(1)
+                Label("最近阅读：" + recent.name, systemImage: "clock.arrow.circlepath").font(.footnote).lineLimit(1)
             }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16).padding(.vertical, 6)
         }
         if preferences.boolean("showBookshelfStats") {
             Text("共 \(model.shelfBookCount) 本，在读 \(model.readingCount) 本")
-                .font(.system(size: 13)).foregroundStyle(themeColors.textSecondary)
+                .font(.footnote).foregroundStyle(themeColors.textSecondary)
                 .frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 16)
         }
         if container.downloads.isRefreshing {

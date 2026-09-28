@@ -91,7 +91,7 @@ struct ReaderTocView: View {
                         } label: {
                             HStack {
                                 VStack(alignment: .leading, spacing: 4) {
-                                    Text(item.title).font(.system(size: 15)).multilineTextAlignment(.leading)
+                                    Text(item.title).font(.body).multilineTextAlignment(.leading)
                                     if let count = model.chapters.first(where: { $0.index == item.chapterIndex })?.wordCount, !count.isEmpty {
                                         Text("\(count) 字").font(.caption)
                                     }

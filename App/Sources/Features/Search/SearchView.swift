@@ -102,7 +102,7 @@ struct SearchView: View {
             VStack(alignment: .trailing, spacing: 8) {
                 if model.hasSearched {
                     Text("已搜 \(model.completedSources) / \(model.totalSources)")
-                        .font(.system(size: 12)).padding(.horizontal, 10).padding(.vertical, 6)
+                        .font(.caption).padding(.horizontal, 10).padding(.vertical, 6)
                         .background(colors.card, in: Capsule())
                         .accessibilityIdentifier("search.progress")
                 }
@@ -163,8 +163,8 @@ struct SearchView: View {
     private var inputHelp: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text("书架").font(.system(size: 14, weight: .medium))
-                if model.matchingShelf.isEmpty { Text("没有匹配的书架书籍").font(.system(size: 12)).foregroundStyle(colors.textSecondary) }
+                Text("书架").font(.subheadline.weight(.medium))
+                if model.matchingShelf.isEmpty { Text("没有匹配的书架书籍").font(.caption).foregroundStyle(colors.textSecondary) }
                 LabelFlowLayout {
                     ForEach(model.matchingShelf, id: \.bookUrl) { book in
                         NavigationLink { BookDetailView(book: book, container: container, onRead: onRead) } label: { capsule(book.name) }
@@ -172,9 +172,9 @@ struct SearchView: View {
                     }
                 }
                 HStack {
-                    Text("搜索历史").font(.system(size: 14, weight: .medium))
+                    Text("搜索历史").font(.subheadline.weight(.medium))
                     Spacer()
-                    Button("清空") { Task { await model.clearHistory() } }.font(.system(size: 12)).disabled(model.history.isEmpty)
+                    Button("清空") { Task { await model.clearHistory() } }.font(.caption).disabled(model.history.isEmpty)
                         .accessibilityIdentifier("search.history.clear")
                 }
                 LabelFlowLayout {
@@ -193,13 +193,13 @@ struct SearchView: View {
                             .accessibilityIdentifier("search.history." + keyword.word)
                     }
                 }
-                Text(model.scope.display).font(.system(size: 12)).foregroundStyle(colors.textSecondary)
+                Text(model.scope.display).font(.caption).foregroundStyle(colors.textSecondary)
             }.padding(16).padding(.bottom, 80).frame(maxWidth: .infinity, alignment: .leading)
         }.scrollDismissesKeyboard(.interactively)
     }
 
     private func capsule(_ text: String) -> some View {
-        Text(text).font(.system(size: 13)).lineLimit(1).foregroundStyle(colors.textPrimary)
+        Text(text).font(.footnote).lineLimit(1).foregroundStyle(colors.textPrimary)
             .padding(.horizontal, 12).padding(.vertical, 7).background(colors.card, in: Capsule())
             .overlay { Capsule().stroke(colors.divider, lineWidth: 0.5) }
     }

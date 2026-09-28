@@ -3,6 +3,7 @@ import SwiftUI
 struct RootTabView: View {
     let container: AppContainer
     @Environment(\.scenePhase) private var scenePhase
+    @State private var autoTaskLoop = ForegroundAutoTaskLoop()
     @State private var restoreRevision = 0
     @State private var exploreRevision = 0
     @State private var preferences = AppPreferences.shared
@@ -61,13 +62,17 @@ struct RootTabView: View {
         .onChange(of: preferences.boolean("showRss")) { _, enabled in
             if !enabled, selectedPage == "rss" { selectedPage = "bookshelf" }
         }
-        .task {
-            while !Task.isCancelled {
-                if scenePhase == .active && preferences.boolean("autoTaskService") { await container.autoTasks.runDue() }
-                do { try await Task.sleep(for: .seconds(60)) } catch { return }
-            }
-        }
+        .onChange(of: scenePhase, initial: true) { _, _ in updateAutoTasks() }
+        .onChange(of: preferences.boolean("autoTaskService")) { _, _ in updateAutoTasks() }
+        .onAppear { updateAutoTasks() }
+        .onDisappear { autoTaskLoop.update(active: false, enabled: false) {} }
         .modifier(AppThemeModifier(preferences: preferences))
+    }
+
+    private func updateAutoTasks() {
+        autoTaskLoop.update(active: scenePhase == .active, enabled: preferences.boolean("autoTaskService")) {
+            await container.autoTasks.runDue()
+        }
     }
 
     private var tabObserver: some View { MainTabObserver(pages: pages) }

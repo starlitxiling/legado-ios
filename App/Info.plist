@@ -165,6 +165,8 @@
 	</dict>
 	<key>NSCameraUsageDescription</key>
 	<string>扫描书源二维码以导入书源</string>
+	<key>NSLocalNetworkUsageDescription</key>
+	<string>开启 Web 服务后，允许同一局域网的设备访问书架和导入书籍。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

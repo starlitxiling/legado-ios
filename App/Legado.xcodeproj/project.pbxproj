@@ -138,6 +138,7 @@
 		82635D11A178F769C9A4AA9C /* ReaderBehaviorConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF3BF2CCC414AD5AAF100DDE /* ReaderBehaviorConfiguration.swift */; };
 		83CA6E8F3F0E91620BFC037F /* PreferenceControls.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6B914B945187D3F5411CD39 /* PreferenceControls.swift */; };
 		846C3D33D0BBC02AA680AEA5 /* SourceLoginViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 68F04E35B6E53CD2F099F9D8 /* SourceLoginViewModel.swift */; };
+		86C282ED435A3915F7ED6F7D /* ForegroundAutoTaskLoop.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF2F54439743A442D53A5FBB /* ForegroundAutoTaskLoop.swift */; };
 		878C24EBA2A3D80685CA86BD /* KeychainStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C10F5A6F17AA39BC034C9A64 /* KeychainStore.swift */; };
 		886F3E1529EAE75A52D5A47C /* LocalImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9815FAB80DBA20B0D697A9A /* LocalImportView.swift */; };
 		88FAE02D79BCACEDDA8F48BA /* BookshelfBookListExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 318D2A10C7816A82DA643B49 /* BookshelfBookListExportView.swift */; };
@@ -429,6 +430,7 @@
 		AD5418C752C2620CD95B9D09 /* ScriptHostConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScriptHostConfiguration.swift; sourceTree = "<group>"; };
 		AE9CB32ADFE13F145950AC13 /* zh-Hans.lproj */ = {isa = PBXFileReference; path = "zh-Hans.lproj"; sourceTree = "<group>"; };
 		AEF559BFD22FB1622CC39901 /* BookInfoEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookInfoEditView.swift; sourceTree = "<group>"; };
+		AF2F54439743A442D53A5FBB /* ForegroundAutoTaskLoop.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ForegroundAutoTaskLoop.swift; sourceTree = "<group>"; };
 		AF3BF2CCC414AD5AAF100DDE /* ReaderBehaviorConfiguration.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderBehaviorConfiguration.swift; sourceTree = "<group>"; };
 		AF7C5D642D27AE41B6DCC81D /* AddBookURLView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddBookURLView.swift; sourceTree = "<group>"; };
 		B0668024C7DA95501BFBD8A4 /* ReadAloudPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadAloudPreferences.swift; sourceTree = "<group>"; };
@@ -549,6 +551,7 @@
 				A43BCC679B9D6EECDA5FDB28 /* CoverResourcePicker.swift */,
 				577164D21AA1B7BC58103529 /* CoverRuleSettingsModel.swift */,
 				1B0C9DFFEC925051B7F78DCD /* CoverTypography.swift */,
+				AF2F54439743A442D53A5FBB /* ForegroundAutoTaskLoop.swift */,
 				EC19FAD2565291B1F98C7ABB /* GeneralSettingsView.swift */,
 				675BDD0F673B5986063F73BD /* LauncherIconModel.swift */,
 				F683FB20D9BC40BE8E34AA8C /* LauncherIconSettingsView.swift */,
@@ -1355,6 +1358,7 @@
 				A0217C69637EC2F8678060C4 /* ExploreView.swift in Sources */,
 				FF7FEA8BBED08517040732E0 /* ExploreViewModel.swift in Sources */,
 				7E5AB4F7B633EDE0CA88EF6F /* FontPicker.swift in Sources */,
+				86C282ED435A3915F7ED6F7D /* ForegroundAutoTaskLoop.swift in Sources */,
 				D3AAACECB7E126A977779B3A /* FormLoginView.swift in Sources */,
 				B31B97BE78B4BBF22BBBD6BA /* GeneralSettingsView.swift in Sources */,
 				9E961900E78D833CBFFFE448 /* GroupEditView.swift in Sources */,

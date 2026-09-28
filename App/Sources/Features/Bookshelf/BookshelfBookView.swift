@@ -7,6 +7,7 @@ struct BookshelfBookView: View {
     let preferences: AppPreferences
     let loading: Bool
     @Environment(\.themeColors) private var colors
+    @ScaledMetric(relativeTo: .footnote) private var detailIconWidth = 18.0
 
     private var entity: Book? { try? DiscoveryStorage.book(book) }
     private var metrics: BookshelfBookMetrics {
@@ -19,7 +20,7 @@ struct BookshelfBookView: View {
                 VStack(spacing: 5) {
                     cover.aspectRatio(3.0 / 4.0, contentMode: .fit)
                     if preferences.integer("showBooknameLayout") == 0 {
-                        Text(title).font(.system(size: 12)).lineLimit(2).multilineTextAlignment(.center)
+                        Text(title).font(.caption).lineLimit(2).multilineTextAlignment(.center)
                             .frame(maxWidth: .infinity, minHeight: 30, alignment: .top)
                     }
                 }
@@ -27,13 +28,13 @@ struct BookshelfBookView: View {
                 HStack(spacing: 10) {
                     cover.frame(width: layout.coverWidth, height: layout.coverHeight)
                     VStack(alignment: .leading, spacing: layout == .compact ? 2 : 4) {
-                        Text(title).font(.system(size: 16)).foregroundStyle(colors.textPrimary).lineLimit(1)
+                        Text(title).font(.body).foregroundStyle(colors.textPrimary).lineLimit(2)
                         detail(book.author.isEmpty ? "未知作者" : book.author, icon: "person")
                         detail("最近：" + (book.durChapterTitle ?? ""), icon: "clock.arrow.circlepath")
                         detail("最新：" + (book.latestChapterTitle ?? ""), icon: "text.badge.checkmark")
                         if preferences.boolean("showLastUpdateTime"), book.lastCheckTime > 0 {
                             Text(Date(timeIntervalSince1970: Double(book.lastCheckTime) / 1000), format: .dateTime.month().day().hour().minute())
-                                .font(.system(size: 13)).foregroundStyle(colors.textSecondary)
+                                .font(.footnote).foregroundStyle(colors.textSecondary)
                         }
                     }
                     Spacer(minLength: 0)
@@ -50,8 +51,8 @@ struct BookshelfBookView: View {
     private var title: String { book.name.isEmpty ? "未命名书籍" : book.name }
     private func detail(_ text: String, icon: String) -> some View {
         HStack(spacing: 3) {
-            Image(systemName: icon).font(.system(size: 13)).frame(width: 18)
-            Text(text).font(.system(size: 13)).lineLimit(1)
+            Image(systemName: icon).font(.footnote).frame(width: detailIconWidth)
+            Text(text).font(.footnote).lineLimit(1)
         }.foregroundStyle(colors.textSecondary)
     }
     private var cover: some View {
@@ -60,7 +61,7 @@ struct BookshelfBookView: View {
                 .frame(width: geometry.size.width, height: geometry.size.height)
                 .overlay(alignment: .topTrailing) {
                     if preferences.boolean("showUnread"), metrics.unread > 0 {
-                        Text(String(metrics.unread)).font(.system(size: 10)).foregroundStyle(.white)
+                        Text(String(metrics.unread)).font(.caption2).foregroundStyle(.white)
                             .padding(.horizontal, 4).padding(.vertical, 2)
                             .background(colors.error, in: RoundedRectangle(cornerRadius: 3)).padding(2)
                     }
@@ -92,15 +93,15 @@ struct BookshelfFolderView: View {
             if layout.columns != nil {
                 VStack(spacing: 5) {
                     cover.aspectRatio(3.0 / 4.0, contentMode: .fit)
-                    Text(group.groupName).font(.system(size: 12)).lineLimit(2)
+                    Text(group.groupName).font(.caption).lineLimit(2)
                         .frame(maxWidth: .infinity, minHeight: 30, alignment: .top)
                 }
             } else {
                 HStack(spacing: 10) {
                     cover.frame(width: layout.coverWidth, height: layout.coverHeight)
                     VStack(alignment: .leading, spacing: 5) {
-                        Text(group.groupName).font(.system(size: 16))
-                        Text("\(count) 本").font(.system(size: 13)).foregroundStyle(colors.textSecondary)
+                        Text(group.groupName).font(.body)
+                        Text("\(count) 本").font(.footnote).foregroundStyle(colors.textSecondary)
                     }
                     Spacer()
                     Image(systemName: "chevron.right").foregroundStyle(colors.textSecondary)

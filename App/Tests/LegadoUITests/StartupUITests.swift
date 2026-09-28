@@ -2,6 +2,28 @@ import XCTest
 
 final class StartupUITests: XCTestCase {
     @MainActor
+    func testLabeledTabsAndSettingsRemainUsableAfterForegrounding() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-autoTaskService", "NO", "-syncBookProgress", "NO", "-auto_refresh", "NO", "-defaultToRead", "NO",
+            "-showDiscovery", "YES", "-showRss", "YES", "-defaultHomePage", "bookshelf", "-UIPreferredContentSizeCategoryName", "UICTContentSizeCategoryAccessibilityXXXL"]
+        app.launch()
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
+        for title in ["书架", "发现", "订阅", "我的"] { XCTAssertTrue(app.tabBars.buttons[title].exists) }
+        app.tabBars.buttons["我的"].tap()
+        XCTAssertTrue(app.staticTexts["书源管理"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["MCP 服务"].exists)
+        XCTAssertFalse(app.staticTexts["本轮暂不启用"].exists)
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(app.staticTexts["书源管理"].waitForExistence(timeout: 5))
+        app.staticTexts["书源管理"].tap()
+        XCTAssertTrue(app.navigationBars["书源"].waitForExistence(timeout: 5))
+        let attachment = XCTAttachment(screenshot: app.screenshot())
+        attachment.name = "c3-tabs-accessibility"; attachment.lifetime = .keepAlways; add(attachment)
+    }
+
+    @MainActor
     func testColdLaunchReachesInteractiveBookshelf() {
         continueAfterFailure = false
         let app = XCUIApplication()

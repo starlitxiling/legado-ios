@@ -47,7 +47,6 @@ struct SettingsView: View {
                         if enabled { container.webService.start() } else { container.webService.stop() }
                     })).labelsHidden()
                 }
-                Toggle(isOn: .constant(false)) { row("MCP 服务", "本轮暂不启用", "globe") }.disabled(true)
             }
             Section("设置") {
                 NavigationLink { BackupView(container: container, settings: model, model: $backupModel) } label: { row("备份与恢复", "WebDAV 与本地备份", "externaldrive") }
@@ -74,8 +73,8 @@ struct SettingsView: View {
         HStack(spacing: 16) {
             Image(systemName: icon).font(.system(size: 24)).frame(width: 24).foregroundStyle(.primary)
             VStack(alignment: .leading, spacing: 4) {
-                Text(title).font(.system(size: 16)).foregroundStyle(.primary)
-                if !subtitle.isEmpty { Text(subtitle).font(.system(size: 12)).foregroundStyle(.secondary) }
+                Text(title).font(.body).foregroundStyle(.primary)
+                if !subtitle.isEmpty { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
             }
         }.padding(.vertical, 5)
     }
