@@ -223,10 +223,12 @@ struct ReaderView: View {
             let settings = model.settings
             paperColor = ReaderPaperColor.resolve(settings: settings)
             do {
-                let color = try await ReaderPaperColor.load(settings: settings,
-                    directory: URL.applicationSupportDirectory.appendingPathComponent("Legado/bg", isDirectory: true))
-                try Task.checkCancellation()
-                paperColor = color
+                if let url = try settings.backgroundImageURL(directory: URL.applicationSupportDirectory.appendingPathComponent("Legado/bg", isDirectory: true)) {
+                    let image = try await ReaderBackgroundImageStore.shared.image(at: url,
+                        maximumPixelSize: ReaderBackgroundImageStore.screenPixelSize)
+                    try Task.checkCancellation()
+                    paperColor = ReaderPaperColor.resolve(settings: settings, image: image.cgImage)
+                }
             } catch is CancellationError {} catch { AppLogStore.shared.append("Paper background: \(String(reflecting: error))") }
         }
         .preference(key: ReaderStatusIconPreference.self, value: statusStyleActive ? model.settings.darkStatusIcons : nil)

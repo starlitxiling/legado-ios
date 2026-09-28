@@ -163,6 +163,7 @@
 		9CA3B9B71ED456FA37D169EA /* LegadoIcon.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D522B1D2093CDEF5C7C9889 /* LegadoIcon.swift */; };
 		9E961900E78D833CBFFFE448 /* GroupEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A08B29F1FA940865E32A7EE /* GroupEditView.swift */; };
 		9EFF5E8AFA54085BE09E3029 /* launcher3@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = C06C0694A57DBAD198EC52C6 /* launcher3@2x.png */; };
+		9FB3BCCC25A54BFBA1CAFB93 /* ReaderBackgroundImageTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FFF708EE725437C50F8F90AE /* ReaderBackgroundImageTests.swift */; };
 		A018C46175B0EABDFEC2D3BA /* RemoteImageViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E0BA6DDF0F4B43869399CB1 /* RemoteImageViewModel.swift */; };
 		A0217C69637EC2F8678060C4 /* ExploreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C00465AFD691EFD294F021F /* ExploreView.swift */; };
 		A0597DFF51C2E00C884D6606 /* SearchResultRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421A284FADEC6EB783743902 /* SearchResultRow.swift */; };
@@ -172,6 +173,7 @@
 		A21F0CD61CF2F0CF4847E082 /* BookshelfViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E60A074AD55EACB85FDC970B /* BookshelfViewModel.swift */; };
 		A27AA8BDF6A6A27595D26D20 /* LegadoCore in Frameworks */ = {isa = PBXBuildFile; productRef = 61383F5B2BD936641009B1A2 /* LegadoCore */; };
 		A727427A7A952316D523E96A /* ScrollPageContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF420124BA36354241C1EDDE /* ScrollPageContainer.swift */; };
+		A77082A5DC63AA3334BC872F /* ReaderBackgroundImageStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = D2E7EF1DBA6E9DB626AA349E /* ReaderBackgroundImageStore.swift */; };
 		A7E52C1C67E7CB2090FC9185 /* OpenSourceLicense.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2D0C6BD50309E9EA91974D3 /* OpenSourceLicense.swift */; };
 		A947020F907CC0561467CE3F /* BackupView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B003960B446F9A3DA84970C /* BackupView.swift */; };
 		AC2F70B320E9A01F7F20E78C /* SettingsGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E297FCCDDD67EFD63F04A0D5 /* SettingsGalleryView.swift */; };
@@ -475,6 +477,7 @@
 		D07E343502629D20DF4266CC /* BrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowserView.swift; sourceTree = "<group>"; };
 		D171472BA4EA993F45987A31 /* ReaderHighlightRulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderHighlightRulesView.swift; sourceTree = "<group>"; };
 		D2E6D85E7979295FD033903F /* DownloadCenterModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadCenterModel.swift; sourceTree = "<group>"; };
+		D2E7EF1DBA6E9DB626AA349E /* ReaderBackgroundImageStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderBackgroundImageStore.swift; sourceTree = "<group>"; };
 		D3707EF37DA2D8F3EC034150 /* BookSourceEditView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookSourceEditView.swift; sourceTree = "<group>"; };
 		D4301C1CE473D0F78D26E4B0 /* MediaBookLibrary.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MediaBookLibrary.swift; sourceTree = "<group>"; };
 		D606638D55F0402D1B18B54A /* BookshelfView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookshelfView.swift; sourceTree = "<group>"; };
@@ -518,6 +521,7 @@
 		FEF361CF2798D9C08D69ED2C /* SlidePageTransition.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SlidePageTransition.swift; sourceTree = "<group>"; };
 		FFA338E574538E0C703AD0D7 /* ErrorBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorBanner.swift; sourceTree = "<group>"; };
 		FFD2FAC9603144455ED2E168 /* ThemeEnvironmentModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeEnvironmentModifier.swift; sourceTree = "<group>"; };
+		FFF708EE725437C50F8F90AE /* ReaderBackgroundImageTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderBackgroundImageTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -825,6 +829,7 @@
 				B2033C42C23EE40D313F06E9 /* BookshelfViewModelTests.swift */,
 				82A1DD950CA037760684AB64 /* ComponentIconTests.swift */,
 				D9FEFBF08FC95E4685444BFB /* MainTabObserverTests.swift */,
+				FFF708EE725437C50F8F90AE /* ReaderBackgroundImageTests.swift */,
 				4F804F2FE240D7F24CA0F751 /* ReaderScrollContainerTests.swift */,
 				0D6C00C28C2894CA2B4A6B95 /* SourceRegressionTests.swift */,
 			);
@@ -867,6 +872,7 @@
 				3CDB26B1B1AD8834D2553CE2 /* BookmarkListView.swift */,
 				05708E47DF0F0D8F7E94FDF3 /* Paginator.swift */,
 				7FDF9DA9E9B9DCD1F7251B50 /* ReaderAdvancedLogic.swift */,
+				D2E7EF1DBA6E9DB626AA349E /* ReaderBackgroundImageStore.swift */,
 				AF3BF2CCC414AD5AAF100DDE /* ReaderBehaviorConfiguration.swift */,
 				8033CF52AFA5C4E71B10F760 /* ReaderBehaviorPanel.swift */,
 				366D60FB81B1F0FC7CEED2A6 /* ReaderChapterCache.swift */,
@@ -1285,6 +1291,7 @@
 				97B1570EDCE52C33C44BE843 /* BookshelfViewModelTests.swift in Sources */,
 				6A7B8FCCD9F20B98225B871C /* ComponentIconTests.swift in Sources */,
 				CA5A68DB5D2B856F8CD8CE43 /* MainTabObserverTests.swift in Sources */,
+				9FB3BCCC25A54BFBA1CAFB93 /* ReaderBackgroundImageTests.swift in Sources */,
 				B06B68530EACC46BC54C4035 /* ReaderScrollContainerTests.swift in Sources */,
 				7E8792D1486514D04BA97F86 /* SourceRegressionTests.swift in Sources */,
 			);
@@ -1402,6 +1409,7 @@
 				7BBA7E9B5B3EF03E244C87DD /* ReadAloudPreferences.swift in Sources */,
 				C1114F5AE3A60F533AA1D0B7 /* ReadAloudSessionTasks.swift in Sources */,
 				907BEC56385D35DE0A5E49E6 /* ReaderAdvancedLogic.swift in Sources */,
+				A77082A5DC63AA3334BC872F /* ReaderBackgroundImageStore.swift in Sources */,
 				82635D11A178F769C9A4AA9C /* ReaderBehaviorConfiguration.swift in Sources */,
 				789C4342822F0E784262F3CD /* ReaderBehaviorPanel.swift in Sources */,
 				4A5CDBDE1960912049ECAC27 /* ReaderChapterCache.swift in Sources */,

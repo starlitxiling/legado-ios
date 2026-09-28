@@ -69,6 +69,7 @@ struct ReaderInfoView: View {
 
 struct ReaderBackgroundView: View {
     let settings: ReaderSettings
+    var maximumPixelSize: Int? = nil
     @State private var image: UIImage?
     @State private var loadError: String?
     private var value: String { settings.backgroundValue }
@@ -93,8 +94,8 @@ struct ReaderBackgroundView: View {
             let root = URL.applicationSupportDirectory.appendingPathComponent("Legado/bg", isDirectory: true)
             do {
                 guard let url = try settings.backgroundImageURL(directory: root) else { return }
-                let data = try await Task.detached { try Data(contentsOf: url) }.value
-                guard let loaded = UIImage(data: data) else { throw CocoaError(.fileReadCorruptFile) }
+                let loaded = try await ReaderBackgroundImageStore.shared.image(at: url,
+                    maximumPixelSize: maximumPixelSize ?? ReaderBackgroundImageStore.screenPixelSize)
                 try Task.checkCancellation()
                 image = loaded
             } catch is CancellationError {

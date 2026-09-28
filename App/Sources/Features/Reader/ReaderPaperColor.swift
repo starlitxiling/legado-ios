@@ -1,6 +1,5 @@
 import CoreGraphics
 import Foundation
-import ImageIO
 
 enum ReaderPaperColor {
     static func resolve(settings: ReaderSettings, image: CGImage? = nil) -> ARGBColor {
@@ -27,14 +26,4 @@ enum ReaderPaperColor {
         return ARGBColor(0xFF000000 | channels[0] << 16 | channels[1] << 8 | channels[2])
     }
 
-    static func load(settings: ReaderSettings, directory: URL) async throws -> ARGBColor {
-        guard let url = try settings.backgroundImageURL(directory: directory) else { return resolve(settings: settings) }
-        return try await Task.detached {
-            guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
-                  let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
-                    kCGImageSourceCreateThumbnailFromImageAlways: true, kCGImageSourceCreateThumbnailWithTransform: true,
-                    kCGImageSourceThumbnailMaxPixelSize: 64] as CFDictionary) else { throw CocoaError(.fileReadCorruptFile) }
-            return resolve(settings: settings, image: image)
-        }.value
-    }
 }

@@ -192,7 +192,7 @@ struct ReaderInterfacePanel: View {
                         } label: {
                             VStack {
                                 let preview = builtinSettings(name)
-                                ReaderBackgroundView(settings: preview).frame(height: 110).clipShape(RoundedRectangle(cornerRadius: 6))
+                                ReaderBackgroundView(settings: preview, maximumPixelSize: 512).frame(height: 110).clipShape(RoundedRectangle(cornerRadius: 6))
                                     .overlay(RoundedRectangle(cornerRadius: 6).stroke(draft.backgroundType == 1 && draft.backgroundValue == name ? Color.accentColor : .clear, lineWidth: 3))
                                 Text((name as NSString).deletingPathExtension).font(.caption).lineLimit(1)
                             }
@@ -212,9 +212,10 @@ struct ReaderInterfacePanel: View {
     }
 
     private func installBackground(_ data: Data) async throws {
-        guard data.count <= 30 * 1024 * 1024, let image = UIImage(data: data), let jpeg = image.jpegData(compressionQuality: 0.9) else {
-            throw CocoaError(.fileReadCorruptFile)
-        }
+        let maximumPixelSize = ReaderBackgroundImageStore.screenPixelSize
+        let jpeg = try await Task.detached {
+            try ReaderBackgroundImageStore.importedJPEG(data, maximumPixelSize: maximumPixelSize)
+        }.value
         let folder = URL.applicationSupportDirectory.appendingPathComponent("Legado/bg", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let name = UUID().uuidString + ".jpg"

@@ -47,9 +47,13 @@ ReaderStyleStore.swift 的路径前缀为 App/Sources/Features/Reader/。`Reader
 `App/Sources/App/DatabaseLifecycleCoordinator.swift:52` 等所有进度写入释放后挂起；`App/Sources/Features/Reader/ReaderViewModel.swift:510` 后台保存先同步持有保护再排队；`ReaderView.swift:255` 接入 UIKit 后台任务；`ReaderDeviceController.swift` 保证任务结束释放。`ReaderTests.testDefaultProgressCoalescingActuallyWritesWithoutExplicitFlush` 等待真实默认 250ms 任务，未显式 flush。
 红灯 r1-f11-red.log（testBackgroundTransitionDoesNotInterruptQueuedProgressSave）：`Executed 1 test, with 1 failure`，文件库读回 0 而非 872；绿灯 r1-f11-green2.log：`Executed 22 tests, with 0 failures`；r1-f11-f12.log 中 StartupUITests 为 `Executed 1 test, with 0 failures`，同日志另有 F12 红灯，整次运行不算全绿。
 
-### F12：已证实并完成，提交见本单元 Git 记录
+### F12：已证实并完成，1ccb673b6
 `App/Sources/Features/Reader/PageAnimation/ScrollPageContainer.swift:78` 禁用仅阻止滚动手势，不再跳过内容更新与外部定位。`App/Tests/LegadoTests/ReaderScrollContainerTests.swift:8` 直接驱动真实 UIKit 容器，检查打开面板时高度、定位和关闭后位置。
 红灯 r1-f11-f12.log 中 ReaderScrollContainerTests（testDisabledContainerReflowsAndKeepsExternalSeek）：`Executed 1 test, with 3 failures`；绿灯 r1-f12-green.log 中 LegadoTests 与 LegadoUITests 分别 `Executed 1 test, with 0 failures`，后一项验证整章连续滚动和跨章。未用静态扫描代替布局执行。
+
+### F13：已证实并完成，提交见本单元 Git 记录
+`App/Sources/Features/Reader/ReaderBackgroundImageStore.swift:19` 共享同 URL/尺寸/文件版本的 UIImage 与在途解码，缓存上限 64MiB；`:38` 相册导入先降采样并应用方向后保存。`ReaderInfoView.swift:94` 页面共用屏幕像素尺寸解码，`ReaderInterfacePanel.swift:195` 缩略预览使用 512 像素；纸背复用同一结果。滚动仍为 VStack。
+红灯 r1-f13-red.log（testBackgroundDecodeIsSharedAndBoundedAndImportIsDownsampled）：`Executed 1 test, with 4 failures`，现有解码路径提取后证实不同对象、4096 原图及导出未缩小。绿灯 r1-f13-green.log 中 LegadoTests、LegadoUITests 分别 `Executed 1 test, with 0 failures`。测试为真实 UIImage/ImageIO 解码与对象身份，未做真机内存峰值测量。
 
 ## 真机验收清单
 安装前提：手机旧版标识为 com.starlitxiling.legado.ios，覆盖包须使用该标识及有效描述文件；不改 App/project.yml，不能直接安装默认标识包。
@@ -65,3 +69,4 @@ F9：设置深色纯色或背景图片，切到仿真翻页并慢拖；纸背随
 F10：长按原属两个分组的书，分组菜单再勾一个；三个归属都保留，取消其中一个不影响另外两个。
 F11：快速翻数页后立即回桌面，再返回或关闭重开书籍；停留位置应保留，后台写入期间不出现数据库错误。
 F12：滚动模式读到章节中段，打开界面面板调整字号；关闭后应仍在原阅读文字附近，不能跳回错误页。
+F13：导入高分辨率相册背景，连续滚动长章节并反复打开面板；图片清晰且无重复大图解码造成的持续内存增长，导出图最大边不超过导入时屏幕像素上限。
