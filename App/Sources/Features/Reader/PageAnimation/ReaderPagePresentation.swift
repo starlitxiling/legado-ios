@@ -72,12 +72,16 @@ private struct HorizontalPageContainer<Content: View, Next: View, Previous: View
             let width = geometry.size.width
             let offsets = ReaderHorizontalDrag(translation: offset, projected: offset, width: width).offsets(slide: slide)
             ZStack {
-                pageContent.offset(x: offsets.current).zIndex(0)
+                pageContent
+                    .shadow(color: !slide && offset < 0 ? .black.opacity(0.28) : .clear, radius: 5, x: 4)
+                    .offset(x: offsets.current).zIndex(slide ? 0 : 1)
                 if offset < 0 {
-                    next().offset(x: offsets.next).zIndex(1).accessibilityHidden(true)
+                    next().offset(x: offsets.next).zIndex(slide ? 1 : 0).accessibilityHidden(true)
                 }
                 if offset > 0 {
-                    previous().offset(x: offsets.previous).zIndex(1).accessibilityHidden(true)
+                    previous()
+                        .shadow(color: slide ? .clear : .black.opacity(0.28), radius: 5, x: 4)
+                        .offset(x: offsets.previous).zIndex(2).accessibilityHidden(true)
                 }
             }.frame(width: width, height: geometry.size.height).clipped().contentShape(Rectangle())
                 .gesture(DragGesture(minimumDistance: max(10, touchSlop))

@@ -2,6 +2,17 @@ import XCTest
 @testable import ReaderCheck
 
 final class ReaderBehaviorTests: XCTestCase {
+    func testCoverMovesCurrentPageOffStationaryNextPage() {
+        let next = ReaderHorizontalDrag(translation: -90, projected: -90, width: 300).offsets(slide: false)
+        XCTAssertEqual(next.previous, -300)
+        XCTAssertEqual(next.current, -90)
+        XCTAssertEqual(next.next, 0)
+        let previous = ReaderHorizontalDrag(translation: 90, projected: 90, width: 300).offsets(slide: false)
+        XCTAssertEqual(previous.previous, -210)
+        XCTAssertEqual(previous.current, 0)
+        XCTAssertEqual(previous.next, 300)
+    }
+
     func testContinuousScrollAnchorSurvivesChapterWindowChanges() {
         let old = ReaderScrollGeometry(items: [(0, 100), (1, 140), (1_000_000, 120)])
         let anchor = old.anchor(at: 267)

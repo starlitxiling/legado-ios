@@ -24,9 +24,13 @@ ReaderStyleStore.swift 的路径前缀为 App/Sources/Features/Reader/。`Reader
 `Packages/LegadoCore/Sources/LegadoCore/Storage/Repositories/BookSourceRepository.swift:37` 精确优先、规范化唯一匹配；`App/Sources/Features/Reader/ReaderViewModel.swift:162` 打开非本地书后保存规范 origin。`SourceURLNormalizationTests.swift:5` 私有备份仅内存读取与临时目录结果，不入库。
 红灯 r1-f5-red.log（testNormalizedOriginIsSavedOnlyForUniqueMatch）：`Executed 1 test, with 8 failures`；绿灯 r1-f5-green.log：`Executed 8 tests, with 0 failures`；真实备份 r1-f5-fixture-green.log：`Executed 1 test, with 0 failures`。4198 源、24 缺源书接回 13 本，7 本各有 3 个近似源而不改挂，4 本无源。初次样本断言误以为 20 本均唯一（r1-f5-fixture.log：`Executed 1 test, with 1 failure`），已按实测歧义修正。专属 UI 未运行，主机已验证打开与保存。
 
-### F6：完成，提交见本单元 Git 记录
+### F6：完成，a16aaed59
 `App/Sources/Features/Reader/ReaderStyleStore.swift:86` 修改下划线字段写版本 1；`Packages/LegadoCore/Sources/LegadoCore/Reader/ReaderStyleArchive.swift:10` 导出必写版本 1。Android 下划线全局共享，iOS 仍按样式存储，未改模型。
 红灯 r1-f6-red.log（testUnderlineEditsAndExportSetAndroidVersion）：`Executed 1 test, with 2 failures`；绿灯 r1-f6-green.log：`Executed 11 tests, with 0 failures`；r1-f6-ui.log：`Executed 1 test, with 0 failures`，补齐 B4a 旧日志 0 项的无效证据。
+
+### F7：完成，提交见本单元 Git 记录
+`App/Sources/Features/Reader/ReaderPresentationState.swift:41` 覆盖下一页时当前页左移、下一页静止，上一页左侧盖回；`PageAnimation/ReaderPagePresentation.swift:75` 调整层级与移动页阴影，滑动不变。阈值仍为三分之一页或预测惯性，Android HorizontalPageDelegate 按最后移动方向判取消，保留此差异。
+红灯 r1-f7-red.log（testCoverMovesCurrentPageOffStationaryNextPage）：`Executed 1 test, with 2 failures`；绿灯 r1-f7-green.log：`Executed 6 tests, with 0 failures`；r1-f7-ui.log：`Executed 1 test, with 0 failures`。
 
 ## 真机验收清单
 安装前提：手机旧版标识为 com.starlitxiling.legado.ios，覆盖包须使用该标识及有效描述文件；不改 App/project.yml，不能直接安装默认标识包。
@@ -36,3 +40,4 @@ F3：订阅加号导入损坏 JSON，或用失效订阅源加载正文；显示�
 F4：启用自动换源，现有源返回服务器错误时只显示错误及手动换源；删除对应源后打开书籍才自动查找，手动换源会停止后台查找。
 F5：恢复同一 Android 备份后打开原 24 本缺源书；13 本接回且重开保持，7 本歧义与 4 本无对应源仍提示缺源，手动选择所需源。
 F6：界面面板修改下划线并关闭重开，设置保留；导出样式在 Android 导入，下划线不再因版本 0 重置。
+F7：覆盖模式向左拖，当前页带右缘阴影移走、下一页静止；向右拖上一页从左盖回；短拖回弹，滑动模式保持原样。

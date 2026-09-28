@@ -41,8 +41,8 @@ struct ReaderHorizontalDrag {
 
     func offsets(slide: Bool) -> (previous: Double, current: Double, next: Double) {
         let delta = min(width, max(-width, translation))
-        return (-width + max(slide ? -width : 0, delta), slide ? delta : 0,
-                width + min(slide ? width : 0, delta))
+        if slide { return (-width + delta, delta, width + delta) }
+        return (-width + max(0, delta), min(0, delta), delta < 0 ? 0 : width)
     }
 }
 
