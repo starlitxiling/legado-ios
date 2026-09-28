@@ -17,7 +17,7 @@ struct RssFavoritesView: View {
                     Button("取消收藏", role: .destructive) {
                         Task {
                             do { try await repository.setStar(star.article, starred: false, time: 0); await reload() }
-                            catch { self.error = String(describing: error) }
+                            catch { self.error = error.presentation(operation: "取消订阅收藏")?.displayText }
                         }
                     }
                 }
@@ -31,6 +31,6 @@ struct RssFavoritesView: View {
     }
     private func reload() async {
         do { stars = try await repository.stars(); sources = try await repository.sources() }
-        catch { self.error = String(describing: error) }
+        catch { self.error = error.presentation(operation: "加载订阅收藏")?.displayText }
     }
 }

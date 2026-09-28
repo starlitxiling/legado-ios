@@ -8,7 +8,10 @@ extension WebBookError: LocalizedError {
         case .emptyContent: return "书源没有返回正文。"
         case .bookNotFound(let name, let author): return "未找到书籍：\(name) / \(author)"
         case .emptyDownloadURLs: return "书源没有返回下载地址。"
-        case .httpStatus(let status, let url): return "书源请求失败（HTTP \(status)）：\(url)"
+        case .httpStatus(let status, let url):
+            let address = URLComponents(string: url)
+            let location = address?.host.map { $0 + (address?.percentEncodedPath ?? "") } ?? "未知服务器"
+            return "书源请求失败（HTTP \(status)）：\(location)"
         case .unsupported(let feature): return "书源使用了尚不支持的功能：\(feature)"
         }
     }

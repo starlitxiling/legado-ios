@@ -43,18 +43,48 @@ final class ErrorPresentationTests: XCTestCase {
         var actual: [String: [String]] = [:]
         for case let file as URL in files where file.pathExtension == "swift" {
             let path = String(file.path.dropFirst(root.path.count + 1))
-            let lines = try String(contentsOf: file, encoding: .utf8).components(separatedBy: .newlines)
-                .map { $0.trimmingCharacters(in: .whitespaces) }
-                .filter { line in
-                    guard line.contains("localizedDescription") else { return false }
-                    if line.contains("NSLog(") { return false }
-                    if line.hasPrefix("AppLogStore.shared.append(") || line.hasPrefix("catch { AppLogStore.shared.append(") { return false }
-                    if path == "App/Sources/Shared/ErrorPresentation.swift", line == "return \"操作失败：\" + localizedDescription" { return false }
-                    return true
-                }.sorted()
+            let lines = Self.rawErrorStatements(try String(contentsOf: file, encoding: .utf8), path: path).sorted()
             if !lines.isEmpty { actual[path] = lines }
         }
         XCTAssertEqual(actual, allowed, "Migrate new user-facing errors through ErrorPresentation; remove migrated lines from the allowlist.")
+    }
+
+    func testRawErrorScannerOnlyExemptsWholeLoggingStatements() {
+        XCTAssertEqual(Self.rawErrorStatements(#"NSLog("%@", error.localizedDescription); state = String(describing: error)"#).count, 1)
+        XCTAssertEqual(Self.rawErrorStatements(#"catch { AppLogStore.shared.append("\(error)"); state = "\(failure)" }"#).count, 1)
+        XCTAssertTrue(Self.rawErrorStatements(#"catch { NSLog("%@", error.localizedDescription) }"#).isEmpty)
+        XCTAssertEqual(Self.rawErrorStatements(#"state = String(describing: failure)"#).count, 1)
+        XCTAssertTrue(Self.rawErrorStatements(#"load(callback: { catch { NSLog("%@", error.localizedDescription) } })"#).isEmpty)
+    }
+
+    private static func rawErrorStatements(_ source: String, path: String = "") -> [String] {
+        var statements: [String] = [], current = ""
+        var quoted = false, escaped = false, depth = 0
+        var blocks = [0]
+        for character in source {
+            if quoted {
+                current.append(character)
+                if escaped { escaped = false }
+                else if character == "\\" { escaped = true }
+                else if character == "\"" { quoted = false }
+                continue
+            }
+            if character == "\"" { quoted = true }
+            if character == "(" || character == "[" { depth += 1 }
+            if character == ")" || character == "]" { depth -= 1 }
+            if character == "{" || character == "}" || (depth == blocks.last && [";", "\n"].contains(character)) {
+                if character == "{" { blocks.append(depth) }
+                if character == "}", blocks.count > 1 { blocks.removeLast() }
+                statements.append(current.trimmingCharacters(in: .whitespacesAndNewlines)); current = ""
+            } else { current.append(character) }
+        }
+        statements.append(current.trimmingCharacters(in: .whitespacesAndNewlines))
+        return statements.filter { statement in
+            guard !statement.hasPrefix("//"), statement.range(of: #"localizedDescription|String\s*\(\s*describing:\s*(error|failure)\s*\)|\\\((error|failure)\)"#, options: .regularExpression) != nil else { return false }
+            if statement.range(of: #"^(NSLog|AppLogStore\.shared\.append|(?:self\.)?log\.append)\s*\([\s\S]*\)$"#, options: .regularExpression) != nil { return false }
+            if path == "App/Sources/Shared/ErrorPresentation.swift", statement == "return \"操作失败：\" + localizedDescription" { return false }
+            return true
+        }
     }
 
     func testNetworkFallbacksAndCancellation() {

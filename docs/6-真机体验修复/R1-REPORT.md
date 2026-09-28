@@ -8,11 +8,16 @@
 ReaderStyleStore.swift 的路径前缀为 App/Sources/Features/Reader/。`ReaderStyleStore.swift:33` 跳过回退加载的偏好覆盖，`:190` 先在同一 backup_files 存储保留原字节，使用毫秒时间与 UUID 防止同名覆盖；保存失败继续阻止写回。部分导入回退也备份输入。测试为 `tools/appcore-check/Tests/ReaderAdvancedCheckTests/ReaderInterfaceConfigTests.swift:8`。
 红灯 r1-f1-red3.log，断言 testFallbackPreservesOriginalBytesBeforeSelectionAndEditing：`Executed 1 test, with 8 failures`；绿灯 r1-f1-green2.log：`Executed 10 tests, with 0 failures`；UI r1-f1-ui.log：`Executed 1 test, with 0 failures`。r1-f1-red/red2 的编译错误为测试接线错误，不计红灯。
 
-### F2：完成，提交见本单元 Git 记录
+### F2：完成，ff3db052b
 `Packages/LegadoCore/Sources/LegadoCore/Storage/Repositories/BookshelfRepository.swift:28` 置顶同时更新 order、durChapterTime；`App/Sources/Features/Bookshelf/BookshelfView.swift:401` 不再改排序。Kotlin 语义一致。测试 `BookshelfCacheParityTests.testPinUpdatesReadTimeWithoutChangingGroupSort`。
 红灯 r1-f2-red.log：`Executed 1 test, with 1 failure`；绿灯 r1-f2-green.log：`Executed 6 tests, with 0 failures`；UI r1-f2b-ui.log：`Executed 1 test, with 0 failures`。r1-f2-ui.log 为等待断言失败，已改为等待菜单关闭与元素相对顺序。
+
+### F3：完成，提交见本单元 Git 记录
+`App/Sources/Features/Rss/RssViewModels.swift:18` 等 18 处界面错误统一 presentation；Bookshelf 日志保留。`Packages/LegadoCore/Sources/LegadoCore/LocalizedErrors.swift:11` HTTP 只保留 host/path；`App/Sources/Features/Reader/Paginator.swift:54` 分页错误中文化；`tools/appcore-check/Tests/BookshelfAdvancedCheckTests/ErrorPresentationTests.swift:32` 扫描原始错误、插值，豁免限完整日志语句，允许清单为 0。
+红灯 r1-f3-red.log（扫描与 testPaginationErrorsAreLocalized）：`Executed 11 tests, with 3 failures`；r1-f3-core-red.log（testHTTPFailureOmitsCredentialsQueryAndFragment）：`Executed 1 test, with 5 failures`。绿灯 r1-f3-green.log：`Executed 39 tests, with 0 failures`；r1-f3-core-green.log：`Executed 3 tests, with 0 failures`；r1-f3-ui.log：`Executed 1 test, with 0 failures`。
 
 ## 真机验收清单
 安装前提：手机旧版标识为 com.starlitxiling.legado.ios，覆盖包须使用该标识及有效描述文件；不改 App/project.yml，不能直接安装默认标识包。
 F1：恢复损坏或部分损坏阅读样式，进入阅读、选择并修改样式；阅读可用，加载回退不改变原阅读偏好，存储保留 broken 备份原文。
 F2：书架按阅读时间排序，长按非首本置顶；该书排第一，全局与分组排序仍为阅读时间。
+F3：订阅加号导入损坏 JSON，或用失效订阅源加载正文；显示中文操作名与原因。含 query 的书源 HTTP 错误不显示 query。

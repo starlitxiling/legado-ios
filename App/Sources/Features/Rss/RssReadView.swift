@@ -102,7 +102,7 @@ private struct RssWebView: UIViewRepresentable {
                         let document = "<meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><style>\(css)</style>" + html
                         view?.loadHTMLString(document, baseURL: base.flatMap(URL.init(string:)))
                     }
-                } catch is CancellationError {} catch { report(String(describing: error)) }
+                } catch is CancellationError {} catch { if let message = error.presentation(operation: "加载订阅网页")?.displayText { report(message) } }
             }
         }
         func webView(_ webView: WKWebView, decidePolicyFor action: WKNavigationAction, decisionHandler: @escaping (WKNavigationActionPolicy) -> Void) {
@@ -115,18 +115,18 @@ private struct RssWebView: UIViewRepresentable {
                 do {
                     let blocked = try await Task.detached { try policy.shouldOverride(url.absoluteString, client: client) }.value
                     decisionHandler(blocked ? .cancel : .allow)
-                } catch { report(String(describing: error)); decisionHandler(.cancel) }
+                } catch { if let message = error.presentation(operation: "检查订阅链接")?.displayText { report(message) }; decisionHandler(.cancel) }
             }
         }
         func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
             guard let request = cookieRequest else { return }
             Task {
                 do { try await WebViewCookies.synchronize(request, from: webView) }
-                catch { report(String(describing: error)) }
+                catch { if let message = error.presentation(operation: "同步订阅登录状态")?.displayText { report(message) } }
             }
         }
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
-            if (error as? URLError)?.code != .cancelled { report(String(describing: error)) }
+            if (error as? URLError)?.code != .cancelled { if let message = error.presentation(operation: "加载订阅网页")?.displayText { report(message) } }
         }
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) {
             self.webView(webView, didFail: navigation, withError: error)

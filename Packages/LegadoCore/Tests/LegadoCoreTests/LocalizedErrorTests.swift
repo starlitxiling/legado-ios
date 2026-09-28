@@ -2,6 +2,12 @@ import XCTest
 @testable import LegadoCore
 
 final class LocalizedErrorTests: XCTestCase {
+    func testHTTPFailureOmitsCredentialsQueryAndFragment() {
+        let message = WebBookError.httpStatus(503, "https://user:secret@example.test/book?token=private#fragment").localizedDescription
+        XCTAssertTrue(message.contains("example.test/book"))
+        for secret in ["user", "secret", "token", "private", "fragment"] { XCTAssertFalse(message.contains(secret)) }
+    }
+
     func testCoreErrorsExplainFailureAndRecovery() {
         let cases: [(Error, String)] = [
             (WebBookError.missingRule("ruleContent"), "ruleContent"),

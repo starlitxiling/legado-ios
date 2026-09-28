@@ -15,7 +15,7 @@ final class RssSourceListModel {
     var visibleSources: [RssSource] { sources.filter { selectedGroup == "全部" || $0.groups.contains(selectedGroup) } }
     init(repository: RssRepository, client: any HttpClient) { self.repository = repository; self.client = client }
     func reload() async {
-        do { sources = try await repository.sources() } catch { self.error = String(describing: error) }
+        do { sources = try await repository.sources() } catch { self.error = error.presentation(operation: "加载订阅源")?.displayText }
     }
     func save(_ source: RssSource, replacing oldURL: String? = nil) async throws {
         guard !source.sourceUrl.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { throw RssError.invalidSource }
@@ -25,7 +25,7 @@ final class RssSourceListModel {
     }
     func delete(_ source: RssSource) async {
         do { try await repository.deleteSource(source.sourceUrl); await reload() }
-        catch { self.error = String(describing: error) }
+        catch { self.error = error.presentation(operation: "删除订阅源")?.displayText }
     }
     func importText(_ text: String) async {
         guard !importing else { return }
@@ -55,7 +55,7 @@ final class RssSourceListModel {
             let replacement = useSourceReplacement ? try await repository.sourceReplacement() : SourceReplacement(rules: [])
             try await repository.saveSources(values.map { try replacement.apply($0) })
             await reload()
-        } catch { self.error = String(describing: error) }
+        } catch { self.error = error.presentation(operation: "导入订阅源")?.displayText }
     }
 }
 
@@ -81,13 +81,13 @@ final class RssArticlesModel {
         generation += 1
         let token = generation
         do { columns = try service.columns(source: source) }
-        catch { self.error = String(describing: error); return }
+        catch { self.error = error.presentation(operation: "解析订阅栏目")?.displayText; return }
         loading = false; articles = []; page = 1; visited = []; nextURL = column.url
         do {
             let cached = try await repository.articles(origin: source.sourceUrl, sort: column.name)
             guard token == generation else { return }
             articles = cached
-        } catch { self.error = String(describing: error) }
+        } catch { self.error = error.presentation(operation: "加载订阅缓存")?.displayText }
         guard token == generation else { return }
         await loadMore(reset: true)
     }
@@ -115,7 +115,7 @@ final class RssArticlesModel {
             nextURL = result.nextPageURL
             if source.ruleNextPage?.uppercased() != "PAGE", let nextURL, visited.contains(nextURL) { self.nextURL = nil }
             page += 1
-        } catch { if token == generation { self.error = String(describing: error) } }
+        } catch { if token == generation { self.error = error.presentation(operation: "加载订阅文章")?.displayText } }
     }
 }
 
@@ -147,14 +147,14 @@ final class RssReadModel {
             try await repository.saveArticles([article])
             try await repository.markRead(article, time: now())
             starred = try await repository.stars().contains { $0.origin == article.origin && $0.link == article.link }
-        } catch { self.error = String(describing: error) }
+        } catch { self.error = error.presentation(operation: "加载订阅正文")?.displayText }
     }
     func toggleStar() async {
         guard !isStartPage else { return }
         do {
             try await repository.setStar(article, starred: !starred, time: now())
             starred.toggle()
-        } catch { self.error = String(describing: error) }
+        } catch { self.error = error.presentation(operation: "更新订阅收藏")?.displayText }
     }
 }
 

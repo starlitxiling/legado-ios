@@ -51,7 +51,16 @@ struct ReaderPagination {
     }
 }
 
-enum PaginationError: Error { case invalidPageSize, noVisibleCharacters }
+enum PaginationError: LocalizedError {
+    case invalidPageSize, noVisibleCharacters
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidPageSize: return "页面尺寸无效，请调整字号或页边距。"
+        case .noVisibleCharacters: return "当前页面没有可显示的文字。"
+        }
+    }
+}
 
 struct Paginator {
     var fontName = "PingFangSC-Regular"

@@ -38,7 +38,7 @@ struct RssSourceListView: View {
                 .swipeActions(edge: .leading) {
                     Button("编辑") { editing = source }.tint(.blue)
                     Button(source.enabled ? "停用" : "启用") {
-                        Task { var value = source; value.enabled.toggle(); do { try await model.save(value) } catch { model.error = String(describing: error) } }
+                        Task { var value = source; value.enabled.toggle(); do { try await model.save(value) } catch { model.error = error.presentation(operation: "更新订阅源")?.displayText } }
                     }.tint(.orange)
                 }
                 .swipeActions {
@@ -54,7 +54,7 @@ struct RssSourceListView: View {
                 Menu {
                     Button("添加订阅源") { editing = RssSource() }
                     Button("导入 JSON 或链接") { importing = true }
-                } label: { Image(systemName: "plus") }
+                } label: { Image(systemName: "plus") }.accessibilityIdentifier("rss.menu")
             }
         }
         .task { await model.reload() }
@@ -73,7 +73,7 @@ struct RssSourceListView: View {
                 Form {
                     Toggle("导入时应用书源替换规则", isOn: $model.useSourceReplacement)
                         .onChange(of: model.useSourceReplacement) { _, value in UserDefaults.standard.set(value, forKey: "importReplaceSource") }
-                    TextEditor(text: $importText).frame(minHeight: 240)
+                    TextEditor(text: $importText).frame(minHeight: 240).accessibilityIdentifier("rss.importText")
                     if let error = model.error { Text(error).foregroundStyle(.red) }
                 }
                 .legadoNavigationTitle("导入 RSS 源")

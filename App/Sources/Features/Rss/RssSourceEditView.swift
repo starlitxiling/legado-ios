@@ -47,7 +47,7 @@ struct RssSourceEditView: View {
                 }
                 Button("编辑完整 JSON") {
                     do { let encoder = JSONEncoder(); encoder.outputFormatting = [.prettyPrinted, .sortedKeys]; json = String(decoding: try encoder.encode(source), as: UTF8.self); jsonMode = true }
-                    catch { self.error = String(describing: error) }
+                    catch { self.error = error.presentation(operation: "导出订阅源")?.displayText }
                 }
             }
             if let error { Text(error).foregroundStyle(.red) }
@@ -62,7 +62,7 @@ struct RssSourceEditView: View {
                     do {
                         let value = jsonMode ? try GsonJSONDecoder().decode(RssSource.self, from: Data(json.utf8)) : source
                         try await save(value); dismiss()
-                    } catch { self.error = String(describing: error) }
+                    } catch { self.error = error.presentation(operation: "保存订阅源")?.displayText }
                 }
             }.disabled(saving)
         }

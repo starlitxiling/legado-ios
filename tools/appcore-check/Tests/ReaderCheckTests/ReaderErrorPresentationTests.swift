@@ -4,6 +4,11 @@ import LegadoCore
 
 @MainActor
 final class ReaderErrorPresentationTests: XCTestCase {
+    func testPaginationErrorsAreLocalized() {
+        XCTAssertTrue(PaginationError.invalidPageSize.localizedDescription.contains("页面尺寸"))
+        XCTAssertTrue(PaginationError.noVisibleCharacters.localizedDescription.contains("文字"))
+    }
+
     func testOfflineChapterFailureNamesBookAndChapter() async throws {
         let database = try AppDatabase.inMemory()
         var book = BookRow(); book.bookUrl = "https://offline.test/book"; book.origin = "https://offline.test"

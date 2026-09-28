@@ -2,6 +2,24 @@ import XCTest
 
 final class StartupUITests: XCTestCase {
     @MainActor
+    func testRSSImportErrorUsesChineseOperation() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-showRss", "YES", "-autoTaskService", "NO", "-syncBookProgress", "NO", "-auto_refresh", "NO", "-defaultToRead", "NO"]
+        app.launch()
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
+        app.tabBars.buttons["订阅"].tap()
+        app.buttons["rss.menu"].tap()
+        app.buttons["导入 JSON 或链接"].tap()
+        let text = app.textViews["rss.importText"]
+        XCTAssertTrue(text.waitForExistence(timeout: 5))
+        text.tap(); text.typeText("{")
+        app.buttons["导入"].tap()
+        XCTAssertTrue(app.staticTexts.matching(NSPredicate(format: "label CONTAINS %@", "导入订阅源失败")).firstMatch.waitForExistence(timeout: 5))
+        XCTAssertFalse(app.staticTexts["invalidSource"].exists)
+    }
+
+    @MainActor
     func testLabeledTabsAndSettingsRemainUsableAfterForegrounding() {
         continueAfterFailure = false
         let app = XCUIApplication()

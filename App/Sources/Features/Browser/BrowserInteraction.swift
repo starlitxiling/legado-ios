@@ -80,7 +80,7 @@ final class BrowserInteraction: WebViewUserInteraction {
                     guard self.activeID == id else { return }
                     self.finish(.success(StrResponse(raw: HttpResponse(status: 200,
                         finalURL: webView.url ?? request.url.flatMap(URL.init(string:)) ?? URL(string: "about:blank")!), body: body)))
-                } catch { model.errorMessage = String(describing: error); model.isCompleting = false }
+                } catch { model.errorMessage = error.presentation(operation: "完成浏览器验证")?.displayText; model.isCompleting = false }
             }
         }
         let cancel: () -> Void = { [weak self] in self?.finish(.failure(CancellationError())) }
