@@ -15,6 +15,7 @@ final class ReaderStyleStore {
     private let resourceDirectory: URL
     private let fontDirectory: URL
     private let log: AppLogStore
+    private var pendingOriginals: [String: Data] = [:]
 
     init(database: AppDatabase, defaults: UserDefaults = .standard,
          resourceDirectory: URL = URL.applicationSupportDirectory.appendingPathComponent("Legado/bg"),
@@ -33,16 +34,20 @@ final class ReaderStyleStore {
         let saved = try await database.backupConfiguration(named: "readConfig.json")
         let presets = try ReadBookConfig.bundledStyles()
         var loaded = presets
+        var fallback = false
         if let saved {
             do {
                 loaded = try ReadBookConfig.importThemes(saved) { index, error in
+                    fallback = true
                     self.log.append("readConfig.json[\(index)] fallback: \(String(reflecting: error))")
                 }
                 guard !loaded.isEmpty else { throw ReaderStyleError.empty }
             } catch {
                 log.append("readConfig.json fallback: \(String(reflecting: error))")
                 loaded = presets
+                fallback = true
             }
+            if fallback { pendingOriginals["readConfig.json"] = saved }
         }
         selected = min(max(0, defaults.integer(forKey: "readStyleSelect")), loaded.count - 1)
         if saved == nil {
@@ -58,10 +63,13 @@ final class ReaderStyleStore {
             catch {
                 log.append("shareReadConfig.json fallback: \(String(reflecting: error))")
                 shared = presets[min(5, presets.count - 1)]
+                pendingOriginals["shareReadConfig.json"] = sharedData
+                fallback = true
             }
         }
         sharedLayout = defaults.bool(forKey: "shareLayout")
-        synchronizeSettings()
+        try await preserveOriginals()
+        if !fallback { synchronizeSettings() }
     }
 
     func select(_ index: Int) async throws {
@@ -86,6 +94,7 @@ final class ReaderStyleStore {
     }
 
     func importStyles(_ data: Data) async throws {
+        try await preserveOriginals()
         let imported: [ReadBookConfig]
         if data.starts(with: [0x50, 0x4b]) {
             let archive = try ReaderStyleArchive.decode(data)
@@ -116,8 +125,14 @@ final class ReaderStyleStore {
             }
             imported = [config]
         } else {
+            var fallback = false
             imported = try ReadBookConfig.importThemes(data) { index, error in
+                fallback = true
                 self.log.append("Imported style[\(index)] fallback: \(String(reflecting: error))")
+            }
+            if fallback {
+                pendingOriginals["readConfig.json"] = data
+                try await preserveOriginals()
             }
         }
         guard !imported.isEmpty else { throw ReaderStyleError.empty }
@@ -172,7 +187,19 @@ final class ReaderStyleStore {
         try await persist()
     }
 
+    private func preserveOriginals() async throws {
+        for (name, data) in pendingOriginals {
+            let stem = (name as NSString).deletingPathExtension
+            let backupName = stem + ".broken-" + String(Int64(Date().timeIntervalSince1970 * 1000)) + "-" + UUID().uuidString + ".json"
+            try await database.write { db in
+                try db.execute(sql: "INSERT INTO backup_files(name, data) VALUES (?, ?)", arguments: [backupName, data])
+            }
+            pendingOriginals.removeValue(forKey: name)
+        }
+    }
+
     private func persist() async throws {
+        try await preserveOriginals()
         let configs = try ReadBookConfig.exportThemes(styles)
         let sharedData = try JSONEncoder().encode(shared)
         try await database.write { db in

@@ -1,8 +1,39 @@
 import XCTest
 import LegadoCore
+import GRDB
 @testable import ReaderCheck
 
 final class ReaderInterfaceConfigTests: XCTestCase {
+    @MainActor
+    func testFallbackPreservesOriginalBytesBeforeSelectionAndEditing() async throws {
+        for raw in [Data("{".utf8), Data(#"[{"textSize":22},{"textSize":"bad"}]"#.utf8)] {
+            let database = try AppDatabase.inMemory()
+            let suite = "R1.F1." + UUID().uuidString
+            let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+            defer { defaults.removePersistentDomain(forName: suite) }
+            defaults.set(37, forKey: "textSize")
+            let shared = Data("broken shared".utf8)
+            try await database.write { db in
+                try db.execute(sql: "INSERT INTO backup_files(name, data) VALUES (?, ?), (?, ?)", arguments: ["readConfig.json", raw, "shareReadConfig.json", shared])
+            }
+            let store = ReaderStyleStore(database: database, defaults: defaults)
+            try await store.load()
+            XCTAssertEqual(defaults.integer(forKey: "textSize"), 37)
+            try await store.select(0)
+            var edited = store.current; edited.textSize = 26
+            try await store.update(edited)
+            let backups = try await database.write { db in
+                try Row.fetchAll(db, sql: "SELECT name, data FROM backup_files WHERE name LIKE '%.broken-%'")
+                    .map { ($0["name"] as String, $0["data"] as Data) }
+            }
+            XCTAssertTrue(backups.contains { $0.0.hasPrefix("readConfig.broken-") && $0.1 == raw })
+            XCTAssertTrue(backups.contains { $0.0.hasPrefix("shareReadConfig.broken-") && $0.1 == shared })
+            try await store.importStyles(Data(#"[{"textSize":19},{"textSize":"bad"}]"#.utf8))
+            let count = try await database.write { db in try Int.fetchOne(db, sql: "SELECT count(*) FROM backup_files WHERE name LIKE 'readConfig.broken-%'") }
+            XCTAssertEqual(count, 2)
+        }
+    }
+
     func testStatusIconChoiceUsesDayNightAndEInkSettings() {
         var settings = ReaderSettings()
         settings.configuration.darkStatusIcon = false
