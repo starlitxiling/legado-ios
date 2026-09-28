@@ -43,9 +43,13 @@ ReaderStyleStore.swift 的路径前缀为 App/Sources/Features/Reader/。`Reader
 `App/Sources/Features/Bookshelf/BookshelfView.swift:378` 按位添加、移除单个分组；`:413` 多选 Toggle 展示已有归属，保留其他分组。`BookshelfCacheParityTests.swift:5` 覆盖 3→7→5 的位掩码变化。
 红灯 r1-f10-red2.log（testAddingGroupPreservesExistingMemberships）：`Executed 1 test, with 1 failure`，添加后原 Sample Group 丢失；绿灯 r1-f10-green.log：`Executed 7 tests, with 0 failures`；r1-f9-f10-green-ui.log：`Executed 2 tests, with 0 failures`，其中分组 1 项。此前 red/UI 的重复元素定位失败不作业务红灯。
 
-### F11：已证实并完成，提交见本单元 Git 记录
+### F11：已证实并完成，c7531518e
 `App/Sources/App/DatabaseLifecycleCoordinator.swift:52` 等所有进度写入释放后挂起；`App/Sources/Features/Reader/ReaderViewModel.swift:510` 后台保存先同步持有保护再排队；`ReaderView.swift:255` 接入 UIKit 后台任务；`ReaderDeviceController.swift` 保证任务结束释放。`ReaderTests.testDefaultProgressCoalescingActuallyWritesWithoutExplicitFlush` 等待真实默认 250ms 任务，未显式 flush。
 红灯 r1-f11-red.log（testBackgroundTransitionDoesNotInterruptQueuedProgressSave）：`Executed 1 test, with 1 failure`，文件库读回 0 而非 872；绿灯 r1-f11-green2.log：`Executed 22 tests, with 0 failures`；r1-f11-f12.log 中 StartupUITests 为 `Executed 1 test, with 0 failures`，同日志另有 F12 红灯，整次运行不算全绿。
+
+### F12：已证实并完成，提交见本单元 Git 记录
+`App/Sources/Features/Reader/PageAnimation/ScrollPageContainer.swift:78` 禁用仅阻止滚动手势，不再跳过内容更新与外部定位。`App/Tests/LegadoTests/ReaderScrollContainerTests.swift:8` 直接驱动真实 UIKit 容器，检查打开面板时高度、定位和关闭后位置。
+红灯 r1-f11-f12.log 中 ReaderScrollContainerTests（testDisabledContainerReflowsAndKeepsExternalSeek）：`Executed 1 test, with 3 failures`；绿灯 r1-f12-green.log 中 LegadoTests 与 LegadoUITests 分别 `Executed 1 test, with 0 failures`，后一项验证整章连续滚动和跨章。未用静态扫描代替布局执行。
 
 ## 真机验收清单
 安装前提：手机旧版标识为 com.starlitxiling.legado.ios，覆盖包须使用该标识及有效描述文件；不改 App/project.yml，不能直接安装默认标识包。
@@ -60,3 +64,4 @@ F8（未完成）：切换深色状态栏图标，查看状态栏、目录、界
 F9：设置深色纯色或背景图片，切到仿真翻页并慢拖；纸背随背景或图片平均色，不再固定白色。
 F10：长按原属两个分组的书，分组菜单再勾一个；三个归属都保留，取消其中一个不影响另外两个。
 F11：快速翻数页后立即回桌面，再返回或关闭重开书籍；停留位置应保留，后台写入期间不出现数据库错误。
+F12：滚动模式读到章节中段，打开界面面板调整字号；关闭后应仍在原阅读文字附近，不能跳回错误页。

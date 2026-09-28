@@ -75,7 +75,7 @@ struct ScrollPageContainer: UIViewControllerRepresentable {
             let externalSeek = !initialized || newValue.location != value.location && newValue.location != reported && task == nil
             let previousProgress = value.progress
             value = newValue
-            guard value.enabled || !initialized else { return }
+            scroll.isScrollEnabled = value.enabled
             updating = true
             if moving, let first = value.pages.first {
                 displayed = displayed.filter { $0.id < first.id } + value.pages
