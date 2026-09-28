@@ -137,18 +137,22 @@ final class ReaderInterfaceUITests: XCTestCase {
     }
 
     @MainActor
-    func testManualReplacementAndSimulatedReadingMenus() {
+    func testManualReplacementAndSimulatedReadingMenus() throws {
         continueAfterFailure = false
         let app = XCUIApplication()
-        app.launchArguments = ["-detail-gallery", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO", "-doubleHorizontalPage", "0", "-manualReplaceRule", "NO", "-readerMenuConfig", #"{"primary":["effectiveReplaces","simulatedReading"],"more":["bookmark","highlightRule","editContent","pageAnim","getProgress","coverProgress","reverseContent","replace","sameTitleRemoved","reSegment","delRubyTag","delHTag","imageStyle","reimportSource","updateToc","log","help"]}"#]
+        let menuConfig = #"{"primary":["effectiveReplaces","simulatedReading"],"more":["bookmark","highlightRule","editContent","pageAnim","getProgress","coverProgress","reverseContent","replace","sameTitleRemoved","reSegment","delRubyTag","delHTag","imageStyle","reimportSource","updateToc","log","help"]}"#
+        let launchMenuConfig = String(decoding: try JSONEncoder().encode(menuConfig), as: UTF8.self)
+        app.launchArguments = ["-detail-gallery", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO", "-doubleHorizontalPage", "0", "-manualReplaceRule", "NO", "-readerMenuConfig", launchMenuConfig]
         app.launch()
         XCTAssertTrue(app.buttons["detail.read"].waitForExistence(timeout: 15))
         app.buttons["detail.read"].tap()
         XCTAssertTrue(app.otherElements["reader.body"].waitForExistence(timeout: 15))
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         app.buttons["更多"].tap()
+        XCTAssertTrue(app.buttons["更多操作"].waitForExistence(timeout: 5))
         let manual = app.buttons["手动替换"]
-        XCTAssertTrue(manual.waitForExistence(timeout: 5)); manual.tap()
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: manual)], timeout: 5), .completed)
+        manual.tap()
         XCTAssertTrue(app.switches["手动替换"].waitForExistence(timeout: 5))
         snapshot(app, "u6-reader-manual-replace")
         app.buttons["保存"].tap()
