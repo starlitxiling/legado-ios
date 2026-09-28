@@ -159,6 +159,15 @@ final class ReaderViewModel {
             }
             var entity = try ReaderEntityBridge.decode(Book.self, row: book)
             let sourceRow = try await BookSourceRepository(database: database).get(bookSourceUrl: book.origin)
+            if !LocalBook.isLocal(entity), let sourceRow, book.origin != sourceRow.bookSourceUrl {
+                let original = book
+                try await database.write { db in
+                    try db.execute(sql: "UPDATE books SET origin = ? WHERE bookUrl = ? AND origin = ?",
+                        arguments: [sourceRow.bookSourceUrl, original.bookUrl, original.origin])
+                }
+                book.origin = sourceRow.bookSourceUrl
+                entity.origin = sourceRow.bookSourceUrl
+            }
             let source = try sourceRow.map { try ReaderEntityBridge.decode(BookSource.self, row: $0) }
             let repository = ChapterRepository(database: database)
             var chapters = try await repository.list(bookUrl: bookURL)

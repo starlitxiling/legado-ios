@@ -4,6 +4,35 @@ import LegadoCore
 
 @MainActor
 final class ReaderSourceRecoveryTests: XCTestCase {
+    func testNormalizedOriginIsSavedOnlyForUniqueMatch() async throws {
+        for suffix in ["/", " ", "#yc1101b", "/#yc1101b"] {
+            let database = try AppDatabase.inMemory()
+            let repository = BookSourceRepository(database: database)
+            var source = BookSourceRow(); source.bookSourceUrl = "https://example.test/path"
+            try await repository.insert(source)
+            var book = BookRow(); book.bookUrl = "fixture:book"; book.origin = " HTTPS://EXAMPLE.TEST/path" + suffix
+            try await BookshelfRepository(database: database).insert(book)
+            let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            defer { try? FileManager.default.removeItem(at: root) }
+            let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: root, preDownloadCount: { 0 })
+            await model.load(bookURL: book.bookUrl)
+            let saved = try await BookshelfRepository(database: database).get(bookUrl: book.bookUrl)
+            let matched = try await repository.get(bookSourceUrl: book.origin)
+            XCTAssertEqual(matched?.bookSourceUrl, source.bookSourceUrl)
+            XCTAssertEqual(saved?.origin, source.bookSourceUrl)
+            await model.close()
+        }
+        let database = try AppDatabase.inMemory()
+        let repository = BookSourceRepository(database: database)
+        for url in ["https://example.test", "https://example.test/"] {
+            var source = BookSourceRow(); source.bookSourceUrl = url; try await repository.insert(source)
+        }
+        let ambiguous = try await repository.get(bookSourceUrl: "https://example.test#fragment")
+        XCTAssertNil(ambiguous)
+        let exact = try await repository.get(bookSourceUrl: "https://example.test/")
+        XCTAssertEqual(exact?.bookSourceUrl, "https://example.test/")
+    }
+
     func testExistingSourceServerFailureDoesNotStartRecovery() async throws {
         let database = try AppDatabase.inMemory()
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

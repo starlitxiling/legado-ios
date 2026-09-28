@@ -32,7 +32,12 @@ extension Repository where Record == BookSourceRow {
     }
 
     public func get(bookSourceUrl: String) async throws -> BookSourceRow? {
-        try await database.writer.read { db in try BookSourceRow.fetchOne(db, key: bookSourceUrl) }
+        try await database.writer.read { db in
+            if let exact = try BookSourceRow.fetchOne(db, key: bookSourceUrl) { return exact }
+            let urls = try String.fetchAll(db, sql: "SELECT bookSourceUrl FROM book_sources")
+            guard let match = BookSourceURL.match(bookSourceUrl, candidates: urls) else { return nil }
+            return try BookSourceRow.fetchOne(db, key: match)
+        }
     }
 
     public func list(enabled: Bool? = nil) async throws -> [BookSourceRow] {
@@ -64,5 +69,25 @@ extension Repository where Record == BookSourceRow {
                 return (row["bookSourceUrl"] as String, SourceManagementMetadata(usageCount: row["usageCount"], check: check))
             })
         }
+    }
+}
+
+public enum BookSourceURL {
+    public static func normalized(_ value: String) -> String {
+        var value = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        value = String(value.prefix { $0 != "#" })
+        while value.hasSuffix("/") { value.removeLast() }
+        guard var components = URLComponents(string: value) else { return value }
+        components.scheme = components.scheme?.lowercased()
+        components.host = components.host?.lowercased()
+        return components.string ?? value
+    }
+
+    public static func match(_ origin: String, candidates: [String]) -> String? {
+        if candidates.contains(origin) { return origin }
+        let target = normalized(origin)
+        guard !target.isEmpty else { return nil }
+        let matches = candidates.filter { normalized($0) == target }
+        return matches.count == 1 ? matches[0] : nil
     }
 }
