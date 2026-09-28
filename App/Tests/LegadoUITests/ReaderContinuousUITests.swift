@@ -5,12 +5,16 @@ final class ReaderContinuousUITests: XCTestCase {
     @MainActor
     func testStatusIconToggleDoesNotChangePanelAppearance() {
         let app = launch(mode: 0)
+        XCUIDevice.shared.press(.home)
+        app.activate()
+        XCTAssertTrue(app.otherElements.matching(identifier: "reader.body").firstMatch.waitForExistence(timeout: 10))
         app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)).tap()
         app.buttons["界面"].tap(); app.buttons["信息"].tap()
         let toggle = app.switches["深色状态栏图标"]
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
         if toggle.value as? String != "1" { toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap() }
         let before = panelLuminance(app.screenshot().image)
+        XCTAssertGreaterThan(before, 0.5)
         toggle.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
         XCTAssertEqual(toggle.value as? String, "0")
         app.navigationBars.buttons.element(boundBy: 0).tap()
@@ -23,13 +27,15 @@ final class ReaderContinuousUITests: XCTestCase {
 
     private func panelLuminance(_ image: UIImage) -> Double {
         guard let source = image.cgImage,
-              let sample = source.cropping(to: CGRect(x: 3, y: Double(source.height) * 0.8, width: 2, height: 2)) else {
+              let sample = source.cropping(to: CGRect(x: 30, y: Double(source.height) * 0.8, width: 2, height: 2)) else {
             XCTFail("Screenshot pixels unavailable"); return -1
         }
         var pixels = [UInt8](repeating: 0, count: 4)
-        let context = CGContext(data: &pixels, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
-            space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
-        context.draw(sample, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        pixels.withUnsafeMutableBytes { buffer in
+            let context = CGContext(data: buffer.baseAddress, width: 1, height: 1, bitsPerComponent: 8, bytesPerRow: 4,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)!
+            context.draw(sample, in: CGRect(x: 0, y: 0, width: 1, height: 1))
+        }
         return Double(Int(pixels[0]) + Int(pixels[1]) + Int(pixels[2])) / 765
     }
 

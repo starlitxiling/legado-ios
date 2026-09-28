@@ -11,19 +11,24 @@ struct EInkModifier: ViewModifier {
 
 @MainActor struct ThemeEnvironmentModifier: ViewModifier {
     @State private var readerDarkIcons: Bool?
+    @State private var hostedPhase: ScenePhase?
+    @Environment(\.scenePhase) private var scenePhase
     let store: ThemeStore
     @Environment(\.colorScheme) private var systemScheme
 
     func body(content: Content) -> some View {
         let palette = store.palette(systemIsNight: systemScheme == .dark)
         let colors = ThemeColors(palette: palette)
+        let appearance = ReaderStatusAppearance(mode: store.mode, palette: palette, darkIcons: readerDarkIcons)
         content
+            .environment(\.scenePhase, hostedPhase ?? scenePhase)
             .environment(store)
             .environment(\.themeColors, colors)
             .tint(colors.accent)
             .foregroundStyle(colors.textPrimary)
             .background(colors.background.ignoresSafeArea())
-            .preferredColorScheme(readerDarkIcons.map { $0 ? ColorScheme.light : .dark } ?? (store.mode == .system ? nil : palette.isNight ? .dark : .light))
+            .preferredColorScheme(appearance.colorScheme)
+            .background(ReaderStatusBarBridge(darkIcons: appearance.darkStatusIcons, colorScheme: appearance.colorScheme, phaseChanged: { hostedPhase = $0 }).frame(width: 0, height: 0))
             .onPreferenceChange(ReaderStatusIconPreference.self) { readerDarkIcons = $0 }
             .saturation(palette.isEInk ? 0 : 1)
             .modifier(EInkModifier(enabled: palette.isEInk))
