@@ -1,9 +1,44 @@
 import XCTest
 import CoreText
 import LegadoCore
+import GRDB
 @testable import ReaderCheck
 
 final class ReaderTests: XCTestCase {
+    @MainActor
+    func testDefaultProgressCoalescingWritesOnlyFinalPageWithoutFlush() async throws {
+        let database = try AppDatabase.inMemory()
+        let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: directory) }
+        var row = BookRow(); row.bookUrl = "https://progress.test/book"; row.name = "Progress"
+        try await BookshelfRepository(database: database).insert(row)
+        var chapter = BookChapterRow(); chapter.bookUrl = row.bookUrl; chapter.url = "chapter"; chapter.title = "Chapter"
+        try await ChapterRepository(database: database).insert(chapter)
+        try BookHelp.save(String(repeating: "A paragraph for testing progress persistence.\n", count: 300), directory: directory,
+            book: ReaderEntityBridge.decode(Book.self, row: row), chapter: ReaderEntityBridge.decode(BookChapter.self, row: chapter))
+        let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: directory, preDownloadCount: { 0 })
+        await model.load(bookURL: row.bookUrl)
+        XCTAssertGreaterThan(try XCTUnwrap(model.pagination?.pages.count), 4)
+        try await database.write { db in
+            try db.execute(sql: "CREATE TABLE progress_writes(position INTEGER NOT NULL)")
+            try db.execute(sql: "CREATE TRIGGER record_progress AFTER UPDATE OF durChapterPos ON books BEGIN INSERT INTO progress_writes VALUES (NEW.durChapterPos); END")
+        }
+        var pending: [Task<Void, Never>] = []
+        for page in 1...3 {
+            await model.selectPage(page)
+            if let task = model.progressSaveTask { pending.append(task) }
+        }
+        XCTAssertEqual(pending.count, 3)
+        let expected = model.characterOffset
+        XCTAssertGreaterThan(expected, 0)
+        for task in pending { await task.value }
+        let positions = try await database.write { db in try Int.fetchAll(db, sql: "SELECT position FROM progress_writes") }
+        XCTAssertEqual(positions, [expected])
+        let saved = try await BookshelfRepository(database: database).get(bookUrl: row.bookUrl)
+        XCTAssertEqual(saved?.durChapterPos, expected)
+        await model.close()
+    }
+
     @MainActor
     func testBackgroundTransitionDoesNotInterruptQueuedProgressSave() async throws {
         let directory = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)

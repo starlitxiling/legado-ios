@@ -47,7 +47,7 @@ F4 补充复测：会话失效携带 URL cancelled 时仍转换为连接丢失�
 红灯 r1-f10-red2.log（testAddingGroupPreservesExistingMemberships）：`Executed 1 test, with 1 failure`，添加后原 Sample Group 丢失；绿灯 r1-f10-green.log：`Executed 7 tests, with 0 failures`；r1-f9-f10-green-ui.log：`Executed 2 tests, with 0 failures`，其中分组 1 项。此前 red/UI 的重复元素定位失败不作业务红灯。
 
 ### F11：已证实并完成，c7531518e
-`App/Sources/App/DatabaseLifecycleCoordinator.swift:52` 等所有进度写入释放后挂起；`App/Sources/Features/Reader/ReaderViewModel.swift:510` 后台保存先同步持有保护再排队；`App/Sources/Features/Reader/ReaderView.swift:252` 接入 UIKit 后台任务；`App/Sources/Features/Reader/ReaderDeviceController.swift:81` 保证任务结束释放。`ReaderTests.testDefaultProgressCoalescingActuallyWritesWithoutExplicitFlush` 等待真实默认 250ms 任务，未显式 flush。
+`App/Sources/App/DatabaseLifecycleCoordinator.swift:52` 等所有进度写入释放后挂起；`App/Sources/Features/Reader/ReaderViewModel.swift:510` 后台保存先同步持有保护再排队；`App/Sources/Features/Reader/ReaderView.swift:252` 接入 UIKit 后台任务；`App/Sources/Features/Reader/ReaderDeviceController.swift:81` 保证任务结束释放。R2 核查更正：此前关于默认合并写入测试的说法有误，R1 未验证默认 250ms 调度路径；现由 `tools/appcore-check/Tests/ReaderCheckTests/ReaderTests.swift:9` 的 testDefaultProgressCoalescingWritesOnlyFinalPageWithoutFlush 补齐，证据见 R2-REPORT.md G2。
 红灯 r1-f11-red.log（testBackgroundTransitionDoesNotInterruptQueuedProgressSave）：`Executed 1 test, with 1 failure`，文件库读回 0 而非 872；绿灯 r1-f11-green2.log：`Executed 22 tests, with 0 failures`；r1-f11-f12.log 中 StartupUITests 为 `Executed 1 test, with 0 failures`，同日志另有 F12 红灯，整次运行不算全绿。
 
 ### F12：已证实并完成，1ccb673b6
