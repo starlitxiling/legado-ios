@@ -269,8 +269,11 @@ final class BookshelfLayoutUITests: XCTestCase {
         XCTAssertTrue(app.navigationBars["书架(Sample Group)"].waitForExistence(timeout: 5))
         let book = app.buttons["bookshelf.book.fixture:book:0"]
         XCTAssertTrue(book.waitForExistence(timeout: 5))
-        book.press(forDuration: 0.8)
-        app.buttons["书籍详情"].tap()
+        XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "hittable == true"), object: book)], timeout: 5), .completed)
+        book.press(forDuration: 1.2)
+        let details = app.buttons["书籍详情"]
+        XCTAssertTrue(details.waitForExistence(timeout: 5))
+        details.tap()
         XCTAssertTrue(app.navigationBars["书籍详情"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["Sample Book 01"].exists)
     }
