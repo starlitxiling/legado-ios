@@ -28,9 +28,12 @@ ReaderStyleStore.swift 的路径前缀为 App/Sources/Features/Reader/。`Reader
 `App/Sources/Features/Reader/ReaderStyleStore.swift:86` 修改下划线字段写版本 1；`Packages/LegadoCore/Sources/LegadoCore/Reader/ReaderStyleArchive.swift:10` 导出必写版本 1。Android 下划线全局共享，iOS 仍按样式存储，未改模型。
 红灯 r1-f6-red.log（testUnderlineEditsAndExportSetAndroidVersion）：`Executed 1 test, with 2 failures`；绿灯 r1-f6-green.log：`Executed 11 tests, with 0 failures`；r1-f6-ui.log：`Executed 1 test, with 0 failures`，补齐 B4a 旧日志 0 项的无效证据。
 
-### F7：完成，提交见本单元 Git 记录
+### F7：完成，5c756cc85
 `App/Sources/Features/Reader/ReaderPresentationState.swift:41` 覆盖下一页时当前页左移、下一页静止，上一页左侧盖回；`PageAnimation/ReaderPagePresentation.swift:75` 调整层级与移动页阴影，滑动不变。阈值仍为三分之一页或预测惯性，Android HorizontalPageDelegate 按最后移动方向判取消，保留此差异。
 红灯 r1-f7-red.log（testCoverMovesCurrentPageOffStationaryNextPage）：`Executed 1 test, with 2 failures`；绿灯 r1-f7-green.log：`Executed 6 tests, with 0 failures`；r1-f7-ui.log：`Executed 1 test, with 0 failures`。
+
+### F8：跳过，未完成，提交见本单元 Git 记录
+`App/Tests/LegadoUITests/ReaderContinuousUITests.swift:7` 新增面板截图明度对比，切换图标后及关闭重开后均未复现面板变化。r1-f8-red.log、r1-f8-red2.log 实际均为 `Executed 1 test, with 0 failures`，不能作为红灯；没有专用宿主修复，也未验证系统文件选择器与状态栏图标像素。保留根配色实现，后续需要可复现的操作路径或覆盖该通道的失败测试，不能宣称已修复。
 
 ## 真机验收清单
 安装前提：手机旧版标识为 com.starlitxiling.legado.ios，覆盖包须使用该标识及有效描述文件；不改 App/project.yml，不能直接安装默认标识包。
@@ -41,3 +44,4 @@ F4：启用自动换源，现有源返回服务器错误时只显示错误及手
 F5：恢复同一 Android 备份后打开原 24 本缺源书；13 本接回且重开保持，7 本歧义与 4 本无对应源仍提示缺源，手动选择所需源。
 F6：界面面板修改下划线并关闭重开，设置保留；导出样式在 Android 导入，下划线不再因版本 0 重置。
 F7：覆盖模式向左拖，当前页带右缘阴影移走、下一页静止；向右拖上一页从左盖回；短拖回弹，滑动模式保持原样。
+F8（未完成）：切换深色状态栏图标，查看状态栏、目录、界面面板和系统文件选择器；若配色联动，请记录具体入口。
