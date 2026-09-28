@@ -117,6 +117,7 @@ struct ReaderView: View {
                   database: database, client: client)
     }
 
+    @State private var paperColor = ARGBColor(0xFFFFFFFF)
     private var background: some View { ReaderBackgroundView(settings: model.settings) }
 
     private var infoValues: ReaderInfoValues {
@@ -137,7 +138,7 @@ struct ReaderView: View {
                 background.ignoresSafeArea()
                 VStack(spacing: 0) {
                     ReaderInfoView(settings: model.settings, header: true, values: infoValues)
-                    ReaderPagePresentation(mode: animation,
+                    ReaderPagePresentation(paperColor: paperColor.color, mode: animation,
                         page: model.chapterPosition * 1_000_000 + model.pageIndex,
                         progress: autoRead.progress, enabled: acceptsInput,
                         canPrevious: model.pageIndex > 0 || model.chapterPosition > 0,
@@ -218,6 +219,16 @@ struct ReaderView: View {
         .onChange(of: behavior) { _, value in device.update(value); Task { await model.applyBehavior(value) } }
         .foregroundStyle(model.settings.theme == .night ? Color(white: 0.68) : Color.primary)
         .environment(\.colorScheme, model.settings.theme == .night ? .dark : .light)
+        .task(id: "\(model.settings.backgroundType):\(model.settings.backgroundValue):\(model.settings.configuration.bgAlpha):\(model.settings.theme.rawValue)") {
+            let settings = model.settings
+            paperColor = ReaderPaperColor.resolve(settings: settings)
+            do {
+                let color = try await ReaderPaperColor.load(settings: settings,
+                    directory: URL.applicationSupportDirectory.appendingPathComponent("Legado/bg", isDirectory: true))
+                try Task.checkCancellation()
+                paperColor = color
+            } catch is CancellationError {} catch { AppLogStore.shared.append("Paper background: \(String(reflecting: error))") }
+        }
         .preference(key: ReaderStatusIconPreference.self, value: statusStyleActive ? model.settings.darkStatusIcons : nil)
         .onAppear { statusStyleActive = true }
         .onDisappear { statusStyleActive = false }

@@ -2,6 +2,7 @@ import SwiftUI
 import UIKit
 
 struct SimulationPageTransition<Content: View, Next: View, Previous: View>: UIViewControllerRepresentable {
+    var paperColor: Color = ReaderPaperColor.resolve(settings: ReaderSettings()).color
     let page: Int
     let enabled: Bool
     let canPrevious: Bool
@@ -83,7 +84,7 @@ struct SimulationPageTransition<Content: View, Next: View, Previous: View>: UIVi
         }
 
         private func back<V: View>(_ view: V) -> AnyView {
-            AnyView(Color.white.overlay(view.scaleEffect(x: -1, y: 1).opacity(0.12)).accessibilityHidden(true))
+            AnyView(value.paperColor.overlay(view.scaleEffect(x: -1, y: 1).opacity(0.12)).accessibilityHidden(true))
         }
 
         private func face(_ index: Int) -> Face {

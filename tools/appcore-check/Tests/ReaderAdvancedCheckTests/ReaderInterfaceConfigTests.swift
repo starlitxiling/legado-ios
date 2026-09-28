@@ -1,9 +1,26 @@
 import XCTest
 import LegadoCore
 import GRDB
+import CoreGraphics
 @testable import ReaderCheck
 
 final class ReaderInterfaceConfigTests: XCTestCase {
+    func testPaperBackUsesSolidOrAverageImageColor() throws {
+        var settings = ReaderSettings()
+        settings.configuration.bgType = 0; settings.configuration.bgStr = "#FF123456"
+        XCTAssertEqual(ReaderPaperColor.resolve(settings: settings), ARGBColor(0xFF123456))
+        settings.configuration.bgType = 2; settings.configuration.bgAlpha = 100
+        let context = try XCTUnwrap(CGContext(data: nil, width: 8, height: 8, bitsPerComponent: 8, bytesPerRow: 32,
+            space: CGColorSpace(name: CGColorSpace.sRGB)!, bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+        context.setFillColorSpace(CGColorSpace(name: CGColorSpace.sRGB)!)
+        context.setFillColor([1, 0, 0, 1])
+        context.fill(CGRect(x: 0, y: 0, width: 8, height: 8))
+        let image = try XCTUnwrap(context.makeImage())
+        XCTAssertEqual(ReaderPaperColor.resolve(settings: settings, image: image), ARGBColor(0xFFFF0000))
+        settings.configuration.bgAlpha = 0; settings.configuration.bgTypeNight = 2; settings.theme = .night
+        XCTAssertEqual(ReaderPaperColor.resolve(settings: settings, image: image), ARGBColor(0xFF000000))
+    }
+
     @MainActor
     func testUnderlineEditsAndExportSetAndroidVersion() async throws {
         let suite = "R1.F6." + UUID().uuidString

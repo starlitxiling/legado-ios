@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ReaderPagePresentation<Content: View, Next: View, Previous: View>: View {
+    var paperColor: Color = .white
     let mode: Int
     let page: Int
     let progress: Double
@@ -40,7 +41,7 @@ struct ReaderPagePresentation<Content: View, Next: View, Previous: View>: View {
                 touchSlop: touchSlop, turn: turn, content: content, next: next, previous: previous)
         case .simulation:
             if progress > 0 { content().modifier(NoAnimTransition()) }
-            else { SimulationPageTransition(page: page, enabled: enabled, canPrevious: canPrevious, canNext: canNext, turn: turn, content: content, next: next, previous: previous) }
+            else { SimulationPageTransition(paperColor: paperColor, page: page, enabled: enabled, canPrevious: canPrevious, canNext: canNext, turn: turn, content: content, next: next, previous: previous) }
         case .scroll:
             ScrollPageContainer(pages: scrollPages, location: page, progress: progress, enabled: enabled, select: scrollSelect)
         case .none:
