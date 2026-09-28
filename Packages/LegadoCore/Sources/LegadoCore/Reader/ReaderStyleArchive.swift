@@ -7,6 +7,7 @@ public struct ReaderStyleArchive {
     public static func encode(_ input: ReadBookConfig, background: (String) throws -> Data?,
                               font: (String) throws -> (String, Data)? = { _ in nil }) throws -> Data {
         var config = input
+        config.underlineConfigVersion = 1
         var files: [String: Data] = [:]
         func append(_ raw: String, _ data: Data?) throws -> String {
             let name = URL(fileURLWithPath: raw).lastPathComponent

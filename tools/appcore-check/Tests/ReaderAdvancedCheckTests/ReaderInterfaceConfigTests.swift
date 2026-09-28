@@ -5,6 +5,21 @@ import GRDB
 
 final class ReaderInterfaceConfigTests: XCTestCase {
     @MainActor
+    func testUnderlineEditsAndExportSetAndroidVersion() async throws {
+        let suite = "R1.F6." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let store = ReaderStyleStore(database: try AppDatabase.inMemory(), defaults: defaults)
+        try await store.load()
+        XCTAssertEqual(try ReaderStyleArchive.decode(store.exportSelected()).configuration.underlineConfigVersion, 1)
+        var config = store.current
+        config.underlineMode = config.underlineMode == 1 ? 2 : 1
+        try await store.update(config)
+        XCTAssertEqual(store.current.underlineConfigVersion, 1)
+        XCTAssertEqual(try ReaderStyleArchive.decode(store.exportSelected()).configuration.underlineMode, config.underlineMode)
+    }
+
+    @MainActor
     func testFallbackPreservesOriginalBytesBeforeSelectionAndEditing() async throws {
         for raw in [Data("{".utf8), Data(#"[{"textSize":22},{"textSize":"bad"}]"#.utf8)] {
             let database = try AppDatabase.inMemory()

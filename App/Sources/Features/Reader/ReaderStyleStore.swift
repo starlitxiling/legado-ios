@@ -85,7 +85,14 @@ final class ReaderStyleStore {
 
     func update(_ configuration: ReadBookConfig) async throws {
         guard styles.indices.contains(selected) else { throw ReaderStyleError.invalidSelection }
-        let normalized = ReaderSettings(configuration: configuration).normalized.configuration
+        var normalized = ReaderSettings(configuration: configuration).normalized.configuration
+        let previous = current
+        if normalized.underlineMode != previous.underlineMode || normalized.underlineColor != previous.underlineColor
+            || normalized.underlineColorSet != previous.underlineColorSet || normalized.underlineWidth != previous.underlineWidth
+            || normalized.underlineDistance != previous.underlineDistance || normalized.underlineBodyEnabled != previous.underlineBodyEnabled
+            || normalized.underlineTitleEnabled != previous.underlineTitleEnabled {
+            normalized.underlineConfigVersion = 1
+        }
         if sharedLayout {
             shared = normalized
             styles[selected] = Self.copyColors(from: normalized, into: styles[selected])
