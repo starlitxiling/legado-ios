@@ -32,7 +32,7 @@ final class HeadlessWebView: HeadlessWebViewProtocol {
 }
 
 @MainActor
-private final class HeadlessWebViewSession: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+final class HeadlessWebViewSession: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
     let request: HeadlessWebViewRequest
     var webView: WKWebView?
     var continuation: CheckedContinuation<StrResponse, Error>?
@@ -126,9 +126,16 @@ private final class HeadlessWebViewSession: NSObject, WKNavigationDelegate, WKSc
         Task { await succeed(url, url: request.url.flatMap(URL.init(string:))) }
     }
 
-    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { finish(.failure(error)) }
-    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { finish(.failure(error)) }
+    func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { navigationFailed(error) }
+    func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { navigationFailed(error) }
     func webViewWebContentProcessDidTerminate(_ webView: WKWebView) { finish(.failure(HeadlessWebViewError.unavailable)) }
+
+    private func navigationFailed(_ error: Error) {
+        let failure = error as NSError
+        // Ignore superseded navigations so their replacement can finish the request.
+        if failure.domain == NSURLErrorDomain && failure.code == URLError.cancelled.rawValue { return }
+        finish(.failure(error))
+    }
 
     private func succeed(_ body: String, url: URL?) async {
         guard !completed, let webView else { return }

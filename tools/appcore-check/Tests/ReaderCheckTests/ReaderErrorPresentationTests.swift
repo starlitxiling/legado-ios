@@ -4,6 +4,22 @@ import LegadoCore
 
 @MainActor
 final class ReaderErrorPresentationTests: XCTestCase {
+    func testCancelledTaskRequestHasNoPresentedError() async {
+        let task = Task {
+            withUnsafeCurrentTask { $0?.cancel() }
+            do {
+                _ = try await CancelledReaderClient().send(HttpRequest(url: URL(string: "https://cancel.test")!))
+                XCTFail("Expected cancelled request")
+            } catch {
+                XCTAssertTrue(Task.isCancelled)
+                XCTAssertEqual((error as? URLError)?.code, .cancelled)
+                XCTAssertTrue(error.isCancellation)
+                XCTAssertNil(error.presentation(operation: "Load chapter"))
+            }
+        }
+        await task.value
+    }
+
     func testPaginationErrorsAreLocalized() {
         XCTAssertTrue(PaginationError.invalidPageSize.localizedDescription.contains("页面尺寸"))
         XCTAssertTrue(PaginationError.noVisibleCharacters.localizedDescription.contains("文字"))
@@ -37,4 +53,11 @@ final class ReaderErrorPresentationTests: XCTestCase {
 
 private struct OfflineReaderClient: HttpClient {
     func send(_ request: HttpRequest) async throws -> HttpResponse { throw URLError(.notConnectedToInternet) }
+}
+
+private struct CancelledReaderClient: HttpClient {
+    func send(_ request: HttpRequest) async throws -> HttpResponse {
+        XCTAssertTrue(Task.isCancelled)
+        throw URLError(.cancelled)
+    }
 }
