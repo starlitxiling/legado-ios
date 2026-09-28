@@ -69,3 +69,4 @@ R2 五个单元均已完成，最后提交后的 Core、App、完整模拟器验
 
 - R1 独立核对：20 本有近似书源不等于 20 本唯一匹配；7 本各有 3 个匹配项，按用户规则保留不改挂。没有把歧义书源自动选成第一项。
 - 2026-09-28 R1 完成（cdedfce6e，回归 Core 764/App 369/UI 52 全绿，主会话核实日志时间）；opus-explorer 交叉复审无 P0/P1，余 P2/P3 写入 R2-FIX.prompt.md（G1-G5），待用户驱动 Codex。
+- 2026-09-28 R2（G1-G5，终点 953688ebf）由主会话核验：代码复审通过；回归 Core 765/0、App 372/0、LegadoTests 12/0、UI 52/3。3 个失败均在 StartupUITests，为测试间状态污染（开关连点第二下未生效使订阅标签持久隐藏，AppPreferences 不认 -showRss 启动参数），单独重跑两次 6/0；详见 .build/round6/r2-final-summary.md。遗留测试债：StartupUITests 每测重置偏好。Codex 已停，后续由主会话直接执行。下一步：恢复签名后打 com.starlitxiling.legado.ios 包上真机，按 R1-REPORT 真机验收清单验收。
