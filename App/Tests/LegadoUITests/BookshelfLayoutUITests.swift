@@ -2,6 +2,27 @@ import XCTest
 
 final class BookshelfLayoutUITests: XCTestCase {
     @MainActor
+    func testAddingGroupPreservesExistingMemberships() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments = ["-bookshelf-gallery", "-reset-bookshelf-gallery", "-multigroup-bookshelf-gallery"]
+        app.launch()
+        let book = app.buttons["bookshelf.book.fixture:book:0"]
+        XCTAssertTrue(book.waitForExistence(timeout: 15))
+        XCTAssertTrue((book.value as? String)?.contains("Sample Group") == true)
+        XCTAssertTrue((book.value as? String)?.contains("Second Group") == true)
+        book.press(forDuration: 0.8)
+        let menu = app.buttons["分组"]
+        XCTAssertTrue(menu.waitForExistence(timeout: 5)); menu.tap()
+        let third = app.buttons["bookshelf.membership.4"]
+        XCTAssertTrue(third.waitForExistence(timeout: 5)); third.tap()
+        XCTAssertTrue(third.waitForNonExistence(timeout: 5))
+        for name in ["Sample Group", "Second Group", "Third Group"] {
+            XCTAssertTrue((book.value as? String)?.contains(name) == true, name)
+        }
+    }
+
+    @MainActor
     func testPinPreservesReadTimeSortAndRemovalKeepsOtherBooks() {
         continueAfterFailure = false
         let app = XCUIApplication()

@@ -35,9 +35,13 @@ ReaderStyleStore.swift 的路径前缀为 App/Sources/Features/Reader/。`Reader
 ### F8：跳过，未完成，ee37b8d35
 `App/Tests/LegadoUITests/ReaderContinuousUITests.swift:7` 新增面板截图明度对比，切换图标后及关闭重开后均未复现面板变化。r1-f8-red.log、r1-f8-red2.log 实际均为 `Executed 1 test, with 0 failures`，不能作为红灯；没有专用宿主修复，也未验证系统文件选择器与状态栏图标像素。保留根配色实现，后续需要可复现的操作路径或覆盖该通道的失败测试，不能宣称已修复。
 
-### F9：完成，提交见本单元 Git 记录
+### F9：完成，提交见 git log（下一单元记录哈希）
 `App/Sources/Features/Reader/ReaderPaperColor.swift:6` 纯色直接取背景，图片取缩略图平均像素并合成透明度；`PageAnimation/SimulationPageTransition.swift:87` 纸背使用传入颜色。红灯前仅将旧白色常量提取为可测函数，保留旧行为。
 红灯 r1-f9-red.log（testPaperBackUsesSolidOrAverageImageColor）：`Executed 1 test, with 3 failures`；绿灯 r1-f9-green6.log：`Executed 12 tests, with 0 failures`；r1-f9-f10-green-ui.log：`Executed 2 tests, with 0 failures`，其中仿真翻页 1 项。中间 green 至 green5 的色彩空间测试失败保留，未计通过。纸背平均色为缩略采样，与 Android 原图均值可能有细微差异。
+
+### F10：完成，提交见本单元 Git 记录
+`App/Sources/Features/Bookshelf/BookshelfView.swift:378` 按位添加、移除单个分组；`:413` 多选 Toggle 展示已有归属，保留其他分组。`BookshelfCacheParityTests.swift:5` 覆盖 3→7→5 的位掩码变化。
+红灯 r1-f10-red2.log（testAddingGroupPreservesExistingMemberships）：`Executed 1 test, with 1 failure`，添加后原 Sample Group 丢失；绿灯 r1-f10-green.log：`Executed 7 tests, with 0 failures`；r1-f9-f10-green-ui.log：`Executed 2 tests, with 0 failures`，其中分组 1 项。此前 red/UI 的重复元素定位失败不作业务红灯。
 
 ## 真机验收清单
 安装前提：手机旧版标识为 com.starlitxiling.legado.ios，覆盖包须使用该标识及有效描述文件；不改 App/project.yml，不能直接安装默认标识包。
@@ -50,3 +54,4 @@ F6：界面面板修改下划线并关闭重开，设置保留；导出样式在
 F7：覆盖模式向左拖，当前页带右缘阴影移走、下一页静止；向右拖上一页从左盖回；短拖回弹，滑动模式保持原样。
 F8（未完成）：切换深色状态栏图标，查看状态栏、目录、界面面板和系统文件选择器；若配色联动，请记录具体入口。
 F9：设置深色纯色或背景图片，切到仿真翻页并慢拖；纸背随背景或图片平均色，不再固定白色。
+F10：长按原属两个分组的书，分组菜单再勾一个；三个归属都保留，取消其中一个不影响另外两个。

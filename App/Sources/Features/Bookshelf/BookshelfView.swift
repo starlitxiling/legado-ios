@@ -375,11 +375,9 @@ struct BookshelfView: View {
 
     private func open(_ book: BookRow) { resumeBook = book; showingResume = true }
 
-    private func moveBook(_ book: BookRow, to group: Int64) {
+    private func setGroup(_ group: Int64, for book: BookRow, selected: Bool) {
         Task { await perform {
-            let groups = try await container.bookGroups.list()
-            let mask = groups.filter { $0.groupId > 0 }.reduce(Int64(0)) { $0 | $1.groupId }
-            try await container.bookshelf.move(bookURLs: [book.bookUrl], from: mask, to: group)
+            try await container.bookshelf.move(bookURLs: [book.bookUrl], from: selected ? 0 : group, to: selected ? group : 0)
         } }
     }
 
@@ -407,9 +405,10 @@ struct BookshelfView: View {
             }
             Button("移出书架", role: .destructive) { removingBook = book }
             Menu("分组") {
-                Button("未分组") { moveBook(book, to: 0) }
                 ForEach(model.groups.filter { $0.groupId > 0 }, id: \.groupId) { group in
-                    Button(group.groupName) { moveBook(book, to: group.groupId) }
+                    Toggle(group.groupName, isOn: Binding(get: { book.group & group.groupId != 0 },
+                        set: { setGroup(group.groupId, for: book, selected: $0) }))
+                        .accessibilityIdentifier("bookshelf.membership." + String(group.groupId))
                 }
             }
             Button("书籍详情") { detailBook = book; showingDetail = true }
@@ -417,6 +416,7 @@ struct BookshelfView: View {
         .accessibilityAddTraits(.isButton)
         .accessibilityAction { open(book) }
         .accessibilityAction(named: Text("书籍详情")) { detailBook = book; showingDetail = true }
+        .accessibilityValue(model.groups.filter { $0.groupId > 0 && book.group & $0.groupId != 0 }.map(\.groupName).joined(separator: ", "))
         .accessibilityIdentifier("bookshelf.book." + book.bookUrl)
     }
 }

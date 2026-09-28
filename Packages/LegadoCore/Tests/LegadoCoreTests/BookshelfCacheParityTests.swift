@@ -2,6 +2,23 @@ import XCTest
 @testable import LegadoCore
 
 final class BookshelfCacheParityTests: XCTestCase {
+    func testGroupMembershipAdditionAndRemovalPreserveOtherBits() async throws {
+        let database = try AppDatabase.inMemory()
+        for id: Int64 in [1, 2, 4] {
+            var group = BookGroupRow(); group.groupId = id
+            try await BookGroupRepository(database: database).insert(group)
+        }
+        let repository = BookshelfRepository(database: database)
+        var book = BookRow(); book.bookUrl = "fixture:groups"; book.group = 3
+        try await repository.insert(book)
+        try await repository.move(bookURLs: [book.bookUrl], to: 4)
+        let added = try await repository.get(bookUrl: book.bookUrl)
+        XCTAssertEqual(added?.group, 7)
+        try await repository.move(bookURLs: [book.bookUrl], from: 2, to: 0)
+        let removed = try await repository.get(bookUrl: book.bookUrl)
+        XCTAssertEqual(removed?.group, 5)
+    }
+
     func testPinUpdatesReadTimeWithoutChangingGroupSort() async throws {
         let db = try AppDatabase.inMemory()
         var group = BookGroupRow(); group.groupId = 1; group.bookSort = 0

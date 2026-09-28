@@ -58,6 +58,12 @@ struct BookshelfGalleryView: View {
         try await container.bookGroups.ensureBuiltinGroups()
         var group = BookGroupRow(); group.groupId = 1; group.groupName = "Sample Group"; group.bookSort = 0
         try await container.bookGroups.insert(group)
+        if ProcessInfo.processInfo.arguments.contains("-multigroup-bookshelf-gallery") {
+            for (id, name): (Int64, String) in [(2, "Second Group"), (4, "Third Group")] {
+                var extra = BookGroupRow(); extra.groupId = id; extra.groupName = name
+                try await container.bookGroups.insert(extra)
+            }
+        }
         if ProcessInfo.processInfo.arguments.contains("-empty-bookshelf-gallery") { return container }
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent("bookshelf-gallery", isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
@@ -80,6 +86,7 @@ struct BookshelfGalleryView: View {
             book.author = "Sample Author"; book.origin = slowRefresh ? "https://fixture.test" : "fixture:source"; book.originName = "Fixture"
             if slowRefresh { book.tocUrl = "https://fixture.test/toc/" + String(index) }
             book.coverUrl = file.absoluteString; book.group = index < 9 ? 1 : 0; book.type = 8
+            if index == 0, ProcessInfo.processInfo.arguments.contains("-multigroup-bookshelf-gallery") { book.group = 3 }
             book.totalChapterNum = 100; book.durChapterIndex = index * 5; book.durChapterPos = index == 0 ? 0 : 12
             book.durChapterTitle = "Chapter " + String(index * 5 + 1); book.latestChapterTitle = "Chapter 100"
             book.durChapterTime = Int64(1_000_000 - index); book.lastCheckTime = 1_000_000
