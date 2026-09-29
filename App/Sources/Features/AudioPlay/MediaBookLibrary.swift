@@ -69,6 +69,19 @@ final class MediaBookLibrary {
         return try await MediaContentResolver.audioAddress(raw, source: source, book: book, chapter: chapter, client: client, cookies: cookies)
     }
 
+    func video(_ index: Int) async throws -> MediaResource {
+        guard let source, chapters.indices.contains(index) else { throw WebBookError.emptyToc }
+        let chapter = chapters[index]
+        let raw = try await WebBook(source: source, client: client, cookies: cookies).content(book: book, chapter: chapter, includeTitle: false)
+            .rawContent.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !raw.isEmpty else { throw MediaPlaybackError.emptyContent(chapter.title ?? "") }
+        guard !raw.hasPrefix("<") else { throw MediaPlaybackError.dashManifest }
+        for cookie in try await CookieRepository(database: database).list() {
+            await cookies.setCookie(url: cookie.url, cookie: cookie.cookie)
+        }
+        return try await MediaContentResolver.audioAddress(raw, source: source, book: book, chapter: chapter, client: client, cookies: cookies)
+    }
+
     func images(_ index: Int) async throws -> [MediaResource] {
         guard let source, chapters.indices.contains(index) else { throw WebBookError.emptyToc }
         let chapter = chapters[index]
@@ -117,6 +130,25 @@ final class MediaBookLibrary {
         Task {
             do { try await pending?.value }
             catch { userError = error.presentation(operation: "保存媒体进度", subject: book.name) }
+        }
+    }
+}
+
+enum MediaPlaybackError: LocalizedError, Equatable {
+    case emptyContent(String)
+    case dashManifest
+
+    var errorDescription: String? {
+        switch self {
+        case .emptyContent(let title): return title.isEmpty ? "书源没有返回播放地址" : "「\(title)」没有返回播放地址"
+        case .dashManifest: return "该视频使用 DASH（MPD）格式，iOS 系统播放器不支持"
+        }
+    }
+
+    var recoverySuggestion: String? {
+        switch self {
+        case .emptyContent: return "请重试，或切换书源。"
+        case .dashManifest: return "请切换提供 MP4 或 HLS（m3u8）地址的书源。"
         }
     }
 }

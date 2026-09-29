@@ -122,6 +122,45 @@ final class MangaReaderModelTests: XCTestCase {
     }
 }
 
+@MainActor
+final class VideoLibraryTests: XCTestCase {
+    func testVideoAddressResolvesPlainURLAndRejectsDashManifest() async throws {
+        let database = try AppDatabase.inMemory()
+        var source = BookSource(); source.bookSourceUrl = "https://video.test"; source.bookSourceType = 3
+        var toc = TocRule(); toc.chapterList = "tag.a"; toc.chapterName = "text"; toc.chapterUrl = "href"
+        source.ruleToc = toc
+        var content = ContentRule(); content.content = "@js:result"
+        source.ruleContent = content
+        try await BookSourceRepository(database: database).upsert(DiscoveryStorage.row(source, defaults: BookSourceRow()))
+        var book = Book(now: 0); book.bookUrl = "https://video.test/book"; book.tocUrl = "https://video.test/toc"
+        book.origin = "https://video.test"; book.type = 4
+        let library = MediaBookLibrary(book: book, database: database, client: VideoLibraryClient())
+        await library.load()
+        XCTAssertNil(library.errorMessage)
+        XCTAssertEqual(library.chapters.count, 3)
+        let first = try await library.video(0)
+        XCTAssertEqual(first.url.absoluteString, "https://cdn.video.test/one.m3u8")
+        do { _ = try await library.video(1); XCTFail("DASH should be rejected") }
+        catch { XCTAssertEqual(error as? MediaPlaybackError, .dashManifest) }
+        do { _ = try await library.video(2); XCTFail("empty content should be rejected") }
+        catch { XCTAssertFalse((error as? LocalizedError)?.errorDescription?.isEmpty ?? true, "\(error)") }
+        XCTAssertEqual(MediaPlaybackError.emptyContent("第三集").errorDescription, "「第三集」没有返回播放地址")
+    }
+}
+
+private struct VideoLibraryClient: HttpClient {
+    func send(_ request: HttpRequest) async throws -> HttpResponse {
+        let body: String
+        switch request.url.path {
+        case "/toc": body = #"<a href="/one">第一集</a><a href="/two">第二集</a><a href="/three">第三集</a>"#
+        case "/one": body = "https://cdn.video.test/one.m3u8"
+        case "/two": body = #"<MPD xmlns="urn:mpeg:dash:schema:mpd:2011"></MPD>"#
+        default: body = "  "
+        }
+        return HttpResponse(status: 200, body: Data(body.utf8), finalURL: request.url)
+    }
+}
+
 private struct MangaLibraryClient: HttpClient {
     func send(_ request: HttpRequest) async throws -> HttpResponse {
         HttpResponse(status: 200, body: Data(#"<a href="/one">第一章</a><a href="/two">第二章</a>"#.utf8), finalURL: request.url)

@@ -87,6 +87,7 @@
 		57D5E424897EB85BF5BF9816 /* ChangeCoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5612CAB40A51AAC4FF587614 /* ChangeCoverView.swift */; };
 		5A69BEBB89FFB4C5FCCAC2AB /* ConfiguredCoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD6A3A246FC885169C6578D7 /* ConfiguredCoverView.swift */; };
 		5D81D073547CC039CD213BE9 /* HeadlessWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F029F5D38BB93A3C81C9AFE8 /* HeadlessWebView.swift */; };
+		5DA2FD2F6C0E87A24E9866C2 /* VideoPlayView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 428752D20B7226E27C69307D /* VideoPlayView.swift */; };
 		5DDF1A2EAA034E3250C0FA30 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06486326DF6BEE11419AC184 /* AppContainer.swift */; };
 		5F1DD55D17F2D771B1817873 /* RuleSubSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3037B0816F41DE272D38B8CD /* RuleSubSettingsView.swift */; };
 		637A6515FAE87ED209C76AF0 /* BrowserInteraction.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01B1DEE8D29B534114187035 /* BrowserInteraction.swift */; };
@@ -345,6 +346,7 @@
 		421A284FADEC6EB783743902 /* SearchResultRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SearchResultRow.swift; sourceTree = "<group>"; };
 		425DA53280F711555DD33FEA /* RemoteBooksView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RemoteBooksView.swift; sourceTree = "<group>"; };
 		426B6CAA5E7E8A0EC4E9C35A /* AutoTaskController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AutoTaskController.swift; sourceTree = "<group>"; };
+		428752D20B7226E27C69307D /* VideoPlayView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VideoPlayView.swift; sourceTree = "<group>"; };
 		437B9388314CAC5731AFDD41 /* ReaderPaperColor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderPaperColor.swift; sourceTree = "<group>"; };
 		442546BF735BD01595D3D17C /* SourceManagement.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceManagement.swift; sourceTree = "<group>"; };
 		4447F6124A2BA2B2A7D18CE9 /* ErrorPresentation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ErrorPresentation.swift; sourceTree = "<group>"; };
@@ -771,6 +773,7 @@
 				94A609B71B8741956FD9D4D4 /* AudioPlayView.swift */,
 				66A8531613924D8FF0FCCA3A /* AVPlayerAudioPlayer.swift */,
 				D4301C1CE473D0F78D26E4B0 /* MediaBookLibrary.swift */,
+				428752D20B7226E27C69307D /* VideoPlayView.swift */,
 			);
 			path = AudioPlay;
 			sourceTree = "<group>";
@@ -1535,6 +1538,7 @@
 				22B467C5660AA4A727E3397F /* UploadRuleSettingsModel.swift in Sources */,
 				08670D114494D981382E5972 /* UploadRuleSettingsView.swift in Sources */,
 				BF58C8935BD37A3B186F2901 /* VerificationCodeView.swift in Sources */,
+				5DA2FD2F6C0E87A24E9866C2 /* VideoPlayView.swift in Sources */,
 				8ECEAAA97FA5D24C7714C5EF /* WebLoginView.swift in Sources */,
 				3965041D454EE9CEC0FCA5D7 /* WebServiceController.swift in Sources */,
 				76966EE63E3A6AC9F718ABAD /* WebServiceView.swift in Sources */,
