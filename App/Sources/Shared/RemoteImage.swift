@@ -66,6 +66,13 @@ import LegadoCore
             bitmap = nil
             var cacheKey = url ?? ""
             guard isReadRecord || !isCover || !preferences.boolean("useDefaultCover") else { return }
+            if let url, !url.isEmpty {
+                let key = CoverBitmapCache.key(address: url, origin: origin, bookURL: book?.bookUrl)
+                if let hit = await CoverBitmapCache.shared.cached(key: key, maximumPixels: maximumPixels,
+                                                                  maximumMegabytes: preferences.integer("bitmapCacheSize")) {
+                    bitmap = UIImage(cgImage: hit); return
+                }
+            }
             await model.load(url: url?.isEmpty == false ? url : book?.name) {
                 let client = CoverNetworkClient(underlying: container.httpClient, allowed: allowNetwork)
                 var address = url ?? ""
@@ -74,7 +81,7 @@ import LegadoCore
                     let rule = try data.map { try JSONDecoder().decode(CoverSearchRule.self, from: $0) } ?? .androidDefault
                     address = try await rule.search(book: book, client: client) ?? ""
                 }
-                cacheKey = address + "|" + (origin ?? "") + "|" + (book?.bookUrl ?? "")
+                cacheKey = CoverBitmapCache.key(address: address, origin: origin, bookURL: book?.bookUrl)
                 let local = address.hasPrefix("/") ? URL(fileURLWithPath: address) : URL(string: address)
                 if let local, local.isFileURL {
                     return try await Task.detached(priority: .utility) { try Data(contentsOf: local) }.value
