@@ -219,7 +219,7 @@ private extension BookDetailView {
                     Toggle("拆分超长章节", isOn: Binding(get: { model.book?.readConfig?.splitLongChapter ?? true }, set: { value in
                         runAction("保存章节拆分设置") {
                             await model.setSplitLongChapter(value)
-                            if let error = model.errorMessage { throw NSError(domain: "BookDetail", code: 1, userInfo: [NSLocalizedDescriptionKey: error]) }
+                            if let error = model.userError { throw error }
                             guard let url = model.book?.bookUrl else { return }
                             try await container.database.write { db in try db.execute(sql: "DELETE FROM chapters WHERE bookUrl = ?", arguments: [url]) }
                         }
@@ -248,7 +248,7 @@ private extension BookDetailView {
         case .bookVariable:
             DetailTextEditor(title: "设置书籍变量", initial: model.book?.variable ?? "") { value in
                 await model.setVariable(value)
-                if let error = model.errorMessage { throw NSError(domain: "BookDetail", code: 1, userInfo: [NSLocalizedDescriptionKey: error]) }
+                if let error = model.userError { throw error }
             }
         case .sourceVariable:
             SourceVariableEditor(source: model.source?.bookSourceUrl ?? "", repository: SourceStateRepository(database: container.database))

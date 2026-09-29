@@ -19,6 +19,25 @@ final class ReaderTypographyTests: XCTestCase {
         XCTAssertEqual(try render(line), try render(segmented))
     }
 
+    func testUnderlineStartsAfterParagraphIndent() throws {
+        let attributes = ReaderTypography.bodyAttributes(ReaderSettings(), fontName: "Helvetica")
+        func leftmost(_ string: String) throws -> Int {
+            let line = CTLineCreateWithAttributedString(NSAttributedString(string: string, attributes: attributes))
+            let context = try XCTUnwrap(CGContext(data: nil, width: 200, height: 80, bitsPerComponent: 8, bytesPerRow: 800,
+                space: CGColorSpaceCreateDeviceRGB(), bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue))
+            var config = ReadBookConfig(); config.underlineMode = 1; config.underlineColorSet = true; config.underlineColor = -65536
+            ReaderUnderline.draw(line: line, origin: CGPoint(x: 10, y: 40), title: false, config: config, context: context,
+                                 text: string as NSString)
+            let bytes = try XCTUnwrap(context.data).assumingMemoryBound(to: UInt8.self)
+            for x in 0..<200 { for y in 0..<80 where bytes[y * 800 + x * 4 + 3] > 0 { return x } }
+            return -1
+        }
+        let plain = try leftmost("Underline")
+        let indented = try leftmost("\u{3000}\u{3000}Underline")
+        XCTAssertGreaterThanOrEqual(plain, 9)
+        XCTAssertGreaterThan(indented, plain + 10)
+    }
+
     func testUnderlineModesDrawAndRespectTitleAndBodySwitches() throws {
         let line = CTLineCreateWithAttributedString(NSAttributedString(string: "Underline", attributes:
             ReaderTypography.bodyAttributes(ReaderSettings(), fontName: "Helvetica")))

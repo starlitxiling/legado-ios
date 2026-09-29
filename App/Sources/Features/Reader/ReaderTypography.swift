@@ -101,7 +101,7 @@ enum ReaderTypography {
 }
 
 enum ReaderUnderline {
-    static func draw(line: CTLine, origin: CGPoint, title: Bool, config: ReadBookConfig, context: CGContext) {
+    static func draw(line: CTLine, origin: CGPoint, title: Bool, config: ReadBookConfig, context: CGContext, text: NSString? = nil) {
         guard (1...6).contains(config.underlineMode), config.underlineWidth > 0,
               title ? config.underlineTitleEnabled : config.underlineBodyEnabled else { return }
         context.saveGState()
@@ -116,7 +116,17 @@ enum ReaderUnderline {
             let foreground = attributes[kCTForegroundColorAttributeName].map { $0 as! CGColor } ?? CGColor(gray: 0, alpha: 1)
             let color = config.underlineColorSet ? ReaderTypography.color(ARGBColor(UInt32(truncatingIfNeeded: config.underlineColor)).hex) : foreground
             let range = CTRunGetStringRange(run)
-            let start = origin.x + CTLineGetOffsetForStringIndex(line, range.location, nil)
+            var location = range.location
+            if let text {
+                let lineStart = CTLineGetStringRange(line).location
+                if location == lineStart || segments.isEmpty {
+                    while location < range.location + range.length, location < text.length,
+                          let scalar = UnicodeScalar(text.character(at: location)), CharacterSet.whitespaces.contains(scalar) {
+                        location += 1
+                    }
+                }
+            }
+            let start = origin.x + CTLineGetOffsetForStringIndex(line, location, nil)
             let end = origin.x + CTLineGetOffsetForStringIndex(line, range.location + range.length, nil)
             let left = min(start, end), right = max(start, end)
             guard right > left else { continue }

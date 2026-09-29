@@ -67,7 +67,7 @@ struct ReaderInterfacePanel: View {
                     slider("字号", value: number(\.textSize), range: 5...50, step: 1)
                     slider("字间距", value: Binding(get: { (draft.letterSpacing + 0.5) * 100 },
                         set: { setting(\.letterSpacing).wrappedValue = $0 / 100 - 0.5 }), range: 0...100, step: 1)
-                    slider("行距", value: number(\.lineSpacingExtra), range: -10...40, step: 1, divisor: 10)
+                    slider("行距", value: number(\.lineSpacingExtra), range: -10...40, step: 1, divisor: 10, displayOffset: -10)
                     slider("段距", value: number(\.paragraphSpacing), range: 0...20, step: 1, divisor: 10)
                     Picker("翻页动画", selection: config(draft.isEInk ? \.pageAnimEInk : \.pageAnim)) {
                         Text("覆盖").tag(0); Text("滑动").tag(1); Text("仿真").tag(2); Text("滚动").tag(3); Text("无").tag(4)
@@ -396,11 +396,12 @@ struct ReaderInterfacePanel: View {
         }.accessibilityIdentifier("reader.template." + name)
     }
 
-    private func slider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, step: Double, divisor: Double = 1) -> some View {
+    private func slider(_ title: String, value: Binding<Double>, range: ClosedRange<Double>, step: Double, divisor: Double = 1,
+                        displayOffset: Double = 0) -> some View {
         HStack(spacing: 12) {
             Text(title).font(.system(size: 14)).frame(width: 88, alignment: .leading)
             Slider(value: value, in: range, step: step).accessibilityLabel(title)
-            Text(value.wrappedValue / divisor, format: .number.precision(.fractionLength(divisor == 1 ? 0 : 1)))
+            Text((value.wrappedValue + displayOffset) / divisor, format: .number.precision(.fractionLength(divisor == 1 ? 0 : 1)))
                 .font(.system(size: 13).monospacedDigit()).frame(minWidth: 30, alignment: .trailing)
         }
     }

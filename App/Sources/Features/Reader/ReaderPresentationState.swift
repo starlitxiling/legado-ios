@@ -28,12 +28,19 @@ struct ReaderHorizontalDrag {
     let translation: Double
     let projected: Double
     let width: Double
+    var lastMove: Double? = nil
 
+    /// With `lastMove`, follows Android HorizontalPageDelegate: past the slop the turn completes
+    /// unless the final finger movement went back toward the start.
     func destination(canPrevious: Bool, canNext: Bool) -> Bool? {
         guard width.isFinite, width > 0, translation.isFinite, projected.isFinite,
               abs(translation) >= 20 else { return nil }
         let forward = translation < 0
         guard forward ? canNext : canPrevious else { return nil }
+        if let lastMove, lastMove.isFinite {
+            let reversing = abs(lastMove) >= 1 && (forward ? lastMove > 0 : lastMove < 0)
+            return reversing ? nil : forward
+        }
         let distance = abs(translation) >= width / 3
         let momentum = translation * projected > 0 && abs(projected) >= width * 0.65
         return distance || momentum ? forward : nil

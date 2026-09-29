@@ -126,11 +126,13 @@ struct ReaderBehaviorConfiguration: Equatable {
         }
     }
     enum GestureResult: Equatable { case next, previous, bookmark, tap, none }
-    func gesture(x: Double, y: Double, duration: Double) -> GestureResult {
+    /// Android stores these distances in pixels; `scale` converts them to points.
+    func gesture(x: Double, y: Double, duration: Double, scale: Double = 1) -> GestureResult {
         guard x.isFinite, y.isFinite, duration.isFinite else { return .none }
-        let swipe = integer("pageTouchSlop") == 0 ? 30 : Double(integer("pageTouchSlop"))
-        let click = integer("pageTouchClick") == 0 ? 10 : Double(integer("pageTouchClick"))
-        let bookmark = integer("pullBookmarkDistance") == 0 ? 80 : Double(integer("pullBookmarkDistance"))
+        let pixels = scale.isFinite && scale > 0 ? scale : 1
+        let swipe = integer("pageTouchSlop") == 0 ? 30 : Double(integer("pageTouchSlop")) / pixels
+        let click = integer("pageTouchClick") == 0 ? 10 : Double(integer("pageTouchClick")) / pixels
+        let bookmark = integer("pullBookmarkDistance") == 0 ? 80 : Double(integer("pullBookmarkDistance")) / pixels
         if boolean("pullToToggleBookmark"), y >= bookmark, abs(y) > abs(x) { return .bookmark }
         if abs(x) >= swipe, abs(x) > abs(y) { return x < 0 ? .next : .previous }
         if abs(x) <= click, abs(y) <= click, duration < 0.4 { return .tap }

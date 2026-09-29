@@ -34,6 +34,15 @@ final class ReaderBehaviorTests: XCTestCase {
         XCTAssertEqual(target(150, 150), false)
         XCTAssertEqual(target(-25, -250), true)
         XCTAssertNil(target(-25, 250))
+        func android(_ delta: Double, last: Double) -> Bool? {
+            ReaderHorizontalDrag(translation: delta, projected: delta, width: 300, lastMove: last).destination(canPrevious: true, canNext: true)
+        }
+        XCTAssertEqual(android(-40, last: -3), true)
+        XCTAssertEqual(android(40, last: 2), false)
+        XCTAssertNil(android(-120, last: 4))
+        XCTAssertNil(android(120, last: -4))
+        XCTAssertEqual(android(-120, last: 0.5), true)
+        XCTAssertNil(android(-10, last: -3))
         XCTAssertNil(target(150, 200, previous: false))
         XCTAssertNil(target(-150, -200, next: false))
         XCTAssertNil(target(.nan, -200))
@@ -94,5 +103,9 @@ final class ReaderBehaviorTests: XCTestCase {
         value.set("pullBookmarkDistance", .int(120))
         XCTAssertEqual(value.gesture(x: 0, y: 100, duration: 0.2), .none)
         XCTAssertEqual(value.gesture(x: 0, y: 125, duration: 0.2), .bookmark)
+        XCTAssertEqual(value.gesture(x: 0, y: 45, duration: 0.2, scale: 3), .bookmark)
+        value.set("pageTouchSlop", .int(90))
+        XCTAssertEqual(value.gesture(x: -40, y: 0, duration: 0.2), .none)
+        XCTAssertEqual(value.gesture(x: -40, y: 0, duration: 0.2, scale: 3), .next)
     }
 }

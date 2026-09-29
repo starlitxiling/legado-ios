@@ -14,7 +14,13 @@ struct ExploreView: View {
             ScrollView {
                 LazyVStack(spacing: 12) {
                     if model.isLoading { LoadingView() }
-                    if let error = model.errorMessage { Text(error).foregroundStyle(colors.error) }
+                    if let error = model.errorMessage {
+                        VStack(spacing: 8) {
+                            Text(error).foregroundStyle(colors.error)
+                            Button("重试") { Task { await model.load(repository: container.bookSources) } }
+                                .accessibilityIdentifier("explore.retry")
+                        }
+                    }
                     ForEach(model.filteredSources, id: \.bookSourceUrl) { source in
                         sourceRow(source).id(source.bookSourceUrl)
                     }

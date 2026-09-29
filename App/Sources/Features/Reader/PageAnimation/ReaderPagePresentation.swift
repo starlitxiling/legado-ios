@@ -65,6 +65,8 @@ private struct HorizontalPageContainer<Content: View, Next: View, Previous: View
     @State private var offset: Double = 0
     @State private var settling = false
     @State private var horizontal: Bool?
+    @State private var lastTranslation: Double = 0
+    @State private var lastMove: Double = 0
     @State private var turnTask: Task<Void, Never>?
     @State private var gestureID = UUID()
 
@@ -91,13 +93,14 @@ private struct HorizontalPageContainer<Content: View, Next: View, Previous: View
                         if horizontal == nil { horizontal = abs(value.translation.width) > abs(value.translation.height) }
                         guard horizontal == true else { return }
                         let delta = value.translation.width
+                        if delta != lastTranslation { lastMove = delta - lastTranslation; lastTranslation = delta }
                         offset = min(width, max(-width, delta)) * ((delta < 0 ? canNext : canPrevious) ? 1 : 0.15)
                     }
                     .onEnded { value in
-                        defer { horizontal = nil }
+                        defer { horizontal = nil; lastTranslation = 0; lastMove = 0 }
                         guard enabled, !settling, horizontal == true else { return }
                         let target = ReaderHorizontalDrag(translation: value.translation.width,
-                            projected: value.predictedEndTranslation.width, width: width)
+                            projected: value.predictedEndTranslation.width, width: width, lastMove: lastMove)
                             .destination(canPrevious: canPrevious, canNext: canNext)
                         settle(target: target, width: width)
                     })

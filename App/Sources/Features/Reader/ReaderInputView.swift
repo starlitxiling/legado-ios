@@ -83,7 +83,8 @@ struct ReaderInputView: UIViewRepresentable {
             if recognizer.state == .began { began = Date.timeIntervalSinceReferenceDate }
             guard recognizer.state == .ended else { return }
             let delta = recognizer.translation(in: self)
-            switch input.configuration.gesture(x: delta.x, y: delta.y, duration: Date.timeIntervalSinceReferenceDate - began) {
+            switch input.configuration.gesture(x: delta.x, y: delta.y, duration: Date.timeIntervalSinceReferenceDate - began,
+                                                           scale: traitCollection.displayScale) {
             case .next: if !input.scrollMode && !input.interactivePaging { input.turn(true) }
             case .previous: if !input.scrollMode && !input.interactivePaging { input.turn(false) }
             case .bookmark: input.bookmark()

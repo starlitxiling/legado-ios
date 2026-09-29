@@ -48,7 +48,10 @@ struct BookSourceSwitchView: View {
                 }.padding(.vertical, 4)
             }
             if results.isEmpty && !search.isSearching { EmptyText(text: "未找到可用书源") }
-            if let error = search.errorMessage { Text(error).foregroundStyle(colors.error) }
+            if let error = search.errorMessage {
+                Text(error).foregroundStyle(colors.error)
+                Button("重新搜索") { Task { await search.search(book?.name ?? "") } }.accessibilityIdentifier("changeSource.retry")
+            }
             if search.failedSources > 0 { Text("\(search.failedSources) 个书源搜索失败").font(.caption) }
         }.listStyle(.plain).legadoNavigationTitle("换源")
             .overlay(alignment: .top) { if search.isSearching || selecting || !checking.isEmpty { RefreshProgressBar() } }

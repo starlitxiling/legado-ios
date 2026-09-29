@@ -50,10 +50,18 @@ struct UserFacingError: Equatable, Identifiable {
     var displayText: String { title + "\n" + message }
 }
 
+extension UserFacingError: LocalizedError {
+    var errorDescription: String? { title }
+}
+
 extension Error {
     func presentation(operation: String, subject: String? = nil, sourceFile: String? = nil,
                       actions: [UserFacingError.Action] = []) -> UserFacingError? {
         guard let message = presentableMessage else { return nil }
+        if let presented = self as? UserFacingError {
+            return UserFacingError(title: presented.title, message: presented.message,
+                                   actions: presented.actions.isEmpty ? actions : presented.actions)
+        }
         let context = [subject, sourceFile].compactMap { $0 }.filter { !$0.isEmpty }.joined(separator: " · ")
         return UserFacingError(title: operation + "失败", message: context.isEmpty ? message : context + "\n" + message,
                                actions: actions)

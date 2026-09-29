@@ -37,6 +37,7 @@ struct ReaderView: View {
     @State private var confirmsCloudOverwrite = false
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.displayScale) private var displayScale
 
     init(destination: ReaderDestination, database: AppDatabase, client: any HttpClient,
          cacheDirectory: URL? = nil) {
@@ -143,7 +144,7 @@ struct ReaderView: View {
                         progress: autoRead.progress, enabled: acceptsInput,
                         canPrevious: model.pageIndex > 0 || model.chapterPosition > 0,
                         canNext: model.pageIndex + count < (model.pagination?.pages.count ?? 0) || model.chapterPosition + 1 < model.availableChapterCount,
-                        forward: model.lastTurnForward, touchSlop: Double(behavior.integer("pageTouchSlop")), pageHeight: spreadHeight(index: model.pageIndex, size: pageSize, count: count),
+                        forward: model.lastTurnForward, touchSlop: Double(behavior.integer("pageTouchSlop")) / max(1, displayScale), pageHeight: spreadHeight(index: model.pageIndex, size: pageSize, count: count),
                         scrollPages: animation == 3 ? continuousPages(size: pageSize, count: count) : [], scrollSelect: selectScrollPage, turn: scrollTurnPage) {
                         pageSpread(index: model.pageIndex, size: pageSize, count: count)
                     } next: {
@@ -309,7 +310,8 @@ struct ReaderView: View {
     }
 
     private var animation: Int {
-        let value = themeColors.palette.pageAnimation(model.readerBook?.readConfig?.pageAnim ?? model.settings.pageAnim, eInkMode: model.settings.configuration.pageAnimEInk)
+        let global = themeColors.palette.pageAnimation(model.settings.pageAnim, eInkMode: model.settings.configuration.pageAnimEInk)
+        let value = model.readerBook?.readConfig?.pageAnim.flatMap { $0 >= 0 ? $0 : nil } ?? global
         return !themeColors.isEInk && value == 4 && behavior.boolean("noAnimScrollPage") ? 3 : value
     }
     private var acceptsInput: Bool {
@@ -652,9 +654,11 @@ private final class ReaderTextCanvas: UIView {
         context.translateBy(x: 0, y: bounds.height)
         context.scaleBy(x: 1, y: -1)
         if let config = pagination.underlineConfig {
+            let source = pagination.text.string as NSString
             for (index, line) in page.lines.enumerated() {
                 ReaderUnderline.draw(line: line, origin: page.lineOrigins[index],
-                    title: CTLineGetStringRange(line).location < pagination.titleLength, config: config, context: context)
+                    title: CTLineGetStringRange(line).location < pagination.titleLength, config: config, context: context,
+                    text: source)
             }
         }
         for (index, line) in page.lines.enumerated() {
