@@ -121,9 +121,29 @@ public final class IconRenderer {
             context.addPath(try SVGPath.parse(data))
             context.clip(using: node["fillType"] == "evenOdd" ? .evenOdd : .winding)
         case "path":
-            guard let data = node["pathData"], node.children.isEmpty else { throw RenderError.invalid("不支持的 path 内容") }
+            let fillAttribute = node.children.first { $0.name == "aapt:attr" && $0["name"] == "android:fillColor" }
+            guard let data = node["pathData"], node.children.allSatisfy({ $0 === fillAttribute }) else {
+                throw RenderError.invalid("不支持的 path 内容")
+            }
             let path = try SVGPath.parse(data)
-            if let fill = node["fillColor"] {
+            if let fillAttribute {
+                guard let gradient = fillAttribute.children.first(where: { $0.name == "gradient" }), (gradient["type"] ?? "linear") == "linear" else {
+                    throw RenderError.invalid("只支持线性渐变填充")
+                }
+                let stops = try gradient.children.filter { $0.name == "item" }.map { item -> (CGColor, CGFloat) in
+                    guard let value = item["color"] else { throw RenderError.invalid("渐变缺少颜色") }
+                    return (try color(value, alpha: node.number("fillAlpha", 1)), try item.number("offset"))
+                }
+                guard stops.count >= 2, let shading = CGGradient(colorsSpace: CGColorSpace(name: CGColorSpace.sRGB)!,
+                    colors: stops.map(\.0) as CFArray, locations: stops.map(\.1)) else { throw RenderError.invalid("渐变至少需要两个颜色") }
+                context.saveGState()
+                context.addPath(path)
+                context.clip(using: node["fillType"] == "evenOdd" ? .evenOdd : .winding)
+                context.drawLinearGradient(shading, start: CGPoint(x: try gradient.number("startX"), y: try gradient.number("startY")),
+                    end: CGPoint(x: try gradient.number("endX"), y: try gradient.number("endY")),
+                    options: [.drawsBeforeStartLocation, .drawsAfterEndLocation])
+                context.restoreGState()
+            } else if let fill = node["fillColor"] {
                 context.setFillColor(try color(fill, alpha: node.number("fillAlpha", 1)))
                 context.addPath(path)
                 context.fillPath(using: node["fillType"] == "evenOdd" ? .evenOdd : .winding)
@@ -150,15 +170,17 @@ public final class IconRenderer {
 
     public func generate(to directory: URL) throws {
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        for number in 1...6 {
-            let node = try Document.parse(Data(contentsOf: resources.appendingPathComponent("mipmap-anydpi-v26/launcher\(number).xml")))
+        let primary = resources.appendingPathComponent("mipmap-anydpi-v26/ic_launcher.xml")
+        let names = (FileManager.default.fileExists(atPath: primary.path) ? ["ic_launcher"] : []) + (1...6).map { "launcher\($0)" }
+        for name in names {
+            let node = try Document.parse(Data(contentsOf: resources.appendingPathComponent("mipmap-anydpi-v26/\(name).xml")))
             for (scale, size) in [(2, 120), (3, 180)] {
                 let context = try context(size: size)
                 // 108dp 图层取中心 72dp，输出不含系统圆角遮罩。
                 context.scaleBy(x: CGFloat(size) / 72, y: CGFloat(size) / 72)
                 context.translateBy(x: -18, y: -18)
                 try draw(node, in: context, visited: [])
-                let url = directory.appendingPathComponent("launcher\(number)@\(scale)x.png")
+                let url = directory.appendingPathComponent("\(name)@\(scale)x.png")
                 guard let image = context.makeImage(), let destination = CGImageDestinationCreateWithURL(url as CFURL, "public.png" as CFString, 1, nil) else { throw RenderError.invalid("无法写入 PNG") }
                 CGImageDestinationAddImage(destination, image, nil)
                 guard CGImageDestinationFinalize(destination) else { throw RenderError.invalid("PNG 写入失败") }

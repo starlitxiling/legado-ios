@@ -8,7 +8,7 @@ guard arguments.count == 3 else {
 }
 do {
     try IconRenderer(resources: URL(fileURLWithPath: arguments[1])).generate(to: URL(fileURLWithPath: arguments[2]))
-    print("已生成六套备用图标，共 12 张 PNG。")
+    print("已生成主图标与六套备用图标。")
 } catch {
     fputs("图标生成失败：\(error)\n", stderr)
     exit(1)

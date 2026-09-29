@@ -78,6 +78,13 @@
 				</array>
 			</dict>
 		</dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>ic_launcher</string>
+			</array>
+		</dict>
 	</dict>
 	<key>CFBundleIcons~ipad</key>
 	<dict>
@@ -125,6 +132,13 @@
 					<string>launcher6</string>
 				</array>
 			</dict>
+		</dict>
+		<key>CFBundlePrimaryIcon</key>
+		<dict>
+			<key>CFBundleIconFiles</key>
+			<array>
+				<string>ic_launcher</string>
+			</array>
 		</dict>
 	</dict>
 	<key>CFBundleIdentifier</key>

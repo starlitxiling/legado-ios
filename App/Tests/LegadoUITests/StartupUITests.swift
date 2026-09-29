@@ -149,6 +149,27 @@ final class StartupUITests: XCTestCase {
     }
 
     @MainActor
+    func testLauncherIconsAreAvailable() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments += ["-autoTaskService", "NO", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO"]
+        app.launch()
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
+        openSettings(app)
+        let themeSettings = app.staticTexts["主题设置"]
+        if !themeSettings.isHittable { app.swipeUp() }
+        XCTAssertTrue(themeSettings.waitForExistence(timeout: 5))
+        themeSettings.tap()
+        let icons = app.buttons["切换图标"].exists ? app.buttons["切换图标"] : app.staticTexts["切换图标"]
+        XCTAssertTrue(icons.waitForExistence(timeout: 5))
+        icons.tap()
+        XCTAssertTrue(app.staticTexts["默认图标"].waitForExistence(timeout: 5))
+        let alternates = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "图标 "))
+        XCTAssertGreaterThan(alternates.count, 0, app.debugDescription)
+        XCTAssertFalse(app.staticTexts["当前安装包未包含备用图标，暂不能切换。"].exists)
+    }
+
+    @MainActor
     private func openSettings(_ app: XCUIApplication) {
         let settings = app.tabBars.buttons["我的"]
         XCTAssertTrue(settings.waitForExistence(timeout: 5))

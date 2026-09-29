@@ -61,14 +61,24 @@ final class IconRendererTests: XCTestCase {
         XCTAssertEqual(bytes[1], 255)
     }
 
+    func testLinearGradientFillMatchesPrimaryIconBackground() throws {
+        let data = try Data(contentsOf: resources.appendingPathComponent("drawable/ic_launcher1_b.xml"))
+        let image = try IconRenderer(resources: resources).render(vector: data, size: 108)
+        let bytes = try XCTUnwrap(CFDataGetBytePtr(try XCTUnwrap(image.dataProvider?.data)))
+        func red(_ x: Int, _ y: Int) -> Int { Int(bytes[y * image.bytesPerRow + x * 4]) }
+        XCTAssertEqual(red(5, 5), 0x4d, accuracy: 2)
+        XCTAssertGreaterThan(red(5, 104), 0xC8)
+        XCTAssertLessThan(red(50, 104), red(5, 104))
+    }
+
     func testSixIconsAreOpaqueAndSized() throws {
         let output = URL(fileURLWithPath: #filePath).deletingLastPathComponent().deletingLastPathComponent().deletingLastPathComponent().appendingPathComponent(".build/test-icons")
         defer { try? FileManager.default.removeItem(at: output) }
         try IconRenderer(resources: resources).generate(to: output)
-        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: output.path).count, 12)
-        for number in 1...6 {
+        XCTAssertEqual(try FileManager.default.contentsOfDirectory(atPath: output.path).count, 14)
+        for name in ["ic_launcher"] + (1...6).map({ "launcher\($0)" }) {
             for (scale, size) in [(2, 120), (3, 180)] {
-                let url = output.appendingPathComponent("launcher\(number)@\(scale)x.png")
+                let url = output.appendingPathComponent("\(name)@\(scale)x.png")
                 let source = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil))
                 let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(source, 0, nil))
                 XCTAssertEqual(image.width, size)
