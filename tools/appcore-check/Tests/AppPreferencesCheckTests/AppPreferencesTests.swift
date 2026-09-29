@@ -157,4 +157,21 @@ final class AppPreferencesTests: XCTestCase {
         let data = try await BackupExporter(database: database).export(selection: BackupSelection(values: ["backupRules": true]))
         XCTAssertNil(try BackupArchive(data: data).files["directLinkUploadRule.json"])
     }
+
+    @MainActor
+    func testStringOverridesFromLaunchArgumentsApplyOverSavedValues() throws {
+        let suite = "AppPreferencesLaunchArguments." + UUID().uuidString
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: suite))
+        defer { defaults.removePersistentDomain(forName: suite) }
+        let saved = AppPreferences(defaults: defaults)
+        saved.set("showRss", .boolean(false))
+        saved.set("bitmapCacheSize", .int(50))
+        defaults.set("YES", forKey: "showRss")
+        defaults.set("80", forKey: "bitmapCacheSize")
+        let launched = AppPreferences(defaults: defaults)
+        XCTAssertTrue(launched.boolean("showRss"))
+        XCTAssertEqual(launched.integer("bitmapCacheSize"), 80)
+        defaults.set("maybe", forKey: "showRss")
+        XCTAssertFalse(AppPreferences(defaults: defaults).boolean("showRss"))
+    }
 }

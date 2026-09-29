@@ -65,7 +65,15 @@ final class AppPreferences {
             switch (expected, raw) {
             case (.string, let value as String): values[key] = .string(value)
             case (.boolean, let value as NSNumber): values[key] = .boolean(value.boolValue)
+            case (.boolean, let value as String):
+                // Launch arguments such as `-showRss YES` arrive in the argument domain as strings.
+                switch value.lowercased() {
+                case "yes", "true", "1": values[key] = .boolean(true)
+                case "no", "false", "0": values[key] = .boolean(false)
+                default: break
+                }
             case (.int, let value as NSNumber): values[key] = .int(Int32(clamping: value.int64Value))
+            case (.int, let value as String): if let number = Int64(value) { values[key] = .int(Int32(clamping: number)) }
             case (.long, let value as NSNumber): values[key] = .long(value.int64Value)
             case (.float, let value as NSNumber): values[key] = .float(value.floatValue)
             case (.stringSet, let value as [String]): values[key] = .stringSet(Set(value))

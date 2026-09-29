@@ -141,7 +141,9 @@ final class StartupUITests: XCTestCase {
         openSettings(app)
         XCTAssertTrue(app.navigationBars["其它设置"].waitForExistence(timeout: 5))
         discovery.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertTrue(app.tabBars.buttons["发现"].waitForExistence(timeout: 5))
         rss.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5)).tap()
+        XCTAssertTrue(app.tabBars.buttons["订阅"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.tabBars.buttons.count, 4)
 
     }
