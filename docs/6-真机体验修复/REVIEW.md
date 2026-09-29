@@ -40,3 +40,9 @@
 
 ## 补充：24 本缺源书（2026-09-28 核实）
 备份 bookSource.json 4198 条即 iOS 已导入的全部，导入无丢失。24 本（11 个 origin）在 Android 原机上同样孤儿（type=24 含 updateError 位；Android 按 bookSourceUrl 精确匹配 BookSourceDao.kt:242）。其中 20 本存在「近似书源」（仅差尾部斜杠 / 空白 / `#…` 后缀），4 本（seobishop、xmkanshu 两个 origin）完全无对应源。是否做规范化匹配属产品决策，待用户定。
+
+## R2 后遗留与功能缺口（2026-09-29 主会话盘点）
+- 复审遗留未修：封面内存缓存仍在完整 I/O 之后才查（RemoteImage.swift:69-89）；JsEngineError 英文字面量 99 处；186 处提示仅 8 处带动作按钮；BookDetail 错误双层包装；Core 报告类错误（BookshelfRefresh.swift:40、CacheBook.swift:118、AutoTaskRunner.swift:48）未经 presentation；翻页阈值、eInk 覆盖书级动画、行距标签、pageTouchSlop 单位、下划线全局语义等 P3 差异。
+- 测试债：StartupUITests 依赖执行顺序，AppPreferences 不认启动参数覆盖（r2-final-summary.md）。
+- 与 Android 相比未实现：视频书源、仅文件下载书源（MediaReaderDestination.swift:17-18）；换封面（从其他源搜封面，Android ui/book/changecover）；备用图标（安装包未含）；音量键翻页（iOS 限制）。
+- 从未在真机验证：内存峰值（≤300MB 目标）、整架更新、后台进度落盘与到期、局域网授权弹窗、覆盖/仿真/滚动手感、F5 接回 13 本、Android 互导。
