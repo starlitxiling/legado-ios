@@ -2,7 +2,7 @@ import XCTest
 
 final class ReaderInterfaceUITests: XCTestCase {
     @MainActor
-    func testHorizontalDragReboundsBelowThresholdAndTurnsBothWays() {
+    func testHorizontalDragFollowsAndroidSlopAndTurnsBothWays() {
         continueAfterFailure = false
         for mode in [0, 1] {
             let app = XCUIApplication()
@@ -15,9 +15,9 @@ final class ReaderInterfaceUITests: XCTestCase {
             XCTAssertTrue(body.waitForExistence(timeout: 10))
             let original = body.value as? String
             let start = app.coordinate(withNormalizedOffset: CGVector(dx: 0.7, dy: 0.45))
-            start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)), withVelocity: .slow, thenHoldForDuration: 0.5)
+            start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.665, dy: 0.45)), withVelocity: .slow, thenHoldForDuration: 0.5)
             XCTAssertEqual(body.value as? String, original)
-            start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.15, dy: 0.45)), withVelocity: .slow, thenHoldForDuration: 0.1)
+            start.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.45)), withVelocity: .slow, thenHoldForDuration: 0.1)
             XCTAssertEqual(XCTWaiter.wait(for: [XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "第 1 章，第 2 页"), object: body)], timeout: 5), .completed)
             let back = app.coordinate(withNormalizedOffset: CGVector(dx: 0.2, dy: 0.45))
             back.press(forDuration: 0.05, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.8, dy: 0.45)), withVelocity: .slow, thenHoldForDuration: 0.1)
