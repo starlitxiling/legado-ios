@@ -154,7 +154,7 @@ final class ScriptContextTests: XCTestCase {
     func testInvalidEntityVariablesFailWithDiagnostic() {
         var book = Book(now: 0); book.variable = "invalid"
         XCTAssertThrowsError(try JsBookBinding(book)) {
-            XCTAssertTrue($0.localizedDescription.contains("Invalid entity variable JSON"))
+            XCTAssertTrue($0.localizedDescription.contains("entity variable JSON"))
         }
     }
 

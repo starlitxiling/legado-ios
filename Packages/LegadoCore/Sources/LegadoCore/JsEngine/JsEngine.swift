@@ -6,7 +6,33 @@ public enum JsEngineError: Error, CustomStringConvertible, LocalizedError {
     case exception(String)
     case unimplemented(String)
 
-    public var errorDescription: String? { description }
+    public var errorDescription: String? {
+        switch self {
+        case .unavailable: return "无法创建书源脚本运行环境"
+        case .exception(let message): return "书源脚本执行出错：" + Self.userDetail(message)
+        case .unimplemented(let method): return "书源脚本调用了尚未支持的方法：\(method)"
+        }
+    }
+
+    static func userDetail(_ message: String) -> String {
+        let prefixes: [(String, String)] = [
+            ("Unsupported ", "不支持的"), ("Invalid ", "无效的"), ("Truncated DER", "密钥数据不完整"),
+            ("Unknown ", "未知的"), ("Missing ", "缺少"), ("Secure random generation failed", "安全随机数生成失败"),
+            ("RSA verification failed", "RSA 验签失败"), ("script context expired", "脚本上下文已失效"),
+            ("openUrl UI is unavailable", "当前无法打开网页界面"), ("openUrl ", "打开网页参数错误："),
+            ("Request header", "请求头格式错误："), ("Task script is empty", "定时任务脚本为空")
+        ]
+        var trimmed = message.trimmingCharacters(in: .whitespacesAndNewlines)
+        while let wrapper = ["Error: ", "JavaScript: "].first(where: { trimmed.hasPrefix($0) }) {
+            trimmed = String(trimmed.dropFirst(wrapper.count))
+        }
+        guard !trimmed.isEmpty else { return "未知错误" }
+        for (prefix, chinese) in prefixes where trimmed.hasPrefix(prefix) {
+            let rest = trimmed.dropFirst(prefix.count).trimmingCharacters(in: .whitespaces)
+            return rest.isEmpty ? chinese : chinese + "（" + rest + "）"
+        }
+        return trimmed
+    }
 
     public var description: String {
         switch self {

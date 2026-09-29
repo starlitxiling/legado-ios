@@ -13,12 +13,12 @@ enum CryptoJSLibrary {
         let load: @convention(block) () -> Void = { [weak context] in
             guard let context else { return }
             do { context.evaluateScript(try script.get()) }
-            catch { context.exception = JSValue(newErrorFromMessage: error.localizedDescription, in: context) }
+            catch { context.exception = JSValue(newErrorFromMessage: String(describing: error), in: context) }
         }
         let random: @convention(block) (Int) -> [UInt8]? = { [weak context] count in
             do { return Array(try JavaHostCrypto.random(count)) }
             catch {
-                if let context { context.exception = JSValue(newErrorFromMessage: error.localizedDescription, in: context) }
+                if let context { context.exception = JSValue(newErrorFromMessage: String(describing: error), in: context) }
                 return nil
             }
         }
