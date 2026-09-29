@@ -152,6 +152,13 @@ final class BookDetailViewModel {
 
     func setGroups(_ mask: Int64) async { await edit { $0.group = mask } }
 
+    func setCustomCover(_ url: String) async {
+        guard var current = book else { return }
+        let saved = try? await bookshelf.get(bookUrl: current.bookUrl ?? "")
+        if saved != nil { await edit { $0.customCoverUrl = url } }
+        else { current.customCoverUrl = url; book = current }
+    }
+
     func moveToTop() async {
         guard isOnBookshelf, !isSaving else { return }
         isSaving = true; userError = nil

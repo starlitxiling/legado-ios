@@ -64,4 +64,34 @@ final class BookDetailActionsTests: XCTestCase {
         XCTAssertNotNil(model.errorMessage)
         XCTAssertEqual(model.book?.variable, book.variable)
     }
+
+    func testCoverCandidatesKeepDefaultRuleAndMatchingSourcesOnly() {
+        func result(_ origin: String, name: String = "Book", author: String = "作者：Author", cover: String?) -> SearchBook {
+            var book = SearchBook(); book.origin = origin; book.originName = origin; book.name = name; book.author = author
+            book.coverUrl = cover; book.bookUrl = origin + "/b"; return book
+        }
+        let items = CoverCandidate.merge(name: "Book", author: "Author", rule: "https://rule.test/c.jpg", results: [
+            result("a", cover: "https://a.test/c.jpg"), result("b", cover: "https://a.test/c.jpg"),
+            result("c", name: "Other", cover: "https://c.test/c.jpg"), result("d", author: "Else", cover: "https://d.test/c.jpg"),
+            result("e", cover: nil), result("f", cover: "https://rule.test/c.jpg")
+        ])
+        XCTAssertEqual(items.map(\.coverUrl), [CoverCandidate.defaultCoverURL, "https://rule.test/c.jpg", "https://a.test/c.jpg"])
+        XCTAssertEqual(items.map(\.originName), ["默认封面", "封面规则", "a"])
+    }
+
+    func testCustomCoverPersistsForSavedBookAndStaysInMemoryOtherwise() async throws {
+        let database = try AppDatabase.inMemory()
+        let shelf = BookshelfRepository(database: database)
+        var book = Book(now: 0); book.bookUrl = "https://book.test/cover"; book.name = "Book"
+        let transient = BookDetailViewModel(results: [], sources: BookSourceRepository(database: database),
+            bookshelf: shelf, client: ReplayHttpClient(), initialBook: book)
+        await transient.setCustomCover("https://cover.test/1.jpg")
+        XCTAssertEqual(transient.book?.customCoverUrl, "https://cover.test/1.jpg")
+        let missing = try await shelf.get(bookUrl: book.bookUrl!)
+        XCTAssertNil(missing)
+        _ = await transient.prepareForReading(database: database)
+        await transient.setCustomCover(CoverCandidate.defaultCoverURL)
+        let saved = try await shelf.get(bookUrl: book.bookUrl!)
+        XCTAssertEqual(saved?.customCoverUrl, CoverCandidate.defaultCoverURL)
+    }
 }

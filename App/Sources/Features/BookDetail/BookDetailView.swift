@@ -117,6 +117,9 @@ struct BookDetailView: View {
                 if let cover { RemoteImage(url: cover, origin: model.book?.origin, book: model.book, placeholderTitle: title) }
                 else { Text(String(title.prefix(1))).font(.system(size: 36)).foregroundStyle(colors.textSecondary) }
             }.frame(width: 110, height: 160).clipShape(RoundedRectangle(cornerRadius: 8))
+                .contentShape(Rectangle())
+                .onTapGesture { if model.book != nil { sheet = .cover } }
+                .accessibilityAddTraits(.isButton).accessibilityLabel("换封面").accessibilityIdentifier("detail.cover")
                 .shadow(color: .black.opacity(colors.isEInk ? 0 : 0.15), radius: 4, y: 2).padding(.top, 16)
         }.frame(height: 192)
     }
@@ -183,7 +186,7 @@ private struct DetailCoverArc: Shape {
 }
 
 private enum DetailSheet: String, Identifiable {
-    case sources, groups, edit, sourceVariable, bookVariable, task, upload
+    case sources, groups, edit, sourceVariable, bookVariable, task, upload, cover
     var id: String { rawValue }
 }
 
@@ -242,6 +245,12 @@ private extension BookDetailView {
         case .groups:
             BookDetailGroupView(repository: container.bookGroups, selected: model.book?.group ?? 0) { mask in
                 await model.setGroups(mask); sheet = nil
+            }
+        case .cover:
+            if let book = model.book {
+                ChangeCoverView(book: book, container: container) { url in
+                    await model.setCustomCover(url); sheet = nil
+                }
             }
         case .edit:
             BookDetailEditDestination(model: model, repository: container.bookshelf)

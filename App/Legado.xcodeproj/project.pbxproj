@@ -84,6 +84,7 @@
 		56BAC4894AA39AA73A1E7DB8 /* ReplaceRulesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9628C9AF5D69D5BE23FF8A5A /* ReplaceRulesViewModel.swift */; };
 		56FFDD9989E75B67727D1D8E /* EmptyStateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A47652D0C4F57BE82DC98A57 /* EmptyStateView.swift */; };
 		578A93E8B8F1EAB8EBF09569 /* BookInfoEditView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AEF559BFD22FB1622CC39901 /* BookInfoEditView.swift */; };
+		57D5E424897EB85BF5BF9816 /* ChangeCoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5612CAB40A51AAC4FF587614 /* ChangeCoverView.swift */; };
 		5A69BEBB89FFB4C5FCCAC2AB /* ConfiguredCoverView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD6A3A246FC885169C6578D7 /* ConfiguredCoverView.swift */; };
 		5D81D073547CC039CD213BE9 /* HeadlessWebView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F029F5D38BB93A3C81C9AFE8 /* HeadlessWebView.swift */; };
 		5DDF1A2EAA034E3250C0FA30 /* AppContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 06486326DF6BEE11419AC184 /* AppContainer.swift */; };
@@ -109,6 +110,7 @@
 		708C98DF4B9A9181E88425BF /* launcher3@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 66A0F94B26F70ABB4D0DF501 /* launcher3@3x.png */; };
 		711860E3FACBF563DA666D47 /* ReaderTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DAB38F430235A3A38147AE0 /* ReaderTypography.swift */; };
 		712B3AE4134A4EB1A7476526 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 1A057E76B5AEF421EC25EAF6 /* GRDB */; };
+		71F1B63AA8EC33F7692AC7E7 /* CoverCandidate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5843B812CF39A0F581BF9196 /* CoverCandidate.swift */; };
 		72252A112542FF79436723E4 /* ImageRepositoryLoader.swift in Sources */ = {isa = PBXBuildFile; fileRef = BC055C977B07CF7E57AA5955 /* ImageRepositoryLoader.swift */; };
 		72D1288CE6EC72160B4F8417 /* ReaderPresentationState.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6167DB41924D8CD9E8C531D /* ReaderPresentationState.swift */; };
 		73A1B3CBAE0CA94C84C2D54B /* ReaderDictionaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4E3A31BED37225366B9A167 /* ReaderDictionaryView.swift */; };
@@ -357,7 +359,9 @@
 		4F804F2FE240D7F24CA0F751 /* ReaderScrollContainerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderScrollContainerTests.swift; sourceTree = "<group>"; };
 		519069D25D00DA0E8774F23C /* ImportSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImportSupport.swift; sourceTree = "<group>"; };
 		52ACFC31EBA16D2B7B54A8CB /* DiscoveryStorage.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DiscoveryStorage.swift; sourceTree = "<group>"; };
+		5612CAB40A51AAC4FF587614 /* ChangeCoverView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChangeCoverView.swift; sourceTree = "<group>"; };
 		577164D21AA1B7BC58103529 /* CoverRuleSettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverRuleSettingsModel.swift; sourceTree = "<group>"; };
+		5843B812CF39A0F581BF9196 /* CoverCandidate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoverCandidate.swift; sourceTree = "<group>"; };
 		59167322CCFD198C94819160 /* RssArticlesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RssArticlesView.swift; sourceTree = "<group>"; };
 		599DACD9CBC91C54EC296D68 /* ReaderSourceReimportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderSourceReimportView.swift; sourceTree = "<group>"; };
 		59A8853C1A35902E09296991 /* LegadoCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = LegadoCore; path = ../Packages/LegadoCore; sourceTree = SOURCE_ROOT; };
@@ -621,6 +625,8 @@
 				227892C7F74C8B696DF197DC /* BookDetailView.swift */,
 				017079B694A2178DE75CCD9C /* BookDetailViewModel.swift */,
 				751D873D749416ABA2F46451 /* BookSourceSwitchView.swift */,
+				5612CAB40A51AAC4FF587614 /* ChangeCoverView.swift */,
+				5843B812CF39A0F581BF9196 /* CoverCandidate.swift */,
 				D12078F7E5D3EB8E7D6456BD /* Edit */,
 			);
 			path = BookDetail;
@@ -1362,6 +1368,7 @@
 				637A6515FAE87ED209C76AF0 /* BrowserInteraction.swift in Sources */,
 				FAFF8824419A7309F8939BF6 /* BrowserModel.swift in Sources */,
 				175427EEFADF84C93DE2F8C8 /* BrowserView.swift in Sources */,
+				57D5E424897EB85BF5BF9816 /* ChangeCoverView.swift in Sources */,
 				1A7733AC4E6E96A1ACE576DD /* ChapterLocator.swift in Sources */,
 				41D1D9DB3193BCC1578F3570 /* CheckSourceView.swift in Sources */,
 				3E2E5DAFC507583ABDC66B76 /* CheckSourceViewModel.swift in Sources */,
@@ -1371,6 +1378,7 @@
 				683342B5BF9248DE439C559D /* CookieManagementView.swift in Sources */,
 				EE643600D0B6EB5B573217F4 /* CoverAdditionalSettingsView.swift in Sources */,
 				C3A0A34BEA044D106EB70820 /* CoverBitmapCache.swift in Sources */,
+				71F1B63AA8EC33F7692AC7E7 /* CoverCandidate.swift in Sources */,
 				4EA04228A2A64500B4FC19CC /* CoverNetworkStatus.swift in Sources */,
 				2E3DD33E29E297C9108DFB85 /* CoverPageTransition.swift in Sources */,
 				0DCEB545B70E9ECA24540A52 /* CoverResourcePicker.swift in Sources */,

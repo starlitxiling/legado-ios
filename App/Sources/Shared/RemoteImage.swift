@@ -32,7 +32,7 @@ import LegadoCore
 
     var body: some View {
         Group {
-            if isCover, !isReadRecord, preferences.boolean("useDefaultCover"), let book {
+            if isCover, !isReadRecord, preferences.boolean("useDefaultCover") || url == "use_default_cover", let book {
                 ConfiguredCoverView(title: book.name ?? "", author: book.author ?? "", preferences: preferences)
             } else if let bitmap {
                 Image(uiImage: bitmap).resizable().interpolation(preferences.boolean("antiAlias") ? .high : .none).scaledToFit()
@@ -65,7 +65,7 @@ import LegadoCore
                            pixels: maximumPixels, cacheMegabytes: preferences.integer("bitmapCacheSize"))) {
             bitmap = nil
             var cacheKey = url ?? ""
-            guard isReadRecord || !isCover || !preferences.boolean("useDefaultCover") else { return }
+            guard isReadRecord || !isCover || !preferences.boolean("useDefaultCover") && url != "use_default_cover" else { return }
             if let url, !url.isEmpty {
                 let key = CoverBitmapCache.key(address: url, origin: origin, bookURL: book?.bookUrl)
                 if let hit = await CoverBitmapCache.shared.cached(key: key, maximumPixels: maximumPixels,
