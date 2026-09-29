@@ -179,13 +179,17 @@ final class LocalImportViewModel {
             guard !name.isEmpty, name == (name as NSString).lastPathComponent, name != ".", name != "..",
                   !name.contains("\\"), !name.contains("\0"),
                   LocalBook.fileExtensions.contains(ext) || BookArchive.formats.contains(ext) else { throw LocalBookError.unsupportedFile }
-            let identity = SHA256.hash(data: Data(url.absoluteString.utf8)).map { String(format: "%02x", $0) }.joined()
-            let folder = try booksDirectory.appendingPathComponent(".downloads", isDirectory: true).appendingPathComponent(identity)
-            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-            let file = folder.appendingPathComponent(name)
-            try response.body.write(to: file, options: .atomic)
-            await importFiles([file])
+            try await importDownloaded(name: name, data: response.body, identity: url.absoluteString)
         } catch { report(error, operation: "下载并导入书籍", file: text) }
+    }
+
+    func importDownloaded(name: String, data: Data, identity: String) async throws {
+        let hash = SHA256.hash(data: Data(identity.utf8)).map { String(format: "%02x", $0) }.joined()
+        let folder = try booksDirectory.appendingPathComponent(".downloads", isDirectory: true).appendingPathComponent(hash)
+        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        let file = folder.appendingPathComponent(name)
+        try data.write(to: file, options: .atomic)
+        await importFiles([file])
     }
 
     nonisolated static func downloadedFilename(_ response: HttpResponse) -> String {

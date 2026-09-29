@@ -15,7 +15,7 @@ struct MediaReaderDestination: View {
                 ReaderView(book: row, database: container.database, client: container.httpClient)
             }
         case .video: VideoPlayView(book: book, database: container.database, client: container.httpClient)
-        case .file: ContentUnavailableView("暂不支持文件下载源", systemImage: "arrow.down.doc", description: Text("已识别为仅提供文件下载的书源。"))
+        case .file: WebFileDownloadView(book: book, container: container)
         case .text:
             if let row = try? DiscoveryStorage.row(book, defaults: BookRow()) {
                 ReaderView(book: row, database: container.database, client: container.httpClient)
