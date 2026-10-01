@@ -36,4 +36,19 @@ final class CacheBookAutoPauseTests: XCTestCase {
         XCTAssertEqual(dead.filter { $0 == .failed }.count, 3)
         XCTAssertEqual(dead.filter { $0 == .paused }.count, 2)
     }
+
+    func testChangesReportOnlyWhenStateMoved() async {
+        let cache = CacheBook(maximumConcurrent: 1, retryLimit: 0)
+        let empty = await cache.changes(since: -1)
+        XCTAssertEqual(empty?.progress.count, 0)
+        let start = empty?.revision ?? 0
+        let unchanged = await cache.changes(since: start)
+        XCTAssertNil(unchanged)
+        await cache.enqueue(bookURL: "b", chapters: [0, 1]) { _ in }
+        await cache.waitUntilIdle()
+        let moved = await cache.changes(since: start)
+        XCTAssertEqual(moved?.progress.filter { $0.state == .completed }.count, 2)
+        let settled = await cache.changes(since: moved?.revision ?? 0)
+        XCTAssertNil(settled)
+    }
 }

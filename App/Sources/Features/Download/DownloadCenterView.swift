@@ -13,12 +13,12 @@ struct DownloadCenterView: View {
                     Button(model.isStoppingRefresh ? "正在停止" : "停止") { model.stopRefresh() }.disabled(model.isStoppingRefresh)
                 }
             }
-            if model.progress.isEmpty { Text("暂无下载任务") }
-            ForEach(Array(Set(model.progress.map(\.bookURL))).sorted(), id: \.self) { url in
-                let items = model.progress.filter { $0.bookURL == url }
+            if model.groups.isEmpty { Text("暂无下载任务") }
+            ForEach(model.groups) { group in
+                let url = group.bookURL
                 Section(model.bookNames[url] ?? "书籍下载") {
-                    ProgressView(value: Double(items.filter { $0.state == .completed }.count), total: Double(items.count))
-                    Text(summary(items)).font(.caption).foregroundStyle(.secondary)
+                    ProgressView(value: Double(group.completed), total: Double(max(1, group.total)))
+                    Text(group.summary).font(.caption).foregroundStyle(.secondary)
                     if let reason = model.pauseReasons[url] {
                         Text(reason + "\n请检查网络或为这本书换源后，点「继续」或「重试失败」。").font(.callout).foregroundStyle(.red)
                     }
@@ -28,7 +28,7 @@ struct DownloadCenterView: View {
                         Button("重试失败") { Task { await model.queue.retry(bookURL: url) } }
                         Button("取消", role: .destructive) { Task { await model.queue.cancel(bookURL: url) } }
                     }.buttonStyle(.borderless)
-                    ForEach(items) { item in
+                    ForEach(group.visible) { item in
                         VStack(alignment: .leading) {
                             Text("第 \(item.chapterIndex + 1) 章 · " + status(item))
                             if let error = item.error, item.state != .completed {
@@ -36,6 +36,9 @@ struct DownloadCenterView: View {
                                     .foregroundStyle(item.state == .failed ? .red : .secondary)
                             }
                         }
+                    }
+                    if group.hidden > 0 {
+                        Text("另有 \(group.hidden) 章未列出").font(.caption).foregroundStyle(.secondary)
                     }
                 }
             }
@@ -49,11 +52,6 @@ struct DownloadCenterView: View {
         if item.state == .running, item.attempts > 1 { return "第 \(item.attempts) 次重试中" }
         if item.state == .failed { return "失败（已尝试 \(item.attempts) 次）" }
         return stateName(item.state)
-    }
-
-    private func summary(_ items: [CacheBook.Progress]) -> String {
-        func count(_ state: CacheBook.State) -> Int { items.filter { $0.state == state }.count }
-        return "共 \(items.count) 章：完成 \(count(.completed))，失败 \(count(.failed))，下载中 \(count(.running))，等待 \(count(.queued))，暂停 \(count(.paused))"
     }
 
     private func stateName(_ state: CacheBook.State) -> String {

@@ -17,8 +17,51 @@ enum BookshelfDownloadsError: LocalizedError {
 @Observable
 @MainActor
 final class DownloadCenterModel {
+    struct BookGroup: Identifiable, Equatable {
+        static let visibleQueuedLimit = 30
+        let bookURL: String
+        let total: Int
+        let completed: Int
+        let failed: Int
+        let running: Int
+        let queued: Int
+        let paused: Int
+        /// Failed and running chapters, then at most `visibleQueuedLimit` of the rest that still need work.
+        let visible: [CacheBook.Progress]
+        var id: String { bookURL }
+        var summary: String { "共 \(total) 章：完成 \(completed)，失败 \(failed)，下载中 \(running)，等待 \(queued)，暂停 \(paused)" }
+        var hidden: Int { total - completed - visible.count }
+
+        static func == (lhs: BookGroup, rhs: BookGroup) -> Bool {
+            lhs.bookURL == rhs.bookURL && lhs.summary == rhs.summary && lhs.visible.map(\.id) == rhs.visible.map(\.id)
+                && lhs.visible.map(\.attempts) == rhs.visible.map(\.attempts) && lhs.visible.map(\.error) == rhs.visible.map(\.error)
+        }
+
+        static func make(_ items: [CacheBook.Progress]) -> [BookGroup] {
+            var order: [String] = []
+            var buckets: [String: [CacheBook.Progress]] = [:]
+            for item in items {
+                if buckets[item.bookURL] == nil { order.append(item.bookURL) }
+                buckets[item.bookURL, default: []].append(item)
+            }
+            return order.sorted().map { url in
+                let items = buckets[url] ?? []
+                var counts: [CacheBook.State: Int] = [:]
+                for item in items { counts[item.state, default: 0] += 1 }
+                let urgent = items.filter { $0.state == .failed || $0.state == .running }
+                let rest = items.lazy.filter { $0.state == .queued || $0.state == .paused || $0.state == .cancelled }
+                    .prefix(visibleQueuedLimit)
+                return BookGroup(bookURL: url, total: items.count, completed: counts[.completed] ?? 0, failed: counts[.failed] ?? 0,
+                                 running: counts[.running] ?? 0, queued: counts[.queued] ?? 0, paused: counts[.paused] ?? 0,
+                                 visible: urgent + rest)
+            }
+        }
+    }
+
     private(set) var progress: [CacheBook.Progress] = []
+    private(set) var groups: [BookGroup] = []
     private(set) var pauseReasons: [String: String] = [:]
+    @ObservationIgnored private var revision = -1
     private(set) var bookNames: [String: String] = [:]
     var userError: UserFacingError?
     var errorMessage: String? { userError?.displayText }
@@ -99,10 +142,12 @@ final class DownloadCenterModel {
     }
 
     private func refreshSnapshot() async {
-        progress = await queue.snapshot()
-        var reasons: [String: String] = [:]
-        for url in Set(progress.map(\.bookURL)) { reasons[url] = await queue.pauseReason(bookURL: url) }
-        pauseReasons = reasons
+        guard let change = await queue.changes(since: revision) else { return }
+        revision = change.revision
+        progress = change.progress
+        let updated = BookGroup.make(change.progress)
+        if updated != groups { groups = updated }
+        if change.pauseReasons != pauseReasons { pauseReasons = change.pauseReasons }
     }
 
     func refresh(_ rows: [BookRow]? = nil, onlyUpdateRead: Bool = false) async {

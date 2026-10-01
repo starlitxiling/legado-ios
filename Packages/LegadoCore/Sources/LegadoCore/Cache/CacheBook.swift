@@ -20,6 +20,8 @@ public actor CacheBook {
     private let failurePauseThreshold: Int
     private var consecutiveFailures: [String: Int] = [:]
     private var pauseReasons: [String: String] = [:]
+    /// Bumped on every state change so observers can skip copying an unchanged snapshot.
+    public private(set) var revision = 0
     private let onProgress: @Sendable ([Progress]) -> Void
     private var entries: [Key: Entry] = [:]
     private var order: [Key] = []
@@ -51,6 +53,12 @@ public actor CacheBook {
     public func snapshot() -> [Progress] { order.compactMap { entries[$0]?.progress } }
 
     public func pauseReason(bookURL: String) -> String? { pauseReasons[bookURL] }
+
+    /// Returns nil when nothing changed since `revision`.
+    public func changes(since revision: Int) -> (revision: Int, progress: [Progress], pauseReasons: [String: String])? {
+        guard revision != self.revision else { return nil }
+        return (self.revision, snapshot(), pauseReasons)
+    }
 
     public func pause(bookURL: String) {
         for key in order where key.book == bookURL {
@@ -94,6 +102,7 @@ public actor CacheBook {
     }
 
     private func pump() {
+        revision &+= 1
         for key in order where active.count < maximumConcurrent {
             guard let entry = entries[key], entry.progress.state == .queued, active[key] == nil else { continue }
             entries[key]?.progress.state = .running
