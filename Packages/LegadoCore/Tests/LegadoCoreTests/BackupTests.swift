@@ -221,11 +221,22 @@ extension BackupTests {
         let cache = BackupReviewTests.archive(["runtimeSourceCache.json": "[]"])
         let report = try await BackupImporter(database: database, localDeviceID: "test", password: "test").importArchive(cache)
         XCTAssertEqual(report.importedCounts["runtimeSourceCache.json"], 0)
+        // Legado_Max writes a plain cache array without a local password; restoring it needs no password.
+        let plainCache = try await BackupImporter(database: database, localDeviceID: "test").importArchive(cache)
+        XCTAssertTrue(plainCache.failures.isEmpty)
+        XCTAssertEqual(plainCache.importedCounts["runtimeSourceCache.json"], 0)
+        let emptyKeyCookies = String(decoding: try BackupAES(password: "").encrypt(Data(#"[{"url":"example.invalid","cookie":"a=1"}]"#.utf8)), as: UTF8.self)
+        let emptyKey = try await BackupImporter(database: database, localDeviceID: "test")
+            .importArchive(BackupReviewTests.archive(["cookies.json": emptyKeyCookies, "bookshelf.json": "[]"]))
+        XCTAssertTrue(emptyKey.failures.isEmpty)
+        XCTAssertEqual(emptyKey.importedCounts["cookies.json"], 1)
+        let otherKeyCookies = String(decoding: try BackupAES(password: "other").encrypt(Data("[]".utf8)), as: UTF8.self)
         do {
-            _ = try await BackupImporter(database: database, localDeviceID: "test").importArchive(cache)
-            XCTFail("Plain cache restore also requires a nonblank password")
+            _ = try await BackupImporter(database: database, localDeviceID: "test")
+                .importArchive(BackupReviewTests.archive(["cookies.json": otherKeyCookies]))
+            XCTFail("Cookies encrypted with a real password still require it")
         } catch let error as BackupError {
-            XCTAssertEqual(error, .passwordRequired(file: "runtimeSourceCache.json"))
+            XCTAssertEqual(error, .passwordRequired(file: "cookies.json"))
         }
         let ignored = try await BackupImporter(database: database, localDeviceID: "test").importArchive(payload,
             selection: BackupSelection(values: ["ignoreCookies": true]))

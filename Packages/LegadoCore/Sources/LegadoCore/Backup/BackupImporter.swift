@@ -62,11 +62,24 @@ public struct BackupImporter {
         var sourceState: [String: Data] = [:]
         for name in ["cookies.json", "runtimeSourceCache.json"] {
             guard let data = archive.files[name], !selection.ignoresFile(name) else { continue }
-            try BackupAES.requirePassword(password, file: name)
+            let hasPassword = !(password ?? "").trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             do {
-                let plain = name == "runtimeSourceCache.json" && BackupAES.isJSONArray(data) ? data : try aes.decrypt(data)
+                let plain: Data
+                if name == "runtimeSourceCache.json" && BackupAES.isJSONArray(data) {
+                    plain = data
+                } else if hasPassword {
+                    plain = try aes.decrypt(data)
+                } else if let decrypted = try? BackupAES(password: "").decrypt(data),
+                          (try? BackupFileManifest.validateSourceState(name, data: decrypted)) != nil {
+                    // Legado_Max exports these files with the empty-password key when no local password is set.
+                    plain = decrypted
+                } else {
+                    throw BackupError.passwordRequired(file: name)
+                }
                 try BackupFileManifest.validateSourceState(name, data: plain)
                 sourceState[name] = plain
+            } catch let error as BackupError {
+                throw error
             } catch {
                 try Task.checkCancellation()
                 report.failures[name] = describeError(error, name)
