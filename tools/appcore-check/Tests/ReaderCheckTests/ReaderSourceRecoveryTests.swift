@@ -198,6 +198,31 @@ final class ReaderSourceRecoveryTests: XCTestCase {
         XCTAssertTrue(model.pagination?.text.string.contains("没有书源") == true)
         await model.close()
     }
+
+    func testEmptyTocWithExistingSourceShowsInteractivePlaceholder() async throws {
+        let database = try AppDatabase.inMemory()
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        var row = BookRow(); row.bookUrl = "https://toc.test/book"; row.origin = "https://toc.test"; row.name = "宝鉴"
+        row.tocUrl = "https://toc.test/toc"
+        try await BookshelfRepository(database: database).insert(row)
+        var source = BookSourceRow(); source.bookSourceUrl = "https://toc.test"; source.bookSourceName = "空目录源"
+        source.mainJs = """
+        function getBookInfo() { return {tocUrl:baseUrl+'/toc'}; }
+        function getChapters() { return []; }
+        """
+        try await BookSourceRepository(database: database).upsert([source])
+        let model = ReaderViewModel(database: database, client: ReplayHttpClient(), cacheDirectory: root, preDownloadCount: { 0 })
+        model.autoChangeSource = { true }
+        await model.load(bookURL: row.bookUrl)
+        XCTAssertFalse(model.isLoading)
+        XCTAssertTrue(model.isPlaceholder)
+        XCTAssertTrue(model.pagination?.text.string.contains("加载目录失败") == true)
+        XCTAssertEqual(model.userError?.title, "加载目录失败")
+        XCTAssertEqual(model.userError?.actions, [.retry, .changeSource, .back])
+        XCTAssertNil(model.sourceRecoveryTask)
+        await model.close()
+    }
 }
 
 private actor RecoveryRequestGate: HttpClient {

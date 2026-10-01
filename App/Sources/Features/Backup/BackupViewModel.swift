@@ -23,6 +23,7 @@ final class BackupViewModel {
     private(set) var exportedFile: URL?
     private(set) var statusMessage: String?
     var newBackupName: String?
+    private var newBackupModified: Int64?
     private let localDeviceID: String
     private let didRestore: () -> Void
     private let operationMutex: BackupOperationMutex
@@ -67,8 +68,17 @@ final class BackupViewModel {
         guard preferences.boolean("autoCheckNewBackup"), source != nil else { return }
         await listBackups()
         let lastKnown = max(preferences.lastBackup, Int64(preferences.defaults.double(forKey: "Legado.lastRestore")))
-        newBackupName = files.filter { ($0.lastModified?.timeIntervalSince1970 ?? 0) * 1000 > Double(lastKnown) }
-            .max { ($0.lastModified ?? .distantPast) < ($1.lastModified ?? .distantPast) }?.displayName
+        // Android MainActivity.backupSync: only a backup more than a minute newer than the known one prompts.
+        let newest = files.max { ($0.lastModified ?? .distantPast) < ($1.lastModified ?? .distantPast) }
+        let modified = Int64(((newest?.lastModified?.timeIntervalSince1970) ?? 0) * 1000)
+        guard let newest, modified - lastKnown > 60_000 else { newBackupName = nil; newBackupModified = nil; return }
+        newBackupName = newest.displayName
+        newBackupModified = modified
+    }
+
+    func dismissNewBackup() {
+        if let newBackupModified { preferences.lastBackup = max(preferences.lastBackup, newBackupModified) }
+        newBackupName = nil; newBackupModified = nil
     }
 
     func restore(_ file: WebDavFile) async {

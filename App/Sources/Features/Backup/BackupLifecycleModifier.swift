@@ -7,6 +7,7 @@ struct BackupLifecycleModifier: ViewModifier {
     @State private var model: BackupViewModel?
     @State private var operation: Task<Void, Never>?
     @State private var restoredStartupProgress = false
+    @State private var checkedNewBackup = false
 
     func body(content: Content) -> some View {
         content
@@ -16,7 +17,7 @@ struct BackupLifecycleModifier: ViewModifier {
                 if let name = model?.newBackupName {
                     HStack {
                         Text("发现新备份：\(name)，可到设置中恢复。").font(.caption)
-                        Button("关闭") { model?.newBackupName = nil }
+                        Button("关闭") { model?.dismissNewBackup() }
                     }.padding().background(.regularMaterial)
                 }
             }
@@ -44,7 +45,10 @@ struct BackupLifecycleModifier: ViewModifier {
                         try db.execute(sql: "DELETE FROM caches WHERE deadline > 0 AND deadline <= ?", arguments: [timestamp])
                     }
                 }
-                await backup.checkNewBackup()
+                if !checkedNewBackup {
+                    checkedNewBackup = true
+                    await backup.checkNewBackup()
+                }
                 await backup.automaticBackup()
                 try Task.checkCancellation()
                 if !restoredStartupProgress {

@@ -189,31 +189,45 @@ final class ReaderViewModel {
                 entity = try ReaderEntityBridge.decode(Book.self, row: book)
                 chapters = restored
             }
+            var tocFailure: Error?
             if chapters.isEmpty, !LocalBook.isLocal(entity), let source {
-                let parsed = try await WebBook(source: source, client: client).chapterList(book: &entity)
-                let restored = try parsed.map { try ReaderEntityBridge.decode(BookChapterRow.self, row: $0) }
-                try Task.checkCancellation()
-                guard generation == token else { return }
-                try await BookshelfRepository(database: database).saveChapterUpdate(
-                    bookURL: bookURL, chapters: restored, checkedAt: entity.lastCheckTime)
-                guard let refreshed = try await BookshelfRepository(database: database).get(bookUrl: bookURL) else {
-                    throw ReaderError.missingBook
+                do {
+                    var fetched = entity
+                    let parsed = try await WebBook(source: source, client: client).chapterList(book: &fetched)
+                    let restored = try parsed.map { try ReaderEntityBridge.decode(BookChapterRow.self, row: $0) }
+                    try Task.checkCancellation()
+                    guard generation == token else { return }
+                    try await BookshelfRepository(database: database).saveChapterUpdate(
+                        bookURL: bookURL, chapters: restored, checkedAt: fetched.lastCheckTime)
+                    guard let refreshed = try await BookshelfRepository(database: database).get(bookUrl: bookURL) else {
+                        throw ReaderError.missingBook
+                    }
+                    book = refreshed
+                    entity = try ReaderEntityBridge.decode(Book.self, row: refreshed)
+                    chapters = restored
+                } catch where !error.isCancellation && (error as? ReaderError) != .missingBook {
+                    tocFailure = error
                 }
-                book = refreshed
-                entity = try ReaderEntityBridge.decode(Book.self, row: refreshed)
-                chapters = restored
             }
-            if chapters.isEmpty, source == nil, !LocalBook.isLocal(entity) {
+            if chapters.isEmpty, source == nil || tocFailure != nil, !LocalBook.isLocal(entity) {
                 var placeholder = BookChapterRow()
-                placeholder.bookUrl = bookURL; placeholder.url = bookURL + "#missing-source"
+                placeholder.bookUrl = bookURL; placeholder.url = bookURL + (tocFailure == nil ? "#missing-source" : "#toc-error")
                 placeholder.index = requestedIndex ?? book.durChapterIndex
-                placeholder.title = book.durChapterTitle ?? "没有书源"
+                placeholder.title = book.durChapterTitle ?? (tocFailure == nil ? "没有书源" : "加载目录失败")
                 chapters = [placeholder]
             }
             guard !chapters.isEmpty else { throw ReaderError.emptyChapters }
             let bookmarks = try await BookmarkRepository(database: database).list(bookName: book.name, bookAuthor: book.author)
             guard generation == token else { return }
             self.book = book; self.chapters = chapters; self.entity = entity; self.source = source; self.bookmarks = bookmarks
+            if let tocFailure {
+                failedRequest = nil
+                report(tocFailure, operation: "加载目录", actions: [.retry, .changeSource, .back]); isLoading = false
+                let reason = tocFailure.presentableMessage ?? "目录为空"
+                await showPlaceholder(ChapterRequest(index: chapters[0].index, offset: 0), token: token,
+                                      text: "加载目录失败\n" + reason)
+                return
+            }
             let desired = requestedIndex ?? book.durChapterIndex
             let index = chapters.first(where: { $0.index == desired })?.index ?? chapters[0].index
             await openChapter(ChapterRequest(index: index, offset: requestedIndex == nil ? book.durChapterPos : 0), token: token)
@@ -295,11 +309,15 @@ final class ReaderViewModel {
     }
 
     private func showMissingSource(_ request: ChapterRequest, token: UUID) async {
+        await showPlaceholder(request, token: token, text: "加载正文失败\n没有书源")
+    }
+
+    private func showPlaceholder(_ request: ChapterRequest, token: UUID, text: String) async {
         guard let entity, let row = chapters.first(where: { $0.index == request.index }) else { return }
         do {
             let chapter = try ReaderEntityBridge.decode(BookChapter.self, row: row)
             let input = ReaderLayoutInput(book: entity, chapter: chapter,
-                rawContent: "加载正文失败\n没有书源", rules: [], sourceImageStyle: nil,
+                rawContent: text, rules: [], sourceImageStyle: nil,
                 replaceEnableDefault: false)
             let layoutToken = UUID(); layoutGeneration = layoutToken
             layoutInput = input; chapterIndex = request.index; characterOffset = 0; isPlaceholder = true
@@ -308,7 +326,7 @@ final class ReaderViewModel {
             chapterTitle = result.title; pagination = result.pagination; pageIndex = 0
         } catch {
             guard token == generation, !error.isCancellation else { return }
-            AppLogStore.shared.append("Missing-source placeholder: \(String(reflecting: error))")
+            AppLogStore.shared.append("Reader placeholder: \(String(reflecting: error))")
         }
     }
 

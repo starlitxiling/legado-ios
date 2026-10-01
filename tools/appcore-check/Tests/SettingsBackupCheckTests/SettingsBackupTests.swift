@@ -85,6 +85,39 @@ final class SettingsBackupTests: XCTestCase {
         XCTAssertFalse(settings.isTesting)
     }
 
+    func testNewBackupPromptRequiresMinuteNewerAndStaysDismissed() async throws {
+        let replay = ReplayHttpClient()
+        let root = URL(string: "https://example.invalid/dav/")!
+        let directory = root.appendingPathComponent("legado/")
+        func listing(_ modified: String) -> Data {
+            Data("""
+            <d:multistatus xmlns:d="DAV:"><d:response><d:href>\(directory.appendingPathComponent("backup2026-10-01-A.zip").absoluteString)</d:href><d:propstat><d:prop><d:displayname>backup2026-10-01-A.zip</d:displayname><d:resourcetype/><d:getcontentlength>100</d:getcontentlength><d:getlastmodified>\(modified)</d:getlastmodified></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>
+            """.utf8)
+        }
+        await replay.enqueue(url: root, method: "PROPFIND", response: .init(status: 207, body: Data("<d:multistatus xmlns:d=\"DAV:\"/>".utf8), finalURL: root))
+        for _ in 0..<3 {
+            await replay.enqueue(url: directory, method: "PROPFIND", response: .init(status: 207, body: listing("Wed, 01 Oct 2026 03:00:00 GMT"), finalURL: directory))
+        }
+        let settings = SettingsViewModel(store: MemoryKeychain(), httpClient: replay)
+        settings.address = root.absoluteString; settings.username = "reader"; settings.password = "secret"
+        await settings.testConnection()
+        let preferences = isolatedPreferences()
+        preferences.set("autoCheckNewBackup", .boolean(true))
+        let modified: Int64 = 1_790_823_600_000
+        preferences.lastBackup = modified - 30_000
+        let model = BackupViewModel(database: try AppDatabase.inMemory(), localDeviceID: "test-device", resourceDirectory: nil, preferences: preferences)
+        try model.configure(credentials: settings.credentials(), httpClient: replay)
+        await model.checkNewBackup()
+        XCTAssertNil(model.newBackupName)
+        preferences.lastBackup = modified - 120_000
+        await model.checkNewBackup()
+        XCTAssertEqual(model.newBackupName, "backup2026-10-01-A.zip")
+        model.dismissNewBackup()
+        XCTAssertEqual(preferences.lastBackup, modified)
+        await model.checkNewBackup()
+        XCTAssertNil(model.newBackupName)
+    }
+
     func testReadOnlyRemoteRestore() async throws {
         let replay = ReplayHttpClient()
         let root = URL(string: "https://example.invalid/dav/")!
