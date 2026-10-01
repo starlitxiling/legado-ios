@@ -7,6 +7,7 @@ extension AppPreferences {
     static let settingDefaults: [String: AndroidPreferenceValue] = {
         var values = AndroidBackupPreferences.defaults
         values.merge(ReaderBehaviorConfiguration.defaults) { _, value in value }
+        values.merge(EInkSettings.defaults) { _, value in value }
         values["launcherIcon"] = .string("ic_launcher")
         values["showSearchReadRecord"] = .boolean(true)
         values["precisionSearch"] = .boolean(false)

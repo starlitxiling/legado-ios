@@ -114,6 +114,7 @@ final class AppPreferencesTests: XCTestCase {
         for key in ["prevKeys", "nextKeys", "readerMenuConfig", "textSelectMenuConfig"] { expected[key] = .string("") }
         for (key, value) in ["screenOrientation": "0", "keep_light": "0", "doubleHorizontalPage": "0", "progressBarBehavior": "page", "punctuationCompress": "none", "clickImgWay": "0", "highlightActionTrigger": "click"] { expected[key] = .string(value) }
         for (key, value): (String, Int32) in ["mouseWheelScrollSpeed": 100, "pullBookmarkDistance": 0, "pageTouchSlop": 0, "pageTouchClick": 0] { expected[key] = .int(value) }
+        expected.merge(EInkSettings.defaults) { _, value in value }
         XCTAssertEqual(preferences.snapshot, expected)
         for (key, value) in expected { preferences.set(key, value) }
         XCTAssertEqual(AppPreferences(defaults: defaults).snapshot, expected)

@@ -35,6 +35,8 @@ struct ReaderView: View {
     @State private var networkMonitor: NWPathMonitor?
     @State private var networkAvailable: Bool?
     @State private var confirmsCloudOverwrite = false
+    @State private var eInkCounter = EInkRefreshCounter()
+    @State private var eInkFlash: Bool?
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.displayScale) private var displayScale
@@ -297,6 +299,17 @@ struct ReaderView: View {
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { autoRead.stop(); _ = model.saveProgressForBackground() }
         }
+        .onChange(of: "\(model.chapterIndex)-\(model.pageIndex)") { _, _ in
+            guard themeColors.isEInk,
+                  eInkCounter.turn(interval: EInkSettings(values: AppPreferences.shared.snapshot).refreshInterval) else { return }
+            flashEInk()
+        }
+        .overlay {
+            if let black = eInkFlash {
+                (black ? Color.black : Color.white).ignoresSafeArea().allowsHitTesting(false)
+                    .accessibilityIdentifier("eink.flash")
+            }
+        }
         .onChange(of: model.chapterIndex) { _, chapter in
             Task { await model.refreshHighlights() }
             if readAloud.engine.state != .loading, readAloud.engine.chapterIndex != chapter { readAloud.engine.stop() }
@@ -404,6 +417,17 @@ struct ReaderView: View {
         guard taps == 1, let action = ReaderTouchMap.action(x: point.x, y: point.y, width: size.width, height: size.height, actions: ReaderTouchMap.load()) else { return }
         perform(action)
     }
+    /// Full e-paper refresh: one black frame then one white frame before the page shows again.
+    private func flashEInk() {
+        Task { @MainActor in
+            eInkFlash = true
+            try? await Task.sleep(for: .milliseconds(90))
+            eInkFlash = false
+            try? await Task.sleep(for: .milliseconds(90))
+            eInkFlash = nil
+        }
+    }
+
     private func showPanel(_ key: String) {
         autoRead.stop()
         switch key {
@@ -415,6 +439,7 @@ struct ReaderView: View {
         case "reviews": showsReviews = true
         case "custom": customButton()
         case "coverProgress": confirmsCloudOverwrite = true
+        case "eInkRefresh": eInkCounter.reset(); flashEInk()
         default: actionSheet = ReaderActionSheet(key: key)
         }
     }
@@ -462,6 +487,8 @@ struct ReaderView: View {
         case "effectiveReplaces": ReaderManualReplaceView(model: model, repository: container.replaceRules)
         case "simulatedReading": ReaderSimulatedView(model: model)
         case "updateToc", "charset": ReaderTextParsingView(model: model, database: container.database)
+        case "eInkSettings":
+            NavigationStack { EInkSettingsView(preferences: AppPreferences.shared).sheetCloseButton { actionSheet = nil } }
         case "autoSpeed":
             NavigationStack {
                 Form {

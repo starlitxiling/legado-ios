@@ -50,6 +50,10 @@ struct ReaderMenuView: View {
                     Button("批注") { show("highlights") }
                     if model.readerBook.flatMap(LocalBook.fileURL)?.pathExtension.lowercased() == "txt" { Button("设置编码") { show("charset") } }
                     if model.supportsReviews { Button("段评") { show("reviews") } }
+                    if colors.isEInk {
+                        Button("刷新屏幕") { show("eInkRefresh") }
+                        Button("墨水屏设置") { show("eInkSettings") }
+                    }
                     Button("收起", action: close)
                 } label: { Image(systemName: "ellipsis").frame(width: 28, height: 36) }.accessibilityLabel("更多")
             }.padding(.horizontal, 14).padding(.vertical, 10).background(menuColor)

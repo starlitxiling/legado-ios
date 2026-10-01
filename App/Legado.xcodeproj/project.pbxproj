@@ -100,6 +100,7 @@
 		6724023A8846CB6F01D4E746 /* ReplaceRulesView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 798333B66017390E2DB602EB /* ReplaceRulesView.swift */; };
 		67B50051008CEFA90F12D5E3 /* SourceImportSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21918C8894CEE859BBC5BD08 /* SourceImportSheet.swift */; };
 		67D72E4484482B6F3E6CE7F7 /* ic_launcher@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = 8E63441B8A94298CA92F1099 /* ic_launcher@2x.png */; };
+		67E9CAF7714B3F2C29F1DDCE /* EInkSettings.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1FFB5CF4B90D95A7FB6CEB27 /* EInkSettings.swift */; };
 		67F4FE1F28EDDA98EE244683 /* NWWebServiceTransport.swift in Sources */ = {isa = PBXBuildFile; fileRef = 99B7779E568D0D6062C162F0 /* NWWebServiceTransport.swift */; };
 		67FD47AE8EEA343B3FBD3A30 /* TocView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8EC5AE0D0A3DC71C11A5507D /* TocView.swift */; };
 		683342B5BF9248DE439C559D /* CookieManagementView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A9362C915441D75CDD19C4F /* CookieManagementView.swift */; };
@@ -110,6 +111,7 @@
 		6D53233FC77BC91C63A180B5 /* RestoreResultView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F3350B7173A65705D7E0D6F0 /* RestoreResultView.swift */; };
 		6DC2BBEF9E83684F581A6D95 /* ReaderTocView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C85DEA41A56427FFA02E5C34 /* ReaderTocView.swift */; };
 		6FE8A6E78031A0775A571825 /* ReaderInterfaceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A8CFD3D93680387A7A9D22D6 /* ReaderInterfaceUITests.swift */; };
+		7077FDEFAD28D153CBDEAC38 /* EInkSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 311E8753030FD3C1B9251BD4 /* EInkSettingsView.swift */; };
 		708C98DF4B9A9181E88425BF /* launcher3@3x.png in Resources */ = {isa = PBXBuildFile; fileRef = 66A0F94B26F70ABB4D0DF501 /* launcher3@3x.png */; };
 		711860E3FACBF563DA666D47 /* ReaderTypography.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3DAB38F430235A3A38147AE0 /* ReaderTypography.swift */; };
 		712B3AE4134A4EB1A7476526 /* GRDB in Frameworks */ = {isa = PBXBuildFile; productRef = 1A057E76B5AEF421EC25EAF6 /* GRDB */; };
@@ -318,6 +320,7 @@
 		1D5F8BEB81839531C31E3063 /* BookshelfLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookshelfLayout.swift; sourceTree = "<group>"; };
 		1E97062F01A72C38E65FB796 /* WebFileDownloadView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WebFileDownloadView.swift; sourceTree = "<group>"; };
 		1FBE5A76B59E60C687AD0465 /* SourceCodeInput.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceCodeInput.swift; sourceTree = "<group>"; };
+		1FFB5CF4B90D95A7FB6CEB27 /* EInkSettings.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EInkSettings.swift; sourceTree = "<group>"; };
 		201FE9CB6A8C5B69D5A59C73 /* ReaderInfo.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderInfo.swift; sourceTree = "<group>"; };
 		21918C8894CEE859BBC5BD08 /* SourceImportSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceImportSheet.swift; sourceTree = "<group>"; };
 		227892C7F74C8B696DF197DC /* BookDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookDetailView.swift; sourceTree = "<group>"; };
@@ -330,6 +333,7 @@
 		3037B0816F41DE272D38B8CD /* RuleSubSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RuleSubSettingsView.swift; sourceTree = "<group>"; };
 		3037E1674832DC9751E9B96B /* RssFavoritesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RssFavoritesView.swift; sourceTree = "<group>"; };
 		31002B0B36DF414200D13662 /* ReaderReviewIcon.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderReviewIcon.swift; sourceTree = "<group>"; };
+		311E8753030FD3C1B9251BD4 /* EInkSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EInkSettingsView.swift; sourceTree = "<group>"; };
 		31526CB607D20D26CB94F0D5 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		318D2A10C7816A82DA643B49 /* BookshelfBookListExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookshelfBookListExportView.swift; sourceTree = "<group>"; };
 		32042FEEDA8756F3411B6099 /* SourcesViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesViewModel.swift; sourceTree = "<group>"; };
@@ -583,6 +587,7 @@
 				A43BCC679B9D6EECDA5FDB28 /* CoverResourcePicker.swift */,
 				577164D21AA1B7BC58103529 /* CoverRuleSettingsModel.swift */,
 				1B0C9DFFEC925051B7F78DCD /* CoverTypography.swift */,
+				311E8753030FD3C1B9251BD4 /* EInkSettingsView.swift */,
 				AF2F54439743A442D53A5FBB /* ForegroundAutoTaskLoop.swift */,
 				EC19FAD2565291B1F98C7ABB /* GeneralSettingsView.swift */,
 				675BDD0F673B5986063F73BD /* LauncherIconModel.swift */,
@@ -810,6 +815,7 @@
 		79F93F11F124963977C9FD77 /* Theme */ = {
 			isa = PBXGroup;
 			children = (
+				1FFB5CF4B90D95A7FB6CEB27 /* EInkSettings.swift */,
 				F6F91E009AB7FA4ABEB5E3A3 /* ReaderStatusAppearance.swift */,
 				B0555115CF549C38ED020156 /* ReaderStatusBarBridge.swift */,
 				7EC599A986A61CA52A28E559 /* ThemeColors.swift */,
@@ -1406,6 +1412,8 @@
 				541105E267676EB040B24078 /* DiscoveryStorage.swift in Sources */,
 				DEE248A4436D319328FBDAF3 /* DownloadCenterModel.swift in Sources */,
 				DF97179CD3CC4B906DBD64C8 /* DownloadCenterView.swift in Sources */,
+				67E9CAF7714B3F2C29F1DDCE /* EInkSettings.swift in Sources */,
+				7077FDEFAD28D153CBDEAC38 /* EInkSettingsView.swift in Sources */,
 				56FFDD9989E75B67727D1D8E /* EmptyStateView.swift in Sources */,
 				F66DA3146326D108501B3B4C /* ErrorBanner.swift in Sources */,
 				95A506E32B2628544FAA4FB9 /* ErrorPresentation.swift in Sources */,

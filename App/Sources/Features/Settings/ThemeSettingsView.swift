@@ -15,6 +15,7 @@ import CoreImage
         Form {
             Section {
                 NavigationLink("切换图标") { LauncherIconSettingsView(preferences: preferences) }
+                NavigationLink("墨水屏设置") { EInkSettingsView(preferences: preferences) }
                 NavigationLink("启动界面样式") { WelcomeSettingsView(preferences: preferences) }
                 Menu {
                     Button("跟随系统") { preferences.set("fontScale", .int(0)) }
