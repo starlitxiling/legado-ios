@@ -5,8 +5,10 @@ public struct SourceStateRepository: Sendable {
     private let database: AppDatabase
     public init(database: AppDatabase) { self.database = database }
 
+    /// Synchronous callers run on Swift concurrency threads (JS bridges); reading through the writer's
+    /// serial queue keeps them from exhausting the reader pool that async reads hold across suspension.
     func value(source: String, key: String) throws -> String? {
-        try database.writer.read { db in
+        try database.writer.writeWithoutTransaction { db in
             try String.fetchOne(db, sql: "SELECT value FROM source_state WHERE source = ? AND key = ?", arguments: [source, key])
         }
     }
