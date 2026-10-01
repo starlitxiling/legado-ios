@@ -264,6 +264,7 @@ struct ReaderView: View {
                 try await styles.load()
             } catch { AppLogStore.shared.append("Reader style loading: \(String(reflecting: error))") }
             var settings = ReaderSettings.load(); settings.isEInk = themeColors.isEInk
+            settings.eInk = themeColors.isEInk ? EInkSettings(values: AppPreferences.shared.snapshot) : nil
             await model.reflow(settings: settings)
             await model.load(bookURL: destination.bookURL, chapterIndex: destination.chapterIndex)
             await readAloud.attach(model)
@@ -298,6 +299,10 @@ struct ReaderView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase != .active { autoRead.stop(); _ = model.saveProgressForBackground() }
+        }
+        .onChange(of: themeColors.isEInk ? EInkSettings(values: AppPreferences.shared.snapshot) : nil) { _, eInk in
+            var settings = model.settings; settings.isEInk = themeColors.isEInk; settings.eInk = eInk
+            Task { await model.reflow(settings: settings) }
         }
         .onChange(of: "\(model.chapterIndex)-\(model.pageIndex)") { _, _ in
             guard themeColors.isEInk,
@@ -685,7 +690,8 @@ private final class ReaderTextCanvas: UIView {
         let page = pagination.pages[pageIndex]
         guard page.frame != nil else { return }
         context.saveGState()
-        context.setShouldAntialias(true)
+        context.setShouldAntialias(!pagination.sharpText)
+        context.setShouldSmoothFonts(!pagination.sharpText)
         defer { context.restoreGState() }
         context.textMatrix = .identity
         context.translateBy(x: 0, y: bounds.height)

@@ -769,6 +769,7 @@ final class ReaderViewModel {
         await cache.updateSpecialStyle(adaptSpecialStyle)
         var updated = ReaderSettings.load()
         updated.isEInk = settings.isEInk
+        updated.eInk = settings.eInk
         await reflow(settings: updated)
     }
 

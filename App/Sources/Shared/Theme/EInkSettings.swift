@@ -4,17 +4,20 @@ import LegadoCore
 /// iOS-only options that make the e-ink theme feel like a real e-paper reader.
 struct EInkSettings: Equatable {
     enum Paper: String, CaseIterable, Identifiable {
-        case white, paper, warm
+        case style, white, paper, warm
         var id: String { rawValue }
         var title: String {
             switch self {
+            case .style: return "跟随阅读样式"
             case .white: return "纯白"
             case .paper: return "纸白"
             case .warm: return "暖纸"
             }
         }
-        var argb: UInt32 {
+        /// nil keeps the reading style's own e-ink background.
+        var argb: UInt32? {
             switch self {
+            case .style: return nil
             case .white: return 0xFFFFFFFF
             case .paper: return 0xFFF2F1EC
             case .warm: return 0xFFEDE6D6

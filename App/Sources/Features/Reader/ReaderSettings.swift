@@ -12,6 +12,8 @@ struct ReaderSettings: Equatable {
     var hideStatusBar = false
     var theme: ReaderTheme = .day
     var isEInk = false
+    /// Present only while the e-ink theme is active.
+    var eInk: EInkSettings?
     var textFullJustify = true
     var textBottomJustify = true
     var useZhLayout = false
@@ -91,7 +93,8 @@ struct ReaderSettings: Equatable {
     }
 
     var backgroundValue: String {
-        isEInk ? configuration.bgStrEInk : theme == .night ? configuration.bgStrNight : configuration.bgStr
+        if isEInk, let paper = eInk?.paper.argb, configuration.bgTypeEInk == 0 { return ARGBColor(paper).hex }
+        return isEInk ? configuration.bgStrEInk : theme == .night ? configuration.bgStrNight : configuration.bgStr
     }
 
     var backgroundType: Int {

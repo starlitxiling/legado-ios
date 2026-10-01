@@ -42,7 +42,14 @@ enum ReaderTypography {
             .init(kCTForegroundColorAttributeName as String): bodyColor(settings),
             .init(kCTKernAttributeName as String): settings.textSize * settings.letterSpacing,
             .init(kCTParagraphStyleAttributeName as String): paragraphStyle(settings: settings, title: false, fontName: fontName)
-        ]
+        ].merging(eInkStroke(settings)) { _, stroke in stroke }
+    }
+
+    /// E-readers "darken" text by thickening glyph outlines; a negative CoreText stroke fills and strokes.
+    static func eInkStroke(_ settings: ReaderSettings) -> [NSAttributedString.Key: Any] {
+        guard settings.isEInk, let width = settings.eInk?.strokeWidth, width != 0 else { return [:] }
+        return [.init(kCTStrokeWidthAttributeName as String): width,
+                .init(kCTStrokeColorAttributeName as String): bodyColor(settings)]
     }
 
     static func titleAttributes(_ settings: ReaderSettings, bodyFontName: String, numberTitle: Bool = false) -> [NSAttributedString.Key: Any] {
@@ -62,7 +69,7 @@ enum ReaderTypography {
             .init(kCTForegroundColorAttributeName as String): color,
             .init(kCTKernAttributeName as String): size * settings.letterSpacing,
             .init(kCTParagraphStyleAttributeName as String): paragraphStyle(settings: settings, title: true, fontName: name, numberTitle: numberTitle)
-        ]
+        ].merging(eInkStroke(settings)) { _, stroke in stroke }
     }
 
     private static func paragraphStyle(settings: ReaderSettings, title: Bool, fontName: String, numberTitle: Bool = false) -> CTParagraphStyle {

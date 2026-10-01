@@ -21,6 +21,8 @@ struct ReaderPagination {
     let contentSize: CGSize
     var titleLength: Int = 0
     var underlineConfig: ReadBookConfig? = nil
+    /// E-ink "sharp text": draw glyphs without anti-aliasing.
+    var sharpText = false
 
     func characterOffset(at point: CGPoint, on pageIndex: Int) -> Int? {
         guard pages.indices.contains(pageIndex) else { return nil }
@@ -211,6 +213,7 @@ struct Paginator {
         }
         finishPage()
         if pages.isEmpty { pages = [ReaderPage(range: NSRange(location: 0, length: 0), text: text, frame: nil)] }
-        return ReaderPagination(text: text, pages: pages, contentSize: contentSize, titleLength: titleLength, underlineConfig: book.isImage ? nil : settings.configuration)
+        return ReaderPagination(text: text, pages: pages, contentSize: contentSize, titleLength: titleLength, underlineConfig: book.isImage ? nil : settings.configuration,
+                                sharpText: settings.isEInk && settings.eInk?.sharpText == true)
     }
 }
