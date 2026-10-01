@@ -32,7 +32,7 @@ struct ErrorBanner: View {
             }
         }
         .padding().frame(maxWidth: .infinity, alignment: .leading)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+        .inkSurface(RoundedRectangle(cornerRadius: 12))
     }
 
     private var actions: some View {

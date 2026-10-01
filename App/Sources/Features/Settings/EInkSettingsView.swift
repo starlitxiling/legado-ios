@@ -27,6 +27,7 @@ struct EInkSettingsView: View {
                     Text("标准").tag(0); Text("加深").tag(1); Text("更深").tag(2)
                 }.pickerStyle(.segmented).accessibilityIdentifier("eink.textWeight")
                 controls.toggle("锐利文字（关闭抗锯齿）", EInkSettings.sharpTextKey)
+                controls.toggle("阅读时隐藏状态栏", EInkSettings.hideStatusBarKey)
             }
             Section("图片") {
                 Picker("图片处理", selection: controls.string(EInkSettings.imageModeKey)) {

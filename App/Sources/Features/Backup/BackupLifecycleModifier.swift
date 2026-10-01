@@ -18,7 +18,7 @@ struct BackupLifecycleModifier: ViewModifier {
                     HStack {
                         Text("发现新备份：\(name)，可到设置中恢复。").font(.caption)
                         Button("关闭") { model?.dismissNewBackup() }
-                    }.padding().background(.regularMaterial)
+                    }.padding().inkSurface()
                 }
             }
             .onChange(of: scenePhase) { _, phase in

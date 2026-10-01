@@ -44,10 +44,12 @@ struct EInkSettings: Equatable {
     static let sharpTextKey = "eInkSharpText"
     static let imageModeKey = "eInkImageMode"
     static let thresholdKey = "eInkImageThreshold"
+    static let hideStatusBarKey = "eInkHideStatusBar"
 
     static let defaults: [String: AndroidPreferenceValue] = [
         refreshIntervalKey: .int(6), paperKey: .string(Paper.paper.rawValue), textWeightKey: .int(1),
-        sharpTextKey: .boolean(false), imageModeKey: .string(ImageMode.levels.rawValue), thresholdKey: .int(128)
+        sharpTextKey: .boolean(false), imageModeKey: .string(ImageMode.levels.rawValue), thresholdKey: .int(128),
+        hideStatusBarKey: .boolean(true)
     ]
 
     /// Pages between full black-white flashes; 0 disables them.
@@ -58,6 +60,8 @@ struct EInkSettings: Equatable {
     var sharpText = false
     var imageMode = ImageMode.levels
     var threshold = 128
+    /// Hide the system status bar while reading so the page looks like bare e-paper.
+    var hideStatusBar = true
 
     init() {}
 
@@ -70,6 +74,7 @@ struct EInkSettings: Equatable {
         if case .boolean(let value) = values[Self.sharpTextKey] { sharpText = value }
         if let value = string(Self.imageModeKey).flatMap(ImageMode.init(rawValue:)) { imageMode = value }
         if let value = int(Self.thresholdKey) { threshold = min(250, max(5, value)) }
+        if case .boolean(let value) = values[Self.hideStatusBarKey] { hideStatusBar = value }
     }
 
     /// CoreText stroke width (negative = fill and stroke) that thickens glyphs like an e-reader's "darken text".

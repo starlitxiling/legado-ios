@@ -69,6 +69,7 @@ private struct HorizontalPageContainer<Content: View, Next: View, Previous: View
     @State private var lastMove: Double = 0
     @State private var turnTask: Task<Void, Never>?
     @State private var gestureID = UUID()
+    @Environment(\.themeColors) private var colors
 
     var body: some View {
         GeometryReader { geometry in
@@ -76,14 +77,14 @@ private struct HorizontalPageContainer<Content: View, Next: View, Previous: View
             let offsets = ReaderHorizontalDrag(translation: offset, projected: offset, width: width).offsets(slide: slide)
             ZStack {
                 pageContent
-                    .shadow(color: !slide && offset < 0 ? .black.opacity(0.28) : .clear, radius: 5, x: 4)
+                    .shadow(color: !slide && offset < 0 && !colors.isEInk ? .black.opacity(0.28) : .clear, radius: 5, x: 4)
                     .offset(x: offsets.current).zIndex(slide ? 0 : 1)
                 if offset < 0 {
                     next().offset(x: offsets.next).zIndex(slide ? 1 : 0).accessibilityHidden(true)
                 }
                 if offset > 0 {
                     previous()
-                        .shadow(color: slide ? .clear : .black.opacity(0.28), radius: 5, x: 4)
+                        .shadow(color: slide || colors.isEInk ? .clear : .black.opacity(0.28), radius: 5, x: 4)
                         .offset(x: offsets.previous).zIndex(2).accessibilityHidden(true)
                 }
             }.frame(width: width, height: geometry.size.height).clipped().contentShape(Rectangle())

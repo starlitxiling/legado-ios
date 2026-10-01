@@ -70,7 +70,7 @@ struct ScriptHostModifier: ViewModifier {
                         .font(.callout)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                        .inkSurface(RoundedRectangle(cornerRadius: 12))
                         .padding(.horizontal)
                         .padding(.bottom, 70)
                         .accessibilityIdentifier("scriptToast")

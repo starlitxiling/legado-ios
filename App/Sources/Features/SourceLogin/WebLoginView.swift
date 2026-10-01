@@ -37,7 +37,7 @@ struct WebLoginView: View {
                 }
             }
             .overlay(alignment: .bottom) {
-                if let errorMessage { Text(errorMessage).foregroundStyle(.red).padding().background(.regularMaterial) }
+                if let errorMessage { Text(errorMessage).foregroundStyle(.red).padding().inkSurface() }
             }
     }
     private static func configuration() -> WKWebViewConfiguration {

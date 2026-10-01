@@ -212,6 +212,7 @@
 		C26AA4931AF6C58FDA1F4613 /* SourcesViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32042FEEDA8756F3411B6099 /* SourcesViewModel.swift */; };
 		C3A0A34BEA044D106EB70820 /* CoverBitmapCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = 00E95A04CD517187A688DBAE /* CoverBitmapCache.swift */; };
 		C5011E138666157D6047F334 /* ReaderPagePresentation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7DA1B349684094DCE7AC4DBC /* ReaderPagePresentation.swift */; };
+		C7EF325C5986044F9DEB692B /* InkSurface.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7696EAB1A467B21836EC3650 /* InkSurface.swift */; };
 		C98D5BA9CA62D0DAF0D5B623 /* SourceInterfaceUITests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7CD826BBA8E543091C63536E /* SourceInterfaceUITests.swift */; };
 		CA5A68DB5D2B856F8CD8CE43 /* MainTabObserverTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9FEFBF08FC95E4685444BFB /* MainTabObserverTests.swift */; };
 		CACF8BE0BF20A4DEE8D1F0DF /* SourceManagement.swift in Sources */ = {isa = PBXBuildFile; fileRef = 442546BF735BD01595D3D17C /* SourceManagement.swift */; };
@@ -405,6 +406,7 @@
 		751D873D749416ABA2F46451 /* BookSourceSwitchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BookSourceSwitchView.swift; sourceTree = "<group>"; };
 		752730836B33A444D2A2BDE7 /* ReaderReviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReaderReviewView.swift; sourceTree = "<group>"; };
 		7548523F2C93C6999407E633 /* SourceDebugModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceDebugModel.swift; sourceTree = "<group>"; };
+		7696EAB1A467B21836EC3650 /* InkSurface.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InkSurface.swift; sourceTree = "<group>"; };
 		791425F31234E13CC552D889 /* SettingsInterfaceUITests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsInterfaceUITests.swift; sourceTree = "<group>"; };
 		798333B66017390E2DB602EB /* ReplaceRulesView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReplaceRulesView.swift; sourceTree = "<group>"; };
 		7C90264CBEFB161B51B4CCB3 /* DownloadCenterView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DownloadCenterView.swift; sourceTree = "<group>"; };
@@ -816,6 +818,7 @@
 			isa = PBXGroup;
 			children = (
 				1FFB5CF4B90D95A7FB6CEB27 /* EInkSettings.swift */,
+				7696EAB1A467B21836EC3650 /* InkSurface.swift */,
 				F6F91E009AB7FA4ABEB5E3A3 /* ReaderStatusAppearance.swift */,
 				B0555115CF549C38ED020156 /* ReaderStatusBarBridge.swift */,
 				7EC599A986A61CA52A28E559 /* ThemeColors.swift */,
@@ -1433,6 +1436,7 @@
 				72252A112542FF79436723E4 /* ImageRepositoryLoader.swift in Sources */,
 				F05F57242E180D5F1D65038A /* ImportHttpClient.swift in Sources */,
 				7861C96659C6A88776C9831B /* ImportSupport.swift in Sources */,
+				C7EF325C5986044F9DEB692B /* InkSurface.swift in Sources */,
 				878C24EBA2A3D80685CA86BD /* KeychainStore.swift in Sources */,
 				0187FAD0025FBF919D566A66 /* LauncherIconModel.swift in Sources */,
 				6D44546E659BEC0387D9FBCA /* LauncherIconSettingsView.swift in Sources */,

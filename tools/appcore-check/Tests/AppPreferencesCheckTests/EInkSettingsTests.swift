@@ -21,6 +21,8 @@ final class EInkSettingsTests: XCTestCase {
         XCTAssertTrue(custom.sharpText)
         XCTAssertEqual(custom.imageMode, .threshold)
         XCTAssertEqual(custom.threshold, 5)
+        XCTAssertTrue(custom.hideStatusBar)
+        XCTAssertFalse(EInkSettings(values: [EInkSettings.hideStatusBarKey: .boolean(false)]).hideStatusBar)
         let unknown = EInkSettings(values: [EInkSettings.paperKey: .string("pink"), EInkSettings.imageModeKey: .string("x")])
         XCTAssertEqual(unknown.paper, .paper)
         XCTAssertEqual(unknown.imageMode, .levels)

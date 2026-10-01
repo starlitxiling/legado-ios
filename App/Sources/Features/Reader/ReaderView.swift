@@ -175,7 +175,7 @@ struct ReaderView: View {
                     ReaderInfoView(settings: model.settings, header: false, values: infoValues)
                 }
                 if model.isLoading {
-                    ProgressView("正在加载正文…").padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 12))
+                    ProgressView("正在加载正文…").padding().inkSurface(RoundedRectangle(cornerRadius: 12))
                 } else {
                     VStack(spacing: 8) {
                         Spacer()
@@ -183,7 +183,7 @@ struct ReaderView: View {
                             HStack {
                                 ProgressView(); Text(message)
                                 Button("停止") { model.cancelSourceRecovery() }
-                            }.padding(8).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 8))
+                            }.padding(8).inkSurface(RoundedRectangle(cornerRadius: 8))
                         }
                     }.padding(.bottom, 24).padding(.horizontal, 12)
                 }
@@ -238,7 +238,7 @@ struct ReaderView: View {
         .onAppear { statusStyleActive = true }
         .onDisappear { statusStyleActive = false }
         .toolbar(.hidden, for: .navigationBar, .tabBar)
-        .statusBarHidden(model.settings.hideStatusBar && !showsControls)
+        .statusBarHidden(model.settings.hidesStatusBar && !showsControls)
         .sheet(isPresented: $showsSettings) {
             ReaderInterfacePanel(store: styles, settings: model.settings) { settings in await model.reflow(settings: settings) }
         }
@@ -344,7 +344,7 @@ struct ReaderView: View {
     private var readingEdges: Edge.Set {
         if behavior.boolean("paddingDisplayCutouts") { return [] }
         var edges: Edge.Set = []
-        if model.settings.hideStatusBar && behavior.boolean("readBodyToLh") { edges.insert(.top) }
+        if model.settings.hidesStatusBar && behavior.boolean("readBodyToLh") { edges.insert(.top) }
         if behavior.boolean("hideNavigationBar") { edges.insert(.bottom) }
         return edges
     }

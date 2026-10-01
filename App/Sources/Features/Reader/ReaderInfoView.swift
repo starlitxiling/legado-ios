@@ -8,7 +8,7 @@ struct ReaderInfoView: View {
 
     static func height(settings: ReaderSettings, header: Bool) -> CGFloat {
         let config = settings.configuration
-        if header && (config.headerMode == 2 || (config.headerMode == 0 && !settings.hideStatusBar)) { return 0 }
+        if header && (config.headerMode == 2 || (config.headerMode == 0 && !settings.hidesStatusBar)) { return 0 }
         if !header && config.footerMode == 1 { return 0 }
         let top = header ? config.headerPaddingTop : config.footerPaddingTop
         let bottom = header ? config.headerPaddingBottom : config.footerPaddingBottom

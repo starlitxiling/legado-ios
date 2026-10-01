@@ -101,7 +101,7 @@ struct ReaderInterfacePanel: View {
                             Button {
                                 enqueue(operation: "新建阅读样式") { try await store.createStyle(); await adoptStyle(); customizing = true }
                             } label: {
-                                Image(systemName: "plus").frame(width: 48, height: 48).background(.thinMaterial, in: Circle())
+                                Image(systemName: "plus").frame(width: 48, height: 48).inkSurface(Circle(), material: .thinMaterial)
                             }.accessibilityLabel("新建样式").accessibilityIdentifier("reader.style.add")
                         }.padding(.horizontal, 6).padding(.vertical, 2)
                     }

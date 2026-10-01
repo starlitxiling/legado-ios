@@ -40,7 +40,7 @@ struct SourceDebugView: View {
             ToolbarItem(placement: .principal) {
                 TextField("书名、URL 或发现", text: $model.key, onEditingChanged: { focused = $0 })
                     .textInputAutocapitalization(.never).autocorrectionDisabled().submitLabel(.search)
-                    .padding(.horizontal, 12).frame(height: 30).background(.thinMaterial, in: Capsule())
+                    .padding(.horizontal, 12).frame(height: 30).inkSurface(Capsule(), material: .thinMaterial)
                     .onSubmit { focused = false; model.start() }
             }
         }

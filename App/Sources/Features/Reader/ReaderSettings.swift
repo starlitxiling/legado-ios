@@ -14,6 +14,7 @@ struct ReaderSettings: Equatable {
     var isEInk = false
     /// Present only while the e-ink theme is active.
     var eInk: EInkSettings?
+    var hidesStatusBar: Bool { hideStatusBar || isEInk && eInk?.hideStatusBar == true }
     var textFullJustify = true
     var textBottomJustify = true
     var useZhLayout = false
