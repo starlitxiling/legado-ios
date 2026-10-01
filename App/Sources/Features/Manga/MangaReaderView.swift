@@ -163,6 +163,7 @@ struct MangaReaderView: View {
 }
 
 private struct MangaPages: View {
+    @Environment(\.themeColors) private var colors
     let model: MangaReaderModel
     let horizontal: Bool
     @State private var scrollPage: Int?
@@ -203,7 +204,10 @@ private struct MangaPages: View {
     @ViewBuilder private func page(_ index: Int) -> some View {
         switch model.imageState(at: index) {
         case .ready(let data):
-            if let image = UIImage(data: data) { MangaZoomImage(image: image) }
+            if let image = UIImage(data: data) {
+                if colors.isEInk { EInkMangaImage(image: image, settings: EInkSettings(values: AppPreferences.shared.snapshot)) }
+                else { MangaZoomImage(image: image) }
+            }
             else { imageError("图片解码失败").task { model.imageDecodingFailed(at: index) } }
         case .failed(let message): imageError(message)
         case .loading: ProgressView().frame(maxWidth: .infinity, minHeight: 180)
@@ -213,6 +217,29 @@ private struct MangaPages: View {
     private func imageError(_ message: String) -> some View {
         VStack { Text(message).font(.caption); Button("重试图片") { Task { await model.prefetch() } } }
             .frame(maxWidth: .infinity, minHeight: 180)
+    }
+}
+
+/// Shows a manga page only after e-paper processing, so the page changes once like a real e-ink refresh.
+private struct EInkMangaImage: View {
+    let image: UIImage
+    let settings: EInkSettings
+    @State private var processed: UIImage?
+
+    var body: some View {
+        Group {
+            if let processed { MangaZoomImage(image: processed) }
+            else { ProgressView().frame(maxWidth: .infinity, minHeight: 180) }
+        }
+        .task(id: "\(ObjectIdentifier(image))-\(settings.imageMode.rawValue)-\(settings.threshold)") {
+            guard let source = image.cgImage else { processed = image; return }
+            let mode = settings.imageMode, threshold = settings.threshold
+            let result = await Task.detached(priority: .userInitiated) {
+                EInkImageProcessor.process(source, mode: mode, threshold: threshold)
+            }.value
+            guard !Task.isCancelled else { return }
+            processed = result.map { UIImage(cgImage: $0, scale: image.scale, orientation: image.imageOrientation) } ?? image
+        }
     }
 }
 

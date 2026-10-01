@@ -28,6 +28,20 @@ import LegadoCore
         let useDefault: Bool
         let pixels: Int
         let cacheMegabytes: Int
+        let eInkMode: EInkSettings.ImageMode?
+        let eInkThreshold: Int
+    }
+
+    private var eInk: EInkSettings? { themeColors.isEInk ? EInkSettings(values: preferences.snapshot) : nil }
+
+    /// E-paper rendering for covers and inline images; runs off the main thread.
+    private func inked(_ image: CGImage) async -> UIImage {
+        guard let eInk else { return UIImage(cgImage: image) }
+        let mode = eInk.imageMode, threshold = eInk.threshold
+        let processed = await Task.detached(priority: .utility) {
+            EInkImageProcessor.process(image, mode: mode, threshold: threshold)
+        }.value
+        return UIImage(cgImage: processed ?? image)
     }
 
     var body: some View {
@@ -62,7 +76,8 @@ import LegadoCore
         })
         .task(id: Identity(url: url, origin: origin, book: book, isCover: isCover,
                            allowNetwork: allowNetwork, useDefault: preferences.boolean("useDefaultCover"),
-                           pixels: maximumPixels, cacheMegabytes: preferences.integer("bitmapCacheSize"))) {
+                           pixels: maximumPixels, cacheMegabytes: preferences.integer("bitmapCacheSize"),
+                           eInkMode: eInk?.imageMode, eInkThreshold: eInk?.threshold ?? 0)) {
             bitmap = nil
             var cacheKey = url ?? ""
             guard isReadRecord || !isCover || !preferences.boolean("useDefaultCover") && url != "use_default_cover" else { return }
@@ -70,7 +85,7 @@ import LegadoCore
                 let key = CoverBitmapCache.key(address: url, origin: origin, bookURL: book?.bookUrl)
                 if let hit = await CoverBitmapCache.shared.cached(key: key, maximumPixels: maximumPixels,
                                                                   maximumMegabytes: preferences.integer("bitmapCacheSize")) {
-                    bitmap = UIImage(cgImage: hit); return
+                    bitmap = await inked(hit); return
                 }
             }
             await model.load(url: url?.isEmpty == false ? url : book?.name) {
@@ -94,7 +109,7 @@ import LegadoCore
             let decoded = await CoverBitmapCache.shared.image(data, key: cacheKey, maximumPixels: maximumPixels,
                 maximumMegabytes: preferences.integer("bitmapCacheSize"))
             guard !Task.isCancelled else { return }
-            bitmap = decoded.map { UIImage(cgImage: $0) }
+            if let decoded { bitmap = await inked(decoded) } else { bitmap = nil }
         }
     }
 

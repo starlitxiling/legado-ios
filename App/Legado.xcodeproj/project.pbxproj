@@ -180,6 +180,7 @@
 		A0217C69637EC2F8678060C4 /* ExploreView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C00465AFD691EFD294F021F /* ExploreView.swift */; };
 		A0597DFF51C2E00C884D6606 /* SearchResultRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421A284FADEC6EB783743902 /* SearchResultRow.swift */; };
 		A05C6E94F30FC95D4E095FE1 /* ReaderSourceReimportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 599DACD9CBC91C54EC296D68 /* ReaderSourceReimportView.swift */; };
+		A068FF12D3ADFD071B12FF4F /* EInkImageProcessor.swift in Sources */ = {isa = PBXBuildFile; fileRef = BEA6402A94F28F14C1BE4EB8 /* EInkImageProcessor.swift */; };
 		A17C1B4AA1342BB5BB6CCF20 /* ScriptHostConfiguration.swift in Sources */ = {isa = PBXBuildFile; fileRef = AD5418C752C2620CD95B9D09 /* ScriptHostConfiguration.swift */; };
 		A2193C1F2F6319F170EC2531 /* BackupLifecycleModifier.swift in Sources */ = {isa = PBXBuildFile; fileRef = DDD1861C5310FD79DA9FAA71 /* BackupLifecycleModifier.swift */; };
 		A21F0CD61CF2F0CF4847E082 /* BookshelfViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E60A074AD55EACB85FDC970B /* BookshelfViewModel.swift */; };
@@ -481,6 +482,7 @@
 		BC055C977B07CF7E57AA5955 /* ImageRepositoryLoader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ImageRepositoryLoader.swift; sourceTree = "<group>"; };
 		BC285641BADB1C7E221D1EFC /* launcher5@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "launcher5@2x.png"; sourceTree = "<group>"; };
 		BE06A0EDE83DE9C85048CDCE /* SourceChangeTransaction.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourceChangeTransaction.swift; sourceTree = "<group>"; };
+		BEA6402A94F28F14C1BE4EB8 /* EInkImageProcessor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EInkImageProcessor.swift; sourceTree = "<group>"; };
 		BF0690484F161A0B6844125F /* UploadRuleSettingsModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UploadRuleSettingsModel.swift; sourceTree = "<group>"; };
 		BF33FEEE0A343442A4A96D69 /* AppThemeModifier.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppThemeModifier.swift; sourceTree = "<group>"; };
 		C031341F3CAABAC9C02CF951 /* launcher6@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "launcher6@2x.png"; sourceTree = "<group>"; };
@@ -817,6 +819,7 @@
 		79F93F11F124963977C9FD77 /* Theme */ = {
 			isa = PBXGroup;
 			children = (
+				BEA6402A94F28F14C1BE4EB8 /* EInkImageProcessor.swift */,
 				1FFB5CF4B90D95A7FB6CEB27 /* EInkSettings.swift */,
 				7696EAB1A467B21836EC3650 /* InkSurface.swift */,
 				F6F91E009AB7FA4ABEB5E3A3 /* ReaderStatusAppearance.swift */,
@@ -1415,6 +1418,7 @@
 				541105E267676EB040B24078 /* DiscoveryStorage.swift in Sources */,
 				DEE248A4436D319328FBDAF3 /* DownloadCenterModel.swift in Sources */,
 				DF97179CD3CC4B906DBD64C8 /* DownloadCenterView.swift in Sources */,
+				A068FF12D3ADFD071B12FF4F /* EInkImageProcessor.swift in Sources */,
 				67E9CAF7714B3F2C29F1DDCE /* EInkSettings.swift in Sources */,
 				7077FDEFAD28D153CBDEAC38 /* EInkSettingsView.swift in Sources */,
 				56FFDD9989E75B67727D1D8E /* EmptyStateView.swift in Sources */,
