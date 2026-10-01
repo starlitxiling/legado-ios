@@ -30,7 +30,9 @@
 ## 未做与限制
 - 音量键翻页：用户决定不做。
 - 视频弹幕、DASH（MPD）播放不支持；Core 报告类错误（整架更新/缓存/定时任务）沿用 LocalizedError 文案，未改走 App presentation。
-- H9 后的单元未跑完整模拟器 UI 回归；视频、文件下载、换封面未在真机验证。
+- 2026-10-01 在 fc378743b 上完整回归：LegadoTests 17/0，UI 53/1；失败项 SourceInterfaceUITests.testListSelectionAndEditorTabs 为并发打包时的等待超时，单独重跑两次均 1/0（.build/round7/final2-*.log）。视频、文件下载、换封面已由用户真机验证。
 
 ## 下一步
+改用 SideStore 侧载续签，任务书 SIDESTORE.prompt.md 已交用户驱动 Codex 执行。
+
 2026-10-01 已用个人团队 R6593A6KK4 自动签名（描述文件到 2026-10-06）覆盖安装到 iPhone（com.starlitxiling.legado.ios，提交 90e63d928），待用户真机验收。
