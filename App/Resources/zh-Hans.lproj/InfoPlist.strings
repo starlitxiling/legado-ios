@@ -1,0 +1,2 @@
+/* SideStore registers App IDs with the Info.plist name, which must be ASCII; the home screen uses this localized name. */
+"CFBundleDisplayName" = "阅读";

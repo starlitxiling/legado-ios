@@ -9,7 +9,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>zh-Hans</string>
 	<key>CFBundleDisplayName</key>
-	<string>阅读</string>
+	<string>Legado</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
