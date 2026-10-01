@@ -45,6 +45,8 @@ struct SimulationPageTransition<Content: View, Next: View, Previous: View>: UIVi
         private var interacting = false
         private var animating = false
         private var committing = false
+        /// The curl already played for a finger turn; the page change that follows must not animate again.
+        private var settledTurnDeadline: Date?
 
         init(_ value: SimulationPageTransition) { self.value = value }
 
@@ -53,7 +55,11 @@ struct SimulationPageTransition<Content: View, Next: View, Previous: View>: UIVi
             let changed = value.page != newValue.page
             let forward = newValue.page >= value.page
             value = newValue
-            if changed { install(controller, animated: true, forward: forward) }
+            if changed {
+                let settled = settledTurnDeadline.map { Date() < $0 } ?? false
+                settledTurnDeadline = nil
+                install(controller, animated: !settled, forward: forward)
+            }
             else {
                 controller.dataSource = value.enabled ? self : nil
                 faces[0]?.rootView = AnyView(value.content())
@@ -129,10 +135,12 @@ struct SimulationPageTransition<Content: View, Next: View, Previous: View>: UIVi
             committing = true
             task = Task { @MainActor [weak self, weak controller] in
                 guard let self, let controller else { return }
-                _ = await value.turn(visible.index > 0)
+                let previousPage = value.page
+                let turned = await value.turn(visible.index > 0)
                 guard !Task.isCancelled else { return }
                 committing = false
                 if let pending { value = pending; self.pending = nil }
+                settledTurnDeadline = turned && value.page == previousPage ? Date().addingTimeInterval(1) : nil
                 install(controller, animated: false)
                 task = nil
             }
