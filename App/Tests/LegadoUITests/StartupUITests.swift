@@ -149,6 +149,32 @@ final class StartupUITests: XCTestCase {
     }
 
     @MainActor
+    func testEInkSettingsPageIsReachableAndEditable() {
+        continueAfterFailure = false
+        let app = XCUIApplication()
+        app.launchArguments += ["-autoTaskService", "NO", "-syncBookProgress", "NO", "-syncBookProgressPlus", "NO"]
+        app.launch()
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 20))
+        openSettings(app)
+        let themeSettings = app.staticTexts["主题设置"]
+        XCTAssertTrue(reveal(themeSettings, in: app))
+        themeSettings.tap()
+        let entry = app.buttons["墨水屏设置"].exists ? app.buttons["墨水屏设置"] : app.staticTexts["墨水屏设置"]
+        XCTAssertTrue(entry.waitForExistence(timeout: 5))
+        entry.tap()
+        let stepper = app.steppers["eink.refreshInterval"]
+        XCTAssertTrue(stepper.waitForExistence(timeout: 5))
+        let before = stepper.label
+        stepper.buttons.element(boundBy: 1).tap()
+        XCTAssertNotEqual(stepper.label, before)
+        stepper.buttons.element(boundBy: 0).tap()
+        XCTAssertEqual(stepper.label, before)
+        XCTAssertTrue(app.segmentedControls["eink.textWeight"].exists)
+        XCTAssertTrue(app.switches["锐利文字（关闭抗锯齿）"].exists)
+        XCTAssertTrue(app.switches["阅读时隐藏状态栏"].exists)
+    }
+
+    @MainActor
     func testLauncherIconsAreAvailable() {
         continueAfterFailure = false
         let app = XCUIApplication()
@@ -167,6 +193,15 @@ final class StartupUITests: XCTestCase {
         let alternates = app.descendants(matching: .any).matching(NSPredicate(format: "label BEGINSWITH %@", "图标 "))
         XCTAssertGreaterThan(alternates.count, 0, app.debugDescription)
         XCTAssertFalse(app.staticTexts["当前安装包未包含备用图标，暂不能切换。"].exists)
+    }
+
+    /// Lazy lists drop off-screen rows, so search both directions instead of assuming one swipe lands on the row.
+    @MainActor
+    private func reveal(_ element: XCUIElement, in app: XCUIApplication) -> Bool {
+        if element.waitForExistence(timeout: 5), element.isHittable { return true }
+        for _ in 0..<4 where !(element.exists && element.isHittable) { app.swipeUp() }
+        for _ in 0..<8 where !(element.exists && element.isHittable) { app.swipeDown() }
+        return element.exists && element.isHittable
     }
 
     @MainActor
