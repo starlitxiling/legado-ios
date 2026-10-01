@@ -6,7 +6,17 @@ struct EInkModifier: ViewModifier {
         content.transaction {
             if enabled { $0.animation = nil; $0.disablesAnimations = true }
         }
+        .scrollBounceBehavior(enabled ? .basedOnSize : .automatic, axes: [.vertical, .horizontal])
+        .onAppear { EInkMotion.apply(enabled: enabled) }
+        .onChange(of: enabled) { _, value in EInkMotion.apply(enabled: value) }
     }
+}
+
+/// UIKit drives navigation pushes, sheet presentations and switch toggles outside SwiftUI transactions;
+/// e-ink screens show each change once, so the global UIView animation flag follows the theme.
+@MainActor enum EInkMotion {
+    static var setAnimationsEnabled: (Bool) -> Void = { UIView.setAnimationsEnabled($0) }
+    static func apply(enabled: Bool) { setAnimationsEnabled(!enabled) }
 }
 
 @MainActor struct ThemeEnvironmentModifier: ViewModifier {
