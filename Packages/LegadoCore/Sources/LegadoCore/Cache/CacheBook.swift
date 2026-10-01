@@ -17,16 +17,22 @@ public actor CacheBook {
     }
     private let maximumConcurrent: Int
     private let retryLimit: Int
+    private let failurePauseThreshold: Int
+    private var consecutiveFailures: [String: Int] = [:]
+    private var pauseReasons: [String: String] = [:]
     private let onProgress: @Sendable ([Progress]) -> Void
     private var entries: [Key: Entry] = [:]
     private var order: [Key] = []
     private var active: [Key: Task<Void, Never>] = [:]
     private var waiters: [CheckedContinuation<Void, Never>] = []
 
-    public init(maximumConcurrent: Int = 3, retryLimit: Int = 2,
+    /// `failurePauseThreshold`: after this many chapters of one book fail in a row, the rest of that book is
+    /// paused so a dead or blocked source does not keep retrying every chapter. 0 disables it.
+    public init(maximumConcurrent: Int = 3, retryLimit: Int = 2, failurePauseThreshold: Int = 10,
                 onProgress: @escaping @Sendable ([Progress]) -> Void = { _ in }) {
         self.maximumConcurrent = max(1, maximumConcurrent)
         self.retryLimit = max(0, retryLimit)
+        self.failurePauseThreshold = max(0, failurePauseThreshold)
         self.onProgress = onProgress
     }
 
@@ -44,6 +50,8 @@ public actor CacheBook {
 
     public func snapshot() -> [Progress] { order.compactMap { entries[$0]?.progress } }
 
+    public func pauseReason(bookURL: String) -> String? { pauseReasons[bookURL] }
+
     public func pause(bookURL: String) {
         for key in order where key.book == bookURL {
             guard let state = entries[key]?.progress.state, state == .queued || state == .running else { continue }
@@ -54,6 +62,7 @@ public actor CacheBook {
     }
 
     public func resume(bookURL: String) {
+        pauseReasons[bookURL] = nil; consecutiveFailures[bookURL] = 0
         for key in order where key.book == bookURL && entries[key]?.progress.state == .paused {
             entries[key]?.progress.state = .queued
         }
@@ -69,6 +78,7 @@ public actor CacheBook {
     }
 
     public func retry(bookURL: String) {
+        pauseReasons[bookURL] = nil; consecutiveFailures[bookURL] = 0
         for key in order where key.book == bookURL {
             guard let state = entries[key]?.progress.state, state == .failed || state == .cancelled else { continue }
             entries[key]?.progress.state = .queued
@@ -113,13 +123,27 @@ public actor CacheBook {
             case .success:
                 entries[key]?.progress.state = .completed
                 entries[key]?.progress.error = nil
+                consecutiveFailures[key.book] = 0
             case .failure(let error):
                 let attempts = entries[key]!.progress.attempts
                 entries[key]?.progress.error = error.localizedDescription
-                entries[key]?.progress.state = error is CancellationError ? .cancelled
-                    : (attempts <= retryLimit ? .queued : .failed)
+                let state: State = error is CancellationError ? .cancelled : (attempts <= retryLimit ? .queued : .failed)
+                entries[key]?.progress.state = state
+                if state == .failed { recordFailure(book: key.book, error: error) }
             }
         }
         pump()
+    }
+
+    private func recordFailure(book: String, error: Error) {
+        let count = (consecutiveFailures[book] ?? 0) + 1
+        consecutiveFailures[book] = count
+        guard failurePauseThreshold > 0, count >= failurePauseThreshold, pauseReasons[book] == nil else { return }
+        pauseReasons[book] = "连续 \(count) 章下载失败，已自动暂停：\(error.localizedDescription)"
+        for key in order where key.book == book {
+            guard let state = entries[key]?.progress.state, state == .queued || state == .running else { continue }
+            entries[key]?.progress.state = .paused
+            active[key]?.cancel()
+        }
     }
 }

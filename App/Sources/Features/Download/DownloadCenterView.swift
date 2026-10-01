@@ -18,6 +18,10 @@ struct DownloadCenterView: View {
                 let items = model.progress.filter { $0.bookURL == url }
                 Section(model.bookNames[url] ?? "书籍下载") {
                     ProgressView(value: Double(items.filter { $0.state == .completed }.count), total: Double(items.count))
+                    Text(summary(items)).font(.caption).foregroundStyle(.secondary)
+                    if let reason = model.pauseReasons[url] {
+                        Text(reason + "\n请检查网络或为这本书换源后，点「继续」或「重试失败」。").font(.callout).foregroundStyle(.red)
+                    }
                     HStack {
                         Button("暂停") { Task { await model.queue.pause(bookURL: url) } }
                         Button("继续") { Task { await model.queue.resume(bookURL: url) } }
@@ -26,8 +30,11 @@ struct DownloadCenterView: View {
                     }.buttonStyle(.borderless)
                     ForEach(items) { item in
                         VStack(alignment: .leading) {
-                            Text("第 \(item.chapterIndex + 1) 章 · \(stateName(item.state)) · 已尝试 \(item.attempts) 次")
-                            if let error = item.error { Text(error).font(.caption).foregroundStyle(.red) }
+                            Text("第 \(item.chapterIndex + 1) 章 · " + status(item))
+                            if let error = item.error, item.state != .completed {
+                                Text((item.state == .failed ? "" : "上次失败：") + error).font(.caption)
+                                    .foregroundStyle(item.state == .failed ? .red : .secondary)
+                            }
                         }
                     }
                 }
@@ -36,6 +43,17 @@ struct DownloadCenterView: View {
         }
         .legadoNavigationTitle("下载中心")
         .task { await model.poll() }
+    }
+
+    private func status(_ item: CacheBook.Progress) -> String {
+        if item.state == .running, item.attempts > 1 { return "第 \(item.attempts) 次重试中" }
+        if item.state == .failed { return "失败（已尝试 \(item.attempts) 次）" }
+        return stateName(item.state)
+    }
+
+    private func summary(_ items: [CacheBook.Progress]) -> String {
+        func count(_ state: CacheBook.State) -> Int { items.filter { $0.state == state }.count }
+        return "共 \(items.count) 章：完成 \(count(.completed))，失败 \(count(.failed))，下载中 \(count(.running))，等待 \(count(.queued))，暂停 \(count(.paused))"
     }
 
     private func stateName(_ state: CacheBook.State) -> String {

@@ -18,6 +18,7 @@ enum BookshelfDownloadsError: LocalizedError {
 @MainActor
 final class DownloadCenterModel {
     private(set) var progress: [CacheBook.Progress] = []
+    private(set) var pauseReasons: [String: String] = [:]
     private(set) var bookNames: [String: String] = [:]
     var userError: UserFacingError?
     var errorMessage: String? { userError?.displayText }
@@ -51,7 +52,7 @@ final class DownloadCenterModel {
 
     func poll() async {
         while !Task.isCancelled {
-            progress = await queue.snapshot()
+            await refreshSnapshot()
             do { try await Task.sleep(for: .milliseconds(300)) } catch { return }
         }
     }
@@ -94,7 +95,14 @@ final class DownloadCenterModel {
                 }
             } catch { userError = error.presentation(operation: "缓存书籍", subject: row.name) }
         }
+        await refreshSnapshot()
+    }
+
+    private func refreshSnapshot() async {
         progress = await queue.snapshot()
+        var reasons: [String: String] = [:]
+        for url in Set(progress.map(\.bookURL)) { reasons[url] = await queue.pauseReason(bookURL: url) }
+        pauseReasons = reasons
     }
 
     func refresh(_ rows: [BookRow]? = nil, onlyUpdateRead: Bool = false) async {
