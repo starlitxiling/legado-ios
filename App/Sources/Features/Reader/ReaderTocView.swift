@@ -61,7 +61,7 @@ struct ReaderTocView: View {
         .task(id: model.book?.readConfig) { await load() }
         .onDisappear { countTask?.cancel() }
         .sheet(isPresented: $parsing, onDismiss: { Task { await load() } }) { ReaderTextParsingView(model: model, database: database) }
-        .sheet(isPresented: $log) { NavigationStack { AppLogView() } }
+        .sheet(isPresented: $log) { NavigationStack { AppLogView().sheetCloseButton { log = false } } }
         .fileExporter(isPresented: $exporting, document: document, contentType: exportType,
                       defaultFilename: "bookmark-\(model.book?.name ?? "book")") { result in
             if case .failure(let failure) = result { error = failure.presentation(operation: "导出书签", subject: model.book?.name) }

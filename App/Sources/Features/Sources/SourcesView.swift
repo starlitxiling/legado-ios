@@ -157,7 +157,7 @@ struct SourcesView: View {
                     login: sourceLogin, checker: sourceChecker, onSave: { await model.load() })
             }
         }
-        .sheet(isPresented: $showShare) { NavigationStack { SourceJSONShareView(text: shareText) } }
+        .sheet(isPresented: $showShare) { NavigationStack { SourceJSONShareView(text: shareText).sheetCloseButton { showShare = false } } }
         .alert(removingGroup ? "移除分组" : "添加分组", isPresented: $showGroup) {
             TextField("分组名称，多个名称用逗号分隔", text: $groupText)
             Button("取消", role: .cancel) {}

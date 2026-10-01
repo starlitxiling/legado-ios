@@ -422,8 +422,18 @@ struct ReaderView: View {
         switch key {
         case "search": ReaderSearchView(model: model)
         case "editContent": ReaderContentEditor(model: model)
-        case "replace": NavigationStack { ReplaceRulesView(repository: container.replaceRules, httpClient: container.httpClient) }
-        case "cache": if let book = model.book { NavigationStack { BookCacheExportView(book: book, model: container.downloads) } }
+        case "replace":
+            NavigationStack {
+                ReplaceRulesView(repository: container.replaceRules, httpClient: container.httpClient)
+                    .toolbar { ToolbarItem(placement: .cancellationAction) { Button("关闭") { actionSheet = nil } } }
+            }
+        case "cache":
+            if let book = model.book {
+                NavigationStack {
+                    BookCacheExportView(book: book, model: container.downloads)
+                        .toolbar { ToolbarItem(placement: .cancellationAction) { Button("关闭") { actionSheet = nil } } }
+                }
+            }
         case "sources":
             NavigationStack {
                 SourcesView(repository: container.bookSources, replaceRules: container.replaceRules,
@@ -438,9 +448,9 @@ struct ReaderView: View {
                     if let book = await detail.prepareForReading(database: container.database), let url = book.bookUrl {
                         actionSheet = nil; await model.load(bookURL: url); await readAloud.attach(model)
                     } else { styleError = detail.errorMessage.map { UserFacingError(title: "切换书源失败", message: $0) } }
-                }
+                }.sheetCloseButton { actionSheet = nil }
             }
-        case "log": NavigationStack { AppLogView() }
+        case "log": NavigationStack { AppLogView().sheetCloseButton { actionSheet = nil } }
         case "image": if let url = previewImageURL { ReaderImagePreview(url: url, model: model) }
         case "preview": ReaderReplacePreviewView(model: model)
         case "memo": if let book = model.book { ReaderMemoView(bookURL: book.bookUrl, database: container.database) }
@@ -460,12 +470,12 @@ struct ReaderView: View {
                         var settings = model.settings; settings.autoReadSpeed = value; settings.save()
                         Task { await model.reflow(settings: settings) }
                     }), in: 1...120, step: 1)
-                }.legadoNavigationTitle("自动阅读速度")
+                }.legadoNavigationTitle("自动阅读速度").sheetCloseButton { actionSheet = nil }
             }
         default:
             NavigationStack {
                 ScrollView { Text("点击中央区域打开阅读菜单。左右滑动翻页，长按正文选择文本。可在设置中自定义九宫格、外接键盘按键、双页显示和菜单。") .padding() }
-                    .legadoNavigationTitle("阅读帮助")
+                    .legadoNavigationTitle("阅读帮助").sheetCloseButton { actionSheet = nil }
             }
         }
     }
@@ -738,12 +748,14 @@ private struct ReaderImagePreview: View {
     let url: String
     let model: ReaderViewModel
     @State private var scale: CGFloat = 1
+    @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
             RemoteImage(url: url, origin: model.book?.origin, book: model.readerBook, isCover: false)
                 .scaleEffect(scale).gesture(MagnifyGesture().onChanged { scale = max(1, min(5, $0.magnification)) })
                 .onTapGesture(count: 2) { scale = scale == 1 ? 2 : 1 }
                 .legadoNavigationTitle("图片预览")
+                .sheetCloseButton(dismiss: dismiss)
         }
     }
 }

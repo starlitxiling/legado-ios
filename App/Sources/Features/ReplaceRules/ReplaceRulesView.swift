@@ -90,6 +90,6 @@ struct ReplaceRulesView: View {
         .sheet(isPresented: $showEditor) {
             NavigationStack { ReplaceRuleEditView(rule: editingRule, repository: repository, onSave: { await model.load() }) }
         }
-        .sheet(isPresented: $showShare) { NavigationStack { SourceJSONShareView(text: shareText) } }
+        .sheet(isPresented: $showShare) { NavigationStack { SourceJSONShareView(text: shareText).sheetCloseButton { showShare = false } } }
     }
 }

@@ -77,12 +77,14 @@ struct ReaderContentEditor: View {
 struct ReaderReplacePreviewView: View {
     let model: ReaderViewModel
     @State private var replaced = true
+    @Environment(\.dismiss) private var dismiss
     var body: some View {
         NavigationStack {
             VStack {
                 Picker("内容", selection: $replaced) { Text("处理后").tag(true); Text("原始内容").tag(false) }.pickerStyle(.segmented).padding()
                 ScrollView { Text(replaced ? model.pagination?.text.string ?? "" : model.rawContent).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading).padding() }
             }.legadoNavigationTitle("替换预览")
+            .sheetCloseButton(dismiss: dismiss)
         }
     }
 }
