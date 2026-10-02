@@ -45,15 +45,8 @@ final class EInkReaderTests: XCTestCase {
         XCTAssertGreaterThan(try inkPixels(eInkSettings { $0.textWeight = 2 }), try inkPixels(eInkSettings { $0.textWeight = 0 }))
     }
 
-    func testEInkHidesStatusBarWithoutChangingSavedPreference() {
+    func testEInkFollowsTheGeneralStatusBarSetting() {
         var settings = eInkSettings()
-        XCTAssertFalse(settings.hidesStatusBar)
-        settings.eInk?.hideStatusBar = true
-        XCTAssertFalse(settings.hideStatusBar)
-        XCTAssertTrue(settings.hidesStatusBar)
-        settings.eInk?.hideStatusBar = false
-        XCTAssertFalse(settings.hidesStatusBar)
-        settings.isEInk = false; settings.eInk?.hideStatusBar = true
         XCTAssertFalse(settings.hidesStatusBar)
         settings.hideStatusBar = true
         XCTAssertTrue(settings.hidesStatusBar)
