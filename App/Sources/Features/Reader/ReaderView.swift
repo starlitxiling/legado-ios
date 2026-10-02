@@ -238,6 +238,8 @@ struct ReaderView: View {
             } catch is CancellationError {} catch { AppLogStore.shared.append("Paper background: \(String(reflecting: error))") }
         }
         .preference(key: ReaderStatusIconPreference.self, value: statusStyleActive ? model.settings.darkStatusIcons : nil)
+        .preference(key: ReaderStatusHiddenPreference.self,
+                    value: statusStyleActive ? model.settings.hidesStatusBar && !showsControls : nil)
         .onAppear { statusStyleActive = true }
         .onDisappear { statusStyleActive = false }
         .toolbar(.hidden, for: .navigationBar, .tabBar)

@@ -24,6 +24,7 @@ struct EInkModifier: ViewModifier {
 
 @MainActor struct ThemeEnvironmentModifier: ViewModifier {
     @State private var readerDarkIcons: Bool?
+    @State private var readerHidesStatusBar: Bool?
     @State private var hostedPhase: ScenePhase?
     @Environment(\.scenePhase) private var scenePhase
     let store: ThemeStore
@@ -41,8 +42,9 @@ struct EInkModifier: ViewModifier {
             .foregroundStyle(colors.textPrimary)
             .background(colors.background.ignoresSafeArea())
             .preferredColorScheme(appearance.colorScheme)
-            .background(ReaderStatusBarBridge(darkIcons: appearance.darkStatusIcons, colorScheme: appearance.colorScheme, phaseChanged: { hostedPhase = $0 }).frame(width: 0, height: 0))
+            .background(ReaderStatusBarBridge(darkIcons: appearance.darkStatusIcons, hidesStatusBar: readerHidesStatusBar, colorScheme: appearance.colorScheme, phaseChanged: { hostedPhase = $0 }).frame(width: 0, height: 0))
             .onPreferenceChange(ReaderStatusIconPreference.self) { readerDarkIcons = $0 }
+            .onPreferenceChange(ReaderStatusHiddenPreference.self) { readerHidesStatusBar = $0 }
             .saturation(palette.isEInk ? 0 : 1)
             .modifier(EInkModifier(enabled: palette.isEInk))
             .onReceive(NotificationCenter.default.publisher(for: BackupViewModel.restoredNotification)) { _ in store.preferences.reload() }
@@ -80,6 +82,11 @@ extension View {
     func legadoNavigationTitle(_ title: Text) -> some View {
         navigationTitle(title).modifier(ThemeNavigationModifier())
     }
+}
+
+struct ReaderStatusHiddenPreference: PreferenceKey {
+    static let defaultValue: Bool? = nil
+    static func reduce(value: inout Bool?, nextValue: () -> Bool?) { value = nextValue() ?? value }
 }
 
 struct ReaderStatusIconPreference: PreferenceKey {

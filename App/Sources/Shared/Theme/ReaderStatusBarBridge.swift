@@ -3,6 +3,7 @@ import UIKit
 
 struct ReaderStatusBarBridge: UIViewRepresentable {
     let darkIcons: Bool?
+    var hidesStatusBar: Bool? = nil
     let colorScheme: ColorScheme?
     var phaseChanged: (ScenePhase) -> Void = { _ in }
 
@@ -10,12 +11,14 @@ struct ReaderStatusBarBridge: UIViewRepresentable {
     func updateUIView(_ view: BridgeView, context: Context) {
         view.phaseChanged = phaseChanged
         view.darkIcons = darkIcons
+        view.hidesStatusBar = hidesStatusBar
         view.interfaceStyle = colorScheme.map { $0 == .dark ? .dark : .light } ?? .unspecified
         view.apply()
     }
 
     final class BridgeView: UIView {
         var darkIcons: Bool?
+        var hidesStatusBar: Bool?
         var phaseChanged: (ScenePhase) -> Void = { _ in }
         private var observers: [NSObjectProtocol] = []
         var interfaceStyle: UIUserInterfaceStyle = .unspecified
@@ -44,12 +47,14 @@ struct ReaderStatusBarBridge: UIViewRepresentable {
             DispatchQueue.main.async { [weak self] in self?.phaseChanged(phase) }
             if let controller = root as? ReaderStatusBarController {
                 controller.darkIcons = darkIcons
+                controller.hidesStatusBar = hidesStatusBar
                 controller.overrideUserInterfaceStyle = interfaceStyle
             }
             else {
                 // UIKit asks the window root for status style; a background child cannot own it.
                 let controller = ReaderStatusBarController(content: root)
                 controller.darkIcons = darkIcons
+                controller.hidesStatusBar = hidesStatusBar
                 controller.overrideUserInterfaceStyle = interfaceStyle
                 window.rootViewController = controller
             }
@@ -61,6 +66,11 @@ final class ReaderStatusBarController: UIViewController {
     let content: UIViewController
     var darkIcons: Bool? {
         didSet { if darkIcons != oldValue { setNeedsStatusBarAppearanceUpdate() } }
+    }
+    /// Set by the reader; SwiftUI's `.statusBarHidden` does not reach the window root through the
+    /// tab and navigation containers on iOS 18, so the root decides directly while reading.
+    var hidesStatusBar: Bool? {
+        didSet { if hidesStatusBar != oldValue { setNeedsStatusBarAppearanceUpdate() } }
     }
 
     init(content: UIViewController) {
@@ -85,7 +95,8 @@ final class ReaderStatusBarController: UIViewController {
 
     override var childForStatusBarStyle: UIViewController? { darkIcons == nil ? content : nil }
     override var preferredStatusBarStyle: UIStatusBarStyle { darkIcons == true ? .darkContent : .lightContent }
-    override var childForStatusBarHidden: UIViewController? { content }
+    override var childForStatusBarHidden: UIViewController? { hidesStatusBar == nil ? content : nil }
+    override var prefersStatusBarHidden: Bool { hidesStatusBar ?? false }
     override var childForHomeIndicatorAutoHidden: UIViewController? { content }
     override var childForScreenEdgesDeferringSystemGestures: UIViewController? { content }
     override var supportedInterfaceOrientations: UIInterfaceOrientationMask { content.supportedInterfaceOrientations }
