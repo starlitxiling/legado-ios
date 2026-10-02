@@ -26,6 +26,8 @@ struct ScrollPageContainer: UIViewControllerRepresentable {
         scroll.translatesAutoresizingMaskIntoConstraints = false
         controller.view.addSubview(scroll)
         let host = UIHostingController(rootView: AnyView(EmptyView()))
+        // Pages are already positioned by the reader; an extra safe-area inset would shift and clip them.
+        host.safeAreaRegions = []
         host.view.backgroundColor = .clear
         host.view.translatesAutoresizingMaskIntoConstraints = false
         controller.addChild(host); scroll.addSubview(host.view); host.didMove(toParent: controller)

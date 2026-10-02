@@ -33,7 +33,14 @@ struct SimulationPageTransition<Content: View, Next: View, Previous: View>: UIVi
 
     final class Face: UIHostingController<AnyView> {
         let index: Int
-        init(index: Int, rootView: AnyView) { self.index = index; super.init(rootView: rootView); view.backgroundColor = .clear }
+        init(index: Int, rootView: AnyView) {
+            self.index = index
+            super.init(rootView: rootView)
+            view.backgroundColor = .clear
+            // Each page is laid out by the reader already; letting the hosting controller add the status bar /
+            // Dynamic Island inset again pushes the page down and clips its last line under the footer.
+            safeAreaRegions = []
+        }
         @MainActor required dynamic init?(coder: NSCoder) { fatalError("init(coder:) is unavailable") }
     }
 
