@@ -49,7 +49,7 @@ struct EInkSettings: Equatable {
     static let defaults: [String: AndroidPreferenceValue] = [
         refreshIntervalKey: .int(6), paperKey: .string(Paper.paper.rawValue), textWeightKey: .int(1),
         sharpTextKey: .boolean(false), imageModeKey: .string(ImageMode.levels.rawValue), thresholdKey: .int(128),
-        hideStatusBarKey: .boolean(true)
+        hideStatusBarKey: .boolean(false)
     ]
 
     /// Pages between full black-white flashes; 0 disables them.
@@ -60,8 +60,9 @@ struct EInkSettings: Equatable {
     var sharpText = false
     var imageMode = ImageMode.levels
     var threshold = 128
-    /// Hide the system status bar while reading so the page looks like bare e-paper.
-    var hideStatusBar = true
+    /// Hide the system status bar while reading. Off by default so the e-ink layout matches the other
+    /// themes, with the reading header below the Dynamic Island.
+    var hideStatusBar = false
 
     init() {}
 
