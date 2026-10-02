@@ -187,7 +187,10 @@ struct ReaderView: View {
                         }
                     }.padding(.bottom, 24).padding(.horizontal, 12)
                 }
-                if showsControls { controls }
+                if showsControls {
+                    // The page may extend under the status bar; the menu must not, since the status bar returns with it.
+                    controls.padding(.top, readingEdges.contains(.top) ? Self.windowTopInset : 0)
+                }
             }
             .errorBanner(model.isLoading || showsControls ? nil : model.userError, dismiss: model.dismissError) { action in
                 switch action {
@@ -217,8 +220,8 @@ struct ReaderView: View {
         }
         .persistentSystemOverlays(behavior.boolean("hideNavigationBar") && !showsControls ? .hidden : .automatic)
         .background(ReaderNavigationGuard(disabled: behavior.boolean("disableReturnKey")))
-        .sheet(isPresented: $showsBehavior) { ReaderBehaviorPanel(configuration: $behavior) }
-        .sheet(item: $actionSheet) { destination in actionPanel(destination.key) }
+        .sheet(isPresented: $showsBehavior) { ReaderBehaviorPanel(configuration: $behavior).modifier(EInkSheetContent()) }
+        .sheet(item: $actionSheet) { destination in actionPanel(destination.key).modifier(EInkSheetContent()) }
         .onChange(of: behavior) { _, value in device.update(value); Task { await model.applyBehavior(value) } }
         .foregroundStyle(model.settings.theme == .night ? Color(white: 0.68) : Color.primary)
         .environment(\.colorScheme, model.settings.theme == .night ? .dark : .light)
@@ -241,16 +244,17 @@ struct ReaderView: View {
         .statusBarHidden(model.settings.hidesStatusBar && !showsControls)
         .sheet(isPresented: $showsSettings) {
             ReaderInterfacePanel(store: styles, settings: model.settings) { settings in await model.reflow(settings: settings) }
+                .modifier(EInkSheetContent())
         }
         .alert(styleError?.title ?? "阅读操作失败", isPresented: Binding(get: { styleError != nil }, set: { if !$0 { styleError = nil } })) {
             Button("好", role: .cancel) { styleError = nil }
         } message: { Text(styleError?.message ?? "") }
-        .fullScreenCover(isPresented: $showsChapters) { ReaderTocView(model: model, database: container.database) }
-        .sheet(isPresented: $showsReadAloud) { ReadAloudPanel(controller: readAloud) }
-        .sheet(isPresented: $showsBookmarks) { BookmarkListView(model: model) }
-        .sheet(isPresented: $showsSelection) { selectionPanel }
-        .sheet(isPresented: $showsHighlights) { highlightsPanel }
-        .sheet(isPresented: $showsReviews) { ReaderReviewView(model: model) }
+        .fullScreenCover(isPresented: $showsChapters) { ReaderTocView(model: model, database: container.database).modifier(EInkSheetContent()) }
+        .sheet(isPresented: $showsReadAloud) { ReadAloudPanel(controller: readAloud).modifier(EInkSheetContent()) }
+        .sheet(isPresented: $showsBookmarks) { BookmarkListView(model: model).modifier(EInkSheetContent()) }
+        .sheet(isPresented: $showsSelection) { selectionPanel.modifier(EInkSheetContent()) }
+        .sheet(isPresented: $showsHighlights) { highlightsPanel.modifier(EInkSheetContent()) }
+        .sheet(isPresented: $showsReviews) { ReaderReviewView(model: model).modifier(EInkSheetContent()) }
         .task(id: destination) {
             model.protectProgressWrite = { [lifecycle = container.databaseLifecycle] in
                 let background = ReaderProgressBackgroundTask()
@@ -348,6 +352,11 @@ struct ReaderView: View {
         if behavior.boolean("hideNavigationBar") { edges.insert(.bottom) }
         return edges
     }
+    private static var windowTopInset: CGFloat {
+        let windows = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }.flatMap(\.windows)
+        return (windows.first(where: \.isKeyWindow) ?? windows.first)?.safeAreaInsets.top ?? 0
+    }
+
     private var controls: some View {
         ReaderMenuView(model: model, configuration: behavior, device: device, automatic: autoRead.isRunning,
                        close: { showsControls = false }, leave: leaveReader,

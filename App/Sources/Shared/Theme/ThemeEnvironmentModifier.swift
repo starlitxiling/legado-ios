@@ -16,8 +16,11 @@ struct EInkModifier: ViewModifier {
 /// e-ink screens show each change once, so the global UIView animation flag follows the theme.
 @MainActor enum EInkMotion {
     static var setAnimationsEnabled: (Bool) -> Void = { UIView.setAnimationsEnabled($0) }
-    static func apply(enabled: Bool) { setAnimationsEnabled(!enabled) }
+    static func apply(enabled: Bool) {
+        setAnimationsEnabled(!enabled)
+    }
 }
+
 
 @MainActor struct ThemeEnvironmentModifier: ViewModifier {
     @State private var readerDarkIcons: Bool?
@@ -47,6 +50,12 @@ struct EInkModifier: ViewModifier {
 }
 
 
+/// Presented content is hosted outside the root view, so the e-ink grayscale must be applied to it directly.
+struct EInkSheetContent: ViewModifier {
+    @Environment(\.themeColors) private var colors
+    func body(content: Content) -> some View { content.saturation(colors.isEInk ? 0 : 1) }
+}
+
 struct ThemeNavigationModifier: ViewModifier {
     @Environment(\.themeColors) private var colors
     func body(content: Content) -> some View {
@@ -59,6 +68,8 @@ struct ThemeNavigationModifier: ViewModifier {
             .toolbarBackground(colors.bottomBackground, for: .tabBar)
             .toolbarBackground(.visible, for: .tabBar, .navigationBar)
             .toolbarColorScheme(colors.palette.primary.isDark ? .dark : .light, for: .navigationBar)
+            // Sheets are hosted outside the root view, so the root `.saturation(0)` does not reach them.
+            .saturation(colors.isEInk ? 0 : 1)
     }
 }
 

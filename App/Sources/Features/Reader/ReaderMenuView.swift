@@ -64,7 +64,7 @@ struct ReaderMenuView: View {
                 VStack(spacing: 12) {
                     if model.supportsReviews {
                         Button { show("reviews") } label: { ReaderReviewIcon(settings: model.settings) }
-                            .accessibilityLabel("段评").padding(6).background(menuColor.opacity(0.9), in: RoundedRectangle(cornerRadius: 8))
+                            .accessibilityLabel("段评").padding(6).modifier(MenuChip(color: menuColor, shape: RoundedRectangle(cornerRadius: 8)))
                     }
                     floating("全文搜索", icon: "magnifyingglass") { action(.search) }
                     floating(automatic ? "停止自动阅读" : "自动阅读", icon: automatic ? "pause.rectangle" : "play.rectangle", action: autoRead)
@@ -115,12 +115,12 @@ struct ReaderMenuView: View {
                     .frame(width: 180).rotationEffect(.degrees(-90)).frame(width: 28, height: 180).accessibilityLabel("亮度")
                 Button("亮度条换边", systemImage: "arrow.left.arrow.right") { device.swapBrightnessSide() }
                     .labelStyle(.iconOnly).frame(width: 24, height: 24)
-            }.padding(8).background(menuColor.opacity(0.85), in: RoundedRectangle(cornerRadius: 5)).padding(.leading, 10)
+            }.padding(8).modifier(MenuChip(color: menuColor, shape: RoundedRectangle(cornerRadius: 5), opacity: 0.85)).padding(.leading, 10)
         }
     }
     private func floating(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(title, systemImage: icon, action: action).labelStyle(.iconOnly).frame(width: 36, height: 36)
-            .background(menuColor.opacity(0.9), in: Circle())
+            .modifier(MenuChip(color: menuColor, shape: Circle()))
     }
     private func bottom(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -163,6 +163,22 @@ struct ReaderMenuView: View {
             }
         case "getProgress": Button(title) { action(.sync) }
         default: Button(title) { show(key) }
+        }
+    }
+}
+
+/// Floating reader controls: translucent normally, opaque with a thin outline on e-ink so page text never shows through.
+private struct MenuChip<S: InsettableShape>: ViewModifier {
+    @Environment(\.themeColors) private var colors
+    let color: Color
+    let shape: S
+    var opacity = 0.9
+
+    func body(content: Content) -> some View {
+        if colors.isEInk {
+            content.background(color, in: shape).overlay(shape.strokeBorder(Color.black, lineWidth: 1))
+        } else {
+            content.background(color.opacity(opacity), in: shape)
         }
     }
 }
